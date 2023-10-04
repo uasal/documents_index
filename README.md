@@ -1,5 +1,5 @@
 ## Purpose
-(see [issue]{https://github.com/uasal/spacecoron_design_docs/issues/420})
+(see [issue](https://github.com/uasal/spacecoron_design_docs/issues/420))
 A simple system single source of truth for project document metadata (title, document number, author name, possibly abstract) and location (link to where it is stored).
 
 ## Users
@@ -24,7 +24,8 @@ For a quick test system:
 - Vue.js front-end
 - sqlite database - not expecting more than 100k visits / day, more than 281 Tb or the need for high concurrency ([sqlite limitations]{https://www.sqlite.org/whentouse.html})
 - Google auth
-- hosted on lavinia (https://lavinia.as.arizona.edu/)
+- ~~hosted on lavinia (https://lavinia.as.arizona.edu/)~~
+- hosted on separate, encrypted server (caaodoc.as.arizona.edu)
 
 ## Long-term
 Long term, the system might need to be able to store some / all documents. To allow for this, some possible future directions are:
@@ -33,7 +34,7 @@ Long term, the system might need to be able to store some / all documents. To al
 - port to a different system (AWS has a documentation database service; does Google?)
 
 ## To test:
-    1. Run the server-side Flask app in one terminal window (in the appropriate env, which here is called `dis`):
+1. Run the server-side Flask app in one terminal window (in the appropriate env, which here is called `dis`):
     ```
     $ cd server
     $ conda activate dis
@@ -41,7 +42,7 @@ Long term, the system might need to be able to store some / all documents. To al
     (env)$ flask run --port=5001 --debug
     ```
 
-    2. Run the client-side Vue app in a different terminal window:
+2. Run the client-side Vue app in a different terminal window:
     ```
     $ cd client
     $ npm install
