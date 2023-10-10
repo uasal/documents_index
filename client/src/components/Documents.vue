@@ -443,7 +443,7 @@ export default {
       this.editDocumentForm.abstract = '';
     },
     removeDocument(docID) {
-      const path = '${API_URL}/${docID}';
+      const path = `${API_URL}/documents/${docID}`;
       axios.delete(path)
         .then(() => {
           this.getDocuments();
