@@ -1,6 +1,10 @@
 from sqlalchemy.inspection import inspect
 from app import db
 
+import logging
+
+logger = logging.getLogger('logger')
+
 class Serializer(object):
     """A mix-in to serialize SQLAlchemy models."""
 
@@ -81,14 +85,16 @@ class Document(db.Model, Serializer):
             encountered.
         """
         columns = self._get_columns()
-        try:        
+        try:     
             for column in columns:
                 new_val = kwargs.get(column, None)
                 if new_val is not None:
                     setattr(self, column, new_val)
             db.session.add(self)
-            db.session.commit()                    
-        except Exception:
+            db.session.commit()   
+            logger.info('Documents: Updating Document object.')
+        except Exception as e:
+            logger.error(f'Documents: Updating Document object. Error: {e}')  
             return False
         return True
     
@@ -108,8 +114,10 @@ class Document(db.Model, Serializer):
             obj = cls(**kwargs)
             db.session.add(obj)
             db.session.commit()
+            logger.info('Documents: Updating Document object.')        
             return obj
-        except Exception:
+        except Exception as e:
+            logger.error(f'Documents: Creating Document object. Error: {e}')  
             return False
 
     @classmethod
@@ -132,7 +140,9 @@ class Document(db.Model, Serializer):
             try:
                 db.session.delete(doc)
                 db.session.commit()
+                logger.info('Documents: Deleting Document object.')   
                 return True
-            except Exception:
+            except Exception as e:
+                logger.error(f'Documents: Deleting Document object. Error: {e}')  
                 return False
         return False

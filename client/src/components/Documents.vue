@@ -300,6 +300,8 @@
 import axios from 'axios';
 import Alert from './Alert.vue';
 
+const API_URL = 'http://127.0.0.1:5000';
+
 export default {
   data() {
     return {
@@ -362,7 +364,7 @@ export default {
   },
   methods: {
     addDocument(payload) {
-      const path = 'http://localhost:5001/documents';
+      const path = '${API_URL}/documents';
       axios.post(path, payload)
         .then(() => {
           this.getDocuments();
@@ -375,7 +377,7 @@ export default {
         });
     },
     getDocuments() {
-      const path = 'http://localhost:5001/documents';
+      const path = '${API_URL}/documents';
       axios.get(path)
         .then((res) => {
           this.documents = res.data.documents;
@@ -441,7 +443,7 @@ export default {
       this.editDocumentForm.abstract = '';
     },
     removeDocument(docID) {
-      const path = `http://localhost:5001/documents/${docID}`;
+      const path = '${API_URL}/${docID}';
       axios.delete(path)
         .then(() => {
           this.getDocuments();
@@ -475,7 +477,7 @@ export default {
       }
     },
     updateDocument(payload, docID) {
-      const path = `http://localhost:5001/documents/${docID}`;
+      const path = '${API_URL}/documents/${docID}';
       axios.put(path, payload)
         .then(() => {
           this.getDocuments();

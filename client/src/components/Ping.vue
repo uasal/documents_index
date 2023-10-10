@@ -7,6 +7,8 @@
 <script>
 import axios from 'axios';
 
+const API_URL = 'http://127.0.0.1:5000';
+
 export default {
   name: 'Ping',
   data() {
@@ -16,7 +18,7 @@ export default {
   },
   methods: {
     getMessage() {
-      const path = 'http://localhost:5001/ping';
+      const path = '${API_URL}/ping';
       axios.get(path)
         .then((res) => {
           this.msg = res.data;

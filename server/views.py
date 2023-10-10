@@ -2,9 +2,14 @@ from flask import jsonify, request
 from flask.views import MethodView
 from models import Document
 
+import logging
+
+logger = logging.getLogger('logger')
+
 # sanity check route
 class Ping(MethodView):
     def get(self):
+        logger.info('Pong!')
         return jsonify('pong!')
 
 class AllDocuments(MethodView):
@@ -21,6 +26,7 @@ class AllDocuments(MethodView):
             Json response to post request. Contains 'status' and 'message'.
         """
         response_object = {'status': 'success'}
+        logger.info('AllDocuments: User is adding new document.')
         post_data = request.get_json()
         # TODO need to check if this isn't a duplicate
         # TODO should validate fields
@@ -41,6 +47,7 @@ class AllDocuments(MethodView):
             Json response to get request. Contains 'status' and a
             list of each document serialized.
         """        
+        logger.info('AllDocuments: User is viewing all documents.')
         documents = Document.query.all()
         response_object = {'status': 'success', 
                            'documents': Document.serialize_list(documents)}
@@ -67,6 +74,7 @@ class SingleDocument(MethodView):
             Json response to put request. Contains 'status' and 'message'.
         """
         response_object = {'status': 'success'}
+        logger.info('SingleDocument: User is updating document.')
         post_data = request.get_json()
         document = Document.query.get(document_id)
         if document:
@@ -94,6 +102,7 @@ class SingleDocument(MethodView):
             Json response to delete request. Contains 'status' and 'message'.
         """        
         response_object = {'status': 'success'}
+        logger.info('SingleDocument: User is deleting document.')
         success = Document.delete_by_pk(document_id)
         if not success:
             response_object['status': 'fail']        
