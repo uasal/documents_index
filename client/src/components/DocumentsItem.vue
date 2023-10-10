@@ -93,7 +93,7 @@
 import axios from 'axios';
 import AlertMessage from './AlertMessage.vue';
 
-const API_URL = 'http://127.0.0.1:5001';
+const API_URL = '';
 
 export default {
     name: 'DocumentsItem',
