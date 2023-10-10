@@ -364,7 +364,7 @@ export default {
   },
   methods: {
     addDocument(payload) {
-      const path = '${API_URL}/documents';
+      const path = `${API_URL}/documents`;
       axios.post(path, payload)
         .then(() => {
           this.getDocuments();
@@ -377,7 +377,7 @@ export default {
         });
     },
     getDocuments() {
-      const path = '${API_URL}/documents';
+      const path = `${API_URL}/documents`;
       axios.get(path)
         .then((res) => {
           this.documents = res.data.documents;
@@ -477,7 +477,7 @@ export default {
       }
     },
     updateDocument(payload, docID) {
-      const path = '${API_URL}/documents/${docID}';
+      const path = `${API_URL}/documents/${docID}`;
       axios.put(path, payload)
         .then(() => {
           this.getDocuments();
