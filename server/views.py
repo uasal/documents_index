@@ -1,6 +1,7 @@
 from flask import jsonify, request
 from flask.views import MethodView
-from models import Document
+
+from models import db, Document
 
 import logging
 
@@ -32,7 +33,7 @@ class AllDocuments(MethodView):
         # TODO should validate fields
         success = Document.create(**post_data)
         if not success:
-            response_object['status': 'fail']            
+            response_object['status'] = 'fail'            
         response_object['message'] = 'Document added!'
         return jsonify(response_object)
     
@@ -48,7 +49,7 @@ class AllDocuments(MethodView):
             list of each document serialized.
         """        
         logger.info('AllDocuments: User is viewing all documents.')
-        documents = Document.query.all()
+        documents = db.session.scalars(db.select(Document))
         response_object = {'status': 'success', 
                            'documents': Document.serialize_list(documents)}
         return jsonify(response_object)
@@ -57,11 +58,10 @@ class AllDocuments(MethodView):
 class SingleDocument(MethodView):
     """View class for the /document/<document_id> route."""
 
-    def put(self, document_id):
+    def get(self, doc_identifier):
         """
-        Method with logic for put requests.
-        Put requests here update the column values for the document 
-        with given document id.
+        Method with logic for get requests.
+        Get requests here returns details for document with given document id.
 
         Parameters
         ----------
@@ -71,12 +71,38 @@ class SingleDocument(MethodView):
         Returns
         -------
         json
+            Json response to get request. Contains serialized Document object 
+            with given document id.
+        """        
+        logger.info('AllDocuments: User is viewing all documents.')
+        response_object = {'status': 'success'}
+        document = Document.get_by_doc_identifier(doc_identifier)
+        if document:
+            response_object['document'] = document.serialize()
+        else:
+            response_object['message'] = ('No document found.')
+        return jsonify(response_object)
+
+    def put(self, doc_identifier):
+        """
+        Method with logic for put requests.
+        Put requests here update the column values for the document 
+        with given doc_identifier.
+
+        Parameters
+        ----------
+        doc_identifier : str
+            doc_identifier of document entry to be updated.
+
+        Returns
+        -------
+        json
             Json response to put request. Contains 'status' and 'message'.
         """
         response_object = {'status': 'success'}
         logger.info('SingleDocument: User is updating document.')
         post_data = request.get_json()
-        document = Document.query.get(document_id)
+        document = Document.get_by_doc_identifier(doc_identifier)
         if document:
             success = document.update(**post_data)
             if not success:
@@ -86,15 +112,15 @@ class SingleDocument(MethodView):
             response_object['message'] = 'Document not found'
         return jsonify(response_object)
     
-    def delete(self, document_id):
+    def delete(self, doc_identifier):
         """
         Method with logic for delete requests.
-        Delete requests here delete document with given document id from the db.
+        Delete requests here delete document with given doc_identifier from the db.
 
         Parameters
         ----------
-        document_id : int / str
-            Id of document entry to be deleted.
+        doc_identifier : str
+            doc_identifier of document entry to be deleted.
 
         Returns
         -------
@@ -103,7 +129,7 @@ class SingleDocument(MethodView):
         """        
         response_object = {'status': 'success'}
         logger.info('SingleDocument: User is deleting document.')
-        success = Document.delete_by_pk(document_id)
+        success = Document.delete_by_doc_identifier(doc_identifier)
         if not success:
             response_object['status': 'fail']        
         response_object['message'] = 'Document removed!'

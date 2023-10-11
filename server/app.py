@@ -32,10 +32,10 @@ def create_app():
 
     # register views
     from views import Ping, AllDocuments, SingleDocument
-    logger.info('Registrating views.')
+    logger.info('Registering views.')
     app.add_url_rule("/ping", view_func=Ping.as_view("ping"))
     app.add_url_rule("/documents", view_func=AllDocuments.as_view("document_list"))
-    app.add_url_rule("/documents/<document_id>", 
+    app.add_url_rule("/documents/<doc_identifier>", 
                      view_func=SingleDocument.as_view("single_document"))
     return app
 
