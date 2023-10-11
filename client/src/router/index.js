@@ -12,7 +12,7 @@ const router = createRouter({
       component: DocumentsAll,
     },
     {
-      path: '/documents/:docID',
+      path: '/docs/:docID',
       name: 'DocumentsItem',
       component: DocumentsItem,
     },

@@ -7,7 +7,7 @@
 <script>
 import axios from 'axios';
 
-const API_URL = '';
+const API_URL = 'api';
 
 export default {
   name: 'Ping',
@@ -18,7 +18,7 @@ export default {
   },
   methods: {
     getMessage() {
-      const path = `${API_URL}/ping`;
+      const path = `${API_URL}/pong`;
       axios.get(path)
         .then((res) => {
           this.msg = res.data;

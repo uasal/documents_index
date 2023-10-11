@@ -192,7 +192,7 @@
 import axios from 'axios';
 import AlertMessage from './AlertMessage.vue';
 
-const API_URL = '';
+const API_URL = 'api';
 
 export default {
   name: 'DocumentsAll',
