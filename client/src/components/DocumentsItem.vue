@@ -3,8 +3,8 @@
         <div class="row">
             <div class="col-12">
                 <div class="h1">
-                    <a href="/"><font-awesome-icon icon="fa-solid fa-circle-arrow-left" size="sm" /></a>
-                    <span class="ms-3">{{ document.title }}</span>
+                    <!-- <a class="me-3" href="/"><font-awesome-icon icon="fa-solid fa-circle-arrow-left" size="sm" /></a> -->
+                    <span>{{ document.title }}</span>
                 </div>
                 <hr><br><br>
             </div>
