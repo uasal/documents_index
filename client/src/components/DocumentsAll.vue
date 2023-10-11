@@ -27,9 +27,9 @@
           <tbody>
             <tr v-for="(doc, index) in filteredDocuments" :key="index">
               <td data-toggle="tooltip" data-placement="bottom" :title="doc.title" style="cursor: default"
-                v-if="doc.title.length > 30"><a :href="'documents/' + doc.doc_identifier" target="_blank">{{
+                v-if="doc.title.length > 30"><a :href="'docs/' + doc.doc_identifier" target="_blank">{{
                   truncate(doc.title, 30) }}</a></td>
-              <td v-else><a :href="'documents/' + doc.doc_identifier" target="_blank">{{ doc.title }}</a></td>
+              <td v-else><a :href="'docs/' + doc.doc_identifier" target="_blank">{{ doc.title }}</a></td>
 
               <td data-toggle="tooltip" data-placement="bottom" :title="doc.author" style="cursor: default"
                 v-if="doc.author.length > 30">{{ truncate(doc.author, 30) }}</td>
@@ -192,7 +192,7 @@
 import axios from 'axios';
 import AlertMessage from './AlertMessage.vue';
 
-const API_URL = 'api';
+const API_URL = '/api';
 
 export default {
   name: 'DocumentsAll',
