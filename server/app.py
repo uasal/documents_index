@@ -28,7 +28,7 @@ def create_app():
 
     # enable CORS (needed for Vue)
     logger.info('Enabling CORS.')
-    CORS(app, resources={r'/*': {'origins': '*'}})
+    CORS(app, resources={r'/*': {'origins': "https://dis-6bnmqttxma-uc.a.run.app"}})
 
     # register views
     from views import Ping, AllDocuments, SingleDocument

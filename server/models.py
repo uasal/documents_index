@@ -49,13 +49,14 @@ class Document(db.Model, Serializer):
     pk = db.Column('pk', db.Integer, primary_key=True)
     time_created = db.Column(db.DateTime(timezone=True), server_default=func.now())
     time_updated = db.Column(db.DateTime(timezone=True), onupdate=func.now())
-    title = db.Column('title', db.String(100), nullable=False)
-    author = db.Column('author', db.String(100), nullable=False)    
+    title = db.Column('title', db.String(500), nullable=False)
+    author = db.Column('author', db.String(500), nullable=False)    
     doc_identifier = db.Column('doc_identifier', db.String(20), nullable=False)
-    doc_code = db.Column('doc_code', db.String(20))
-    compiled_url = db.Column('compiled_url', db.String(100), unique=False)
-    source_url = db.Column('source_url', db.String(100), unique=False)
+    doc_code = db.Column('doc_code', db.String(10))
+    compiled_url = db.Column('compiled_url', db.String(500))
+    source_url = db.Column('source_url', db.String(500))
     abstract = db.Column('abstract', db.Text)
+    creator_email = db.Column('creator_email', db.String(100), nullable=False)
 
     def __repr__(self):
         """

@@ -50,8 +50,13 @@ class AllDocuments(MethodView):
         """        
         logger.info('AllDocuments: User is viewing all documents.')
         documents = db.session.scalars(db.select(Document))
+
+        # from flask import request
+
         response_object = {'status': 'success', 
-                           'documents': Document.serialize_list(documents)}
+                           'documents': Document.serialize_list(documents),
+                        #    'origin': [request.environ.get('REMOTE_ADDR'), request.environ.get('SERVER_NAME'), request.environ.get('HTTP_HOST'), request.environ.get('HTTP_ORIGIN'), request.environ.get('HTTP_REFERER')]
+                        }
         return jsonify(response_object)
 
 
