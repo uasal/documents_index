@@ -1,5 +1,10 @@
 <template>
-    <div class="container">
+    <div class="container d-flex align-items-center justify-content-center" v-if="!isLoggedIn">
+        <div class="mt-5">
+            <button type="button" class="btn btn-primary" id="logInButton" @click="LogInUser()">Log In with Google</button>
+        </div>
+    </div>
+    <div v-else class="container">
         <div class="row">
             <div class="col-12">
                 <div class="h1">
@@ -91,6 +96,8 @@
 
 <script>
 import axios from 'axios';
+import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
+import { auth } from '../firebaseConfig';
 import AlertMessage from './AlertMessage.vue';
 
 const API_URL = '/api';
@@ -118,7 +125,58 @@ export default {
     components: {
         alert: AlertMessage,
     },
+    computed: {
+        isLoggedIn() {
+            if (auth.currentUser) {
+                return true;
+            } else {
+                return false;
+            }
+        },
+        username() {
+            if (auth.currentUser) {
+                return auth.currentUser.username;
+            } else {
+                this.logInUser()
+                return '';
+            }
+        },
+        email() {
+            if (auth.currentUser) {
+                return auth.currentUser.email;
+            } else {
+                this.logInUser()
+                return '';
+            }
+        },
+        token() {
+            if (auth.currentUser) {
+                return auth.currentUser.accessToken;
+            } else {
+                this.logInUser()
+                return '';
+            }
+        },
+    },
     methods: {
+        logInUser() {
+            const provider = new GoogleAuthProvider();
+            provider.addScope('https://www.googleapis.com/auth/userinfo.email');
+            signInWithPopup(auth, provider)
+                .then(result => {
+                    // Returns the signed in user along with the provider's credential
+                    console.log(`${result.user.displayName} logged in.`);
+                    //   const credential = GoogleAuthProvider.credentialFromResult(result);
+                    //   this.token = credential.accessToken;
+                    //   // The signed-in user info.
+                    //   this.username = result.user.displayName;
+                    //   this.email = result.user.email;
+                })
+                .catch(err => {
+                    console.log(`Error during sign in: ${err.message}`);
+                    window.alert(`Sign in failed. Retry or check your browser logs.`);
+                });
+        },
         getDocument() {
             const path = `${API_URL}/documents/${this.$route.params.docID}`;
             axios.get(path)

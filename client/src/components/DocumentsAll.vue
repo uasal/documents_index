@@ -11,16 +11,18 @@
         <div class="my-3">
           <input type="text" placeholder="Filter table by any column" v-model="filter" />
         </div>
+        <p>Hello, {{ username }}, this is your email address {{ email }}</p>
         <table class="table table-hover" v-if="filteredDocuments.length > 0">
           <thead>
             <tr>
-              <th style="min-width: 15%;" scope="col">Title</th>
+              <th style="min-width: 10%;" scope="col">Title</th>
               <th style="min-width: 10%;" scope="col">Author</th>
+              <th style="min-width: 10%;" scope="col">Email</th>
               <th style="min-width: 10%;" scope="col">Doc Identifier</th>
               <th style="min-width: 10%;" scope="col">Doc Code</th>
               <th style="min-width: 15%;" scope="col">Compiled URL</th>
               <th style="min-width: 15%;" scope="col">Source URL</th>
-              <th style="min-width: 25%;" scope="col">Abstract</th>
+              <th style="min-width: 20%;" scope="col">Abstract</th>
               <th></th>
             </tr>
           </thead>
@@ -34,6 +36,8 @@
               <td data-toggle="tooltip" data-placement="bottom" :title="doc.author" style="cursor: default"
                 v-if="doc.author.length > 30">{{ truncate(doc.author, 30) }}</td>
               <td v-else>{{ doc.author }}</td>
+
+              <td>{{ doc.creator_email }}</td>
 
               <td data-toggle="tooltip" data-placement="bottom" :title="doc.doc_identifier" style="cursor: default"
                 v-if="doc.doc_identifier.length > 30">{{ truncate(doc.doc_identifier, 30) }}</td>
@@ -190,6 +194,8 @@
 
 <script>
 import axios from 'axios';
+import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
+import { auth } from '../firebaseConfig';
 import AlertMessage from './AlertMessage.vue';
 
 const API_URL = '/api';
@@ -253,8 +259,57 @@ export default {
         });
       }
     },
+    isLoggedIn() {
+      if (auth.currentUser) {
+        return true;
+      } else {
+        return false;
+      }
+    },
+    username() {
+      if (auth.currentUser) {
+        return auth.currentUser.displayName;
+      } else {
+        this.logInUser()
+        return '';
+      }
+    },
+    email() {
+      if (auth.currentUser) {
+        return auth.currentUser.email;
+      } else {
+        this.logInUser()
+        return '';
+      }
+    },
+    token() {
+      if (auth.currentUser) {
+        return auth.currentUser.accessToken;
+      } else {
+        this.logInUser()
+        return '';
+      }
+    },
   },
   methods: {
+    logInUser() {
+      const provider = new GoogleAuthProvider();
+      provider.addScope('https://www.googleapis.com/auth/userinfo.email');
+      signInWithPopup(auth, provider)
+        .then(result => {
+          // Returns the signed in user along with the provider's credential
+          console.log(`${result.user.displayName} logged in.`);
+          const credential = GoogleAuthProvider.credentialFromResult(result);
+          // this.token = credential.accessToken;
+          // // The signed-in user info.
+          // this.username = result.user.displayName;
+          // this.email = result.user.email;
+        })
+        .catch(err => {
+          console.log(`Error during sign in: ${err.message}`);
+          window.alert(`Sign in failed. Retry or check your browser logs.`);
+        });
+    },
     addDocument(payload) {
       const path = `${API_URL}/documents`;
       axios.post(path, payload)
@@ -291,6 +346,7 @@ export default {
         compiled_url: this.addDocumentForm.compiled_url,
         source_url: this.addDocumentForm.source_url,
         abstract: this.addDocumentForm.abstract,
+        creator_email: this.email,
       };
       this.addDocument(payload);
       this.initForm();
