@@ -4,6 +4,9 @@ from flask_cors import CORS
 
 import logging
 
+from database import DB_URI
+
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger('logger')
 
 db = SQLAlchemy()
@@ -15,11 +18,13 @@ def create_app():
     app.config.from_object(__name__)
 
     logger.info('Instantiating db with Flask app.')
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///docs.db'
+    # app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///docs.db'
+    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    app.config['SQLALCHEMY_DATABASE_URI'] = DB_URI    
     db.init_app(app) # init of db is deferred
 
     # If no database exists, set to True to create database tables
-    CREATE_TABLES = False
+    CREATE_TABLES = True
     if CREATE_TABLES:
         with app.app_context():
             from models import Document # noqa: F401; All models need to be imported for db.create_all() to create relevat tables

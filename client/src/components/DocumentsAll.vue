@@ -17,7 +17,6 @@
             <tr>
               <th style="min-width: 10%;" scope="col">Title</th>
               <th style="min-width: 10%;" scope="col">Author</th>
-              <th style="min-width: 10%;" scope="col">Email</th>
               <th style="min-width: 10%;" scope="col">Doc Identifier</th>
               <th style="min-width: 10%;" scope="col">Doc Code</th>
               <th style="min-width: 15%;" scope="col">Compiled URL</th>
@@ -37,8 +36,6 @@
                 v-if="doc.author.length > 30">{{ truncate(doc.author, 30) }}</td>
               <td v-else>{{ doc.author }}</td>
 
-              <td>{{ doc.creator_email }}</td>
-
               <td data-toggle="tooltip" data-placement="bottom" :title="doc.doc_identifier" style="cursor: default"
                 v-if="doc.doc_identifier.length > 30">{{ truncate(doc.doc_identifier, 30) }}</td>
               <td v-else>{{ doc.doc_identifier }}</td>
@@ -54,7 +51,7 @@
               <td data-toggle="tooltip" data-placement="bottom" :title="doc.abstract" style="cursor: default"
                 v-if="doc.abstract.length > 30">{{ truncate(doc.abstract, 30) }}</td>
               <td v-else>{{ doc.abstract }}</td>
-              <td>
+              <td v-if="email == doc.creator_email">
                 <div class="btn-group" role="group">
                   <button type="button" class="btn btn-warning btn-sm" @click="toggleEditDocumentModal(doc)">
                     Update
@@ -64,6 +61,7 @@
                   </button>
                 </div>
               </td>
+              <td v-else></td>
             </tr>
           </tbody>
         </table>
@@ -282,14 +280,6 @@ export default {
         return '';
       }
     },
-    token() {
-      if (auth.currentUser) {
-        return auth.currentUser.accessToken;
-      } else {
-        this.logInUser()
-        return '';
-      }
-    },
   },
   methods: {
     logInUser() {
@@ -312,27 +302,45 @@ export default {
     },
     addDocument(payload) {
       const path = `${API_URL}/documents`;
-      axios.post(path, payload)
-        .then(() => {
-          this.getDocuments();
-          this.message = 'Document added!';
-          this.showMessage = true;
-        })
-        .catch((error) => {
-          console.log(error);
-          this.getDocuments();
-        });
+
+      auth.currentUser.getIdToken(true).then(idToken => {
+        console.log(idToken);
+        const config = {
+          headers: { Authorization: `${idToken}` }
+        };
+
+        axios.post(path, payload, config)
+          .then(() => {
+            this.getDocuments();
+            this.message = 'Document added!';
+            this.showMessage = true;
+          })
+          .catch((error) => {
+            console.log(error);
+            this.getDocuments();
+          });
+      }).catch(function (error) {
+        console.log(error)
+      });
     },
     getDocuments() {
       const path = `${API_URL}/documents`;
-      axios.get(path)
-        .then((res) => {
-          this.documents = res.data.documents;
-        })
-        .catch((error) => {
+      auth.currentUser.getIdToken(true).then(idToken => {
+        console.log(idToken);
+        const config = {
+          headers: { Authorization: `${idToken}` }
+        };
 
-          console.error(error);
-        });
+        axios.get(path, config)
+          .then((res) => {
+            this.documents = res.data.documents;
+          })
+          .catch((error) => {
+            console.error(error);
+          });
+      }).catch(function (error) {
+        console.log(error)
+      });
     },
     handleAddReset() {
       this.initForm();
@@ -389,16 +397,26 @@ export default {
     },
     removeDocument(docID) {
       const path = `${API_URL}/documents/${docID}`;
-      axios.delete(path)
-        .then(() => {
-          this.getDocuments();
-          this.message = 'Document removed!';
-          this.showMessage = true;
-        })
-        .catch((error) => {
-          console.error(error);
-          this.getDocuments();
-        });
+
+      auth.currentUser.getIdToken(true).then(idToken => {
+        console.log(idToken);
+        const config = {
+          headers: { Authorization: `${idToken}` }
+        };
+
+        axios.delete(path, config)
+          .then(() => {
+            this.getDocuments();
+            this.message = 'Document removed!';
+            this.showMessage = true;
+          })
+          .catch((error) => {
+            console.error(error);
+            this.getDocuments();
+          });
+      }).catch(function (error) {
+        console.log(error)
+      });
     },
     toggleAddDocumentModal() {
       const body = document.querySelector('body');
@@ -423,16 +441,26 @@ export default {
     },
     updateDocument(payload, docID) {
       const path = `${API_URL}/documents/${docID}`;
-      axios.put(path, payload)
-        .then(() => {
-          this.getDocuments();
-          this.message = 'Document updated!';
-          this.showMessage = true;
-        })
-        .catch((error) => {
-          console.error(error);
-          this.getDocuments();
-        });
+
+      auth.currentUser.getIdToken(true).then(idToken => {
+        console.log(idToken);
+        const config = {
+          headers: { Authorization: `${idToken}` }
+        };
+
+        axios.put(path, payload, config)
+          .then(() => {
+            this.getDocuments();
+            this.message = 'Document updated!';
+            this.showMessage = true;
+          })
+          .catch((error) => {
+            console.error(error);
+            this.getDocuments();
+          });
+      }).catch(function (error) {
+        console.log(error)
+      });
     },
     truncate(value, length) {
       if (value.length > length) {

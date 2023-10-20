@@ -1,10 +1,5 @@
 <template>
-    <div class="container d-flex align-items-center justify-content-center" v-if="!isLoggedIn">
-        <div class="mt-5">
-            <button type="button" class="btn btn-primary" id="logInButton" @click="LogInUser()">Log In with Google</button>
-        </div>
-    </div>
-    <div v-else class="container">
+    <div class="container">
         <div class="row">
             <div class="col-12">
                 <div class="h1">
@@ -15,7 +10,8 @@
             </div>
         </div>
         <alert :message=message v-if="showMessage"></alert>
-        <button type="button" class="btn btn-warning btn-sm mb-3" @click="toggleEditDocumentModal(document)">
+        <button v-if="email == document.creator_email" type="button" class="btn btn-warning btn-sm mb-3"
+            @click="toggleEditDocumentModal(document)">
             Update
         </button>
         <div class="row">
@@ -135,7 +131,7 @@ export default {
         },
         username() {
             if (auth.currentUser) {
-                return auth.currentUser.username;
+                return auth.currentUser.displayName;
             } else {
                 this.logInUser()
                 return '';
@@ -144,14 +140,6 @@ export default {
         email() {
             if (auth.currentUser) {
                 return auth.currentUser.email;
-            } else {
-                this.logInUser()
-                return '';
-            }
-        },
-        token() {
-            if (auth.currentUser) {
-                return auth.currentUser.accessToken;
             } else {
                 this.logInUser()
                 return '';
@@ -179,14 +167,23 @@ export default {
         },
         getDocument() {
             const path = `${API_URL}/documents/${this.$route.params.docID}`;
-            axios.get(path)
-                .then((res) => {
-                    this.document = res.data.document;
-                })
-                .catch((error) => {
 
-                    console.error(error);
-                });
+            auth.currentUser.getIdToken(true).then(idToken => {
+                console.log(idToken);
+                const config = {
+                    headers: { Authorization: `${idToken}` }
+                };
+
+                axios.get(path, config)
+                    .then((res) => {
+                        this.document = res.data.document;
+                    })
+                    .catch((error) => {
+                        console.error(error);
+                    });
+            }).catch(function (error) {
+                console.log(error)
+            });
         },
         handleEditCancel() {
             this.toggleEditDocumentModal(null);
@@ -238,16 +235,25 @@ export default {
         },
         updateDocument(payload, docID) {
             const path = `${API_URL}/documents/${docID}`;
-            axios.put(path, payload)
-                .then(() => {
-                    this.getDocument();
-                    this.message = 'Document updated!';
-                    this.showMessage = true;
-                })
-                .catch((error) => {
-                    console.error(error);
-                    this.getDocument();
-                });
+
+            auth.currentUser.getIdToken(true).then(idToken => {
+                console.log(idToken);
+                const config = {
+                    headers: { Authorization: `${idToken}` }
+                };
+                axios.put(path, payload, config)
+                    .then(() => {
+                        this.getDocument();
+                        this.message = 'Document updated!';
+                        this.showMessage = true;
+                    })
+                    .catch((error) => {
+                        console.error(error);
+                        this.getDocument();
+                    });
+            }).catch(function (error) {
+                console.log(error)
+            });
         },
     },
     created() {

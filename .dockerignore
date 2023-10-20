@@ -4,3 +4,4 @@ node_modules/
 /server/data.py
 **/.vscode
 **/__pycache__
+postgres-secrets.json
