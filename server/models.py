@@ -7,6 +7,7 @@ from app import db
 
 import logging
 
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger('logger')
 
 class Serializer(object):
@@ -247,29 +248,20 @@ class Document(db.Model, Serializer):
                         f'with doc_identifier {doc_identifier}')
             return None
 
-    @classmethod
-    def delete_by_doc_identifier(cls, doc_identifier):
+    def delete_doc(self):
         """
-        Class method that deletes table entry with given doc_identifier.
-
-        Parameters
-        ----------
-        doc_identifier : int
-            doc_identifier of entry to be deleted
+        Class method that deletes table entry.
 
         Returns
         -------
         bool
             If delete was successful, returns True, otherwise returns False
         """
-        doc = cls.get_by_doc_identifier(doc_identifier)
-        if doc:
-            try:
-                db.session.delete(doc)
-                db.session.commit()
-                logger.info('Documents: Deleting Document object.')   
-                return True
-            except Exception as e:
-                logger.error(f'Documents: Deleting Document object. Error: {e}')  
-                return False
-        return False
+        try:
+            db.session.delete(self)
+            db.session.commit()
+            logger.info('Documents: Deleting Document object.')   
+            return True
+        except Exception as e:
+            logger.error(f'Documents: Deleting Document object. Error: {e}')  
+            return False

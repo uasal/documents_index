@@ -38,6 +38,9 @@ const logInUser = () => {
       // Returns the signed in user along with the provider's credential
       console.log(`${result.user.displayName} logged in.`);
       const credential = GoogleAuthProvider.credentialFromResult(result);
+      const token = credential.accessToken;
+      // The signed-in user info.
+      const username = result.user.username;
     })
     .catch(err => {
       console.log(`Error during sign in: ${err.message}`);
