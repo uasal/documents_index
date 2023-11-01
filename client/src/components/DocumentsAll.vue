@@ -1,8 +1,17 @@
 <template>
   <div class="container">
     <div class="row">
-      <div class="col-12">
-        <h1>Documents</h1>
+      <div class="col-12" v-if="isAuthorized">
+        <div class="row">
+          <div>
+            <div class="d-inline-flex float-start">
+              <h1>Documents</h1>
+            </div>
+            <div class="d-inline-flex float-end" v-if="superuser">
+              <a role="button" class="btn btn-success" href="collaborators">Edit collaborators</a>
+            </div>
+          </div>
+        </div>
         <hr><br><br>
         <div>
           <p>Hello, {{ username }}</p>
@@ -70,7 +79,7 @@
               <td data-toggle="tooltip" data-placement="bottom" :title="doc.abstract" style="cursor: default"
                 v-if="doc.abstract.length > 30">{{ truncate(doc.abstract, 30) }}</td>
               <td v-else>{{ doc.abstract }}</td>
-              <td v-if="email == doc.creator_email">
+              <td v-if="(email == doc.creator_email) || superuser">
                 <div class="btn-group" role="group">
                   <button type="button" class="btn btn-warning btn-sm" @click="toggleEditDocumentModal(doc)">
                     Update
@@ -89,6 +98,7 @@
           <p v-else>Sorry, no documents found containing <b>{{ filter }}</b>. Try a different filter.</p>
         </div>
       </div>
+      <div v-if="hideContent">Sorry, this page is not available or you are not authorized to view it.</div>
     </div>
 
     <!-- add new document modal -->
@@ -216,6 +226,7 @@ import { auth } from '../firebaseConfig';
 import AlertMessage from './AlertMessage.vue';
 
 const API_URL = '/api';
+// const API_URL = 'http://localhost:5001/api';
 
 export default {
   name: 'DocumentsAll',
@@ -246,6 +257,9 @@ export default {
       },
       message: '',
       showMessage: false,
+      isAuthorized: false,
+      hideContent: false,
+      superuser: false,
     };
   },
   components: {
@@ -333,15 +347,18 @@ export default {
       const path = `${API_URL}/documents`;
 
       auth.currentUser.getIdToken(true).then(idToken => {
-        console.log(idToken);
         const config = {
           headers: { Authorization: `${idToken}` }
         };
 
         axios.post(path, payload, config)
-          .then(() => {
+          .then((res) => {
             this.getDocuments();
-            this.message = 'Document added!';
+            if (res.data.status == 'success') {
+              this.message = 'Document added!';
+            } else {
+              this.message = 'Document not added, error occured';
+            }
             this.showMessage = true;
           })
           .catch((error) => {
@@ -355,7 +372,6 @@ export default {
     getDocuments() {
       const path = `${API_URL}/documents`;
       auth.currentUser.getIdToken(true).then(idToken => {
-        console.log(idToken);
         const config = {
           headers: { Authorization: `${idToken}` }
         };
@@ -363,12 +379,20 @@ export default {
         axios.get(path, config)
           .then((res) => {
             this.documents = res.data.documents;
+            this.superuser = res.data.superuser;
+            this.isAuthorized = true;
           })
           .catch((error) => {
             console.error(error);
+            this.superuser = false;
+            this.isAuthorized = error.response.data.isAuthorized;
+            this.hideContent = !this.isAuthorized;
           });
       }).catch(function (error) {
         console.log(error)
+        this.superuser = false;
+        this.isAuthorized = false;
+        this.hideContent = true;
       });
     },
     handleAddReset() {
@@ -428,15 +452,18 @@ export default {
       const path = `${API_URL}/documents/${docID}`;
 
       auth.currentUser.getIdToken(true).then(idToken => {
-        console.log(idToken);
         const config = {
           headers: { Authorization: `${idToken}` }
         };
 
         axios.delete(path, config)
-          .then(() => {
+          .then((res) => {
             this.getDocuments();
-            this.message = 'Document removed!';
+            if (res.data.status == 'success') {
+              this.message = 'Document removed!';
+            } else {
+              this.message = 'Document not removed, error occured';
+            }
             this.showMessage = true;
           })
           .catch((error) => {
@@ -472,15 +499,18 @@ export default {
       const path = `${API_URL}/documents/${docID}`;
 
       auth.currentUser.getIdToken(true).then(idToken => {
-        console.log(idToken);
         const config = {
           headers: { Authorization: `${idToken}` }
         };
 
         axios.put(path, payload, config)
-          .then(() => {
+          .then((res) => {
             this.getDocuments();
-            this.message = 'Document updated!';
+            if (res.data.status == 'success') {
+              this.message = 'Document updated!';
+            } else {
+              this.message = 'Document not updated, error occured';
+            }
             this.showMessage = true;
           })
           .catch((error) => {

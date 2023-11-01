@@ -1,33 +1,37 @@
 <template>
     <div class="container">
-        <div class="row">
-            <div class="col-12">
-                <div class="h1">
-                    <!-- <a class="me-3" href="/"><font-awesome-icon icon="fa-solid fa-circle-arrow-left" size="sm" /></a> -->
-                    <span>{{ document.title }}</span>
+        <div v-if="isAuthorized">
+            <div class="row">
+                <div class="col-12">
+                    <div class="h1">
+                        <!-- <a class="me-3" href="/"><font-awesome-icon icon="fa-solid fa-circle-arrow-left" size="sm" /></a> -->
+                        <span>{{ document.title }}</span>
+                    </div>
+                    <hr><br><br>
                 </div>
-                <hr><br><br>
+            </div>
+            <alert :message=message v-if="showMessage"></alert>
+            <button v-if="(email == document.creator_email) || superuser" type="button" class="btn btn-warning btn-sm mb-3"
+                @click="toggleEditDocumentModal(document)">
+                Update
+            </button>
+            <div class="row">
+                <div class="col-6">
+                    <p><b>Author: </b>{{ document.author }}</p>
+                    <p><b>Document identifier: </b>{{ document.doc_identifier }}</p>
+                    <p><b>Document code: </b>{{ document.doc_code }}</p>
+                    <p><b>Compiled URL: </b><a :href=document.compiled_url target="_blank">{{ document.compiled_url }}</a>
+                    </p>
+                    <p><b>Source URL: </b><a :href=document.source_url target="_blank">{{ document.source_url }}</a></p>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-12">
+                    <p>{{ document.abstract }}</p>
+                </div>
             </div>
         </div>
-        <alert :message=message v-if="showMessage"></alert>
-        <button v-if="email == document.creator_email" type="button" class="btn btn-warning btn-sm mb-3"
-            @click="toggleEditDocumentModal(document)">
-            Update
-        </button>
-        <div class="row">
-            <div class="col-6">
-                <p><b>Author: </b>{{ document.author }}</p>
-                <p><b>Document identifier: </b>{{ document.doc_identifier }}</p>
-                <p><b>Document code: </b>{{ document.doc_code }}</p>
-                <p><b>Compiled URL: </b><a :href=document.compiled_url target="_blank">{{ document.compiled_url }}</a></p>
-                <p><b>Source URL: </b><a :href=document.source_url target="_blank">{{ document.source_url }}</a></p>
-            </div>
-        </div>
-        <div class="row">
-            <div class="col-12">
-                <p>{{ document.abstract }}</p>
-            </div>
-        </div>
+        <div v-if="hideContent">Sorry, this page is not available or you are not authorized to view it.</div>
 
         <!-- edit document modal -->
         <div ref="editDocumentModal" class="modal fade"
@@ -97,6 +101,7 @@ import { auth } from '../firebaseConfig';
 import AlertMessage from './AlertMessage.vue';
 
 const API_URL = '/api';
+// const API_URL = 'http://localhost:5001/api';
 
 export default {
     name: 'DocumentsItem',
@@ -116,6 +121,9 @@ export default {
             },
             message: '',
             showMessage: false,
+            isAuthorized: false,
+            hideContent: false,
+            superuser: false,
         };
     },
     components: {
@@ -169,7 +177,6 @@ export default {
             const path = `${API_URL}/documents/${this.$route.params.docID}`;
 
             auth.currentUser.getIdToken(true).then(idToken => {
-                console.log(idToken);
                 const config = {
                     headers: { Authorization: `${idToken}` }
                 };
@@ -177,12 +184,20 @@ export default {
                 axios.get(path, config)
                     .then((res) => {
                         this.document = res.data.document;
+                        this.superuser = res.data.superuser;
+                        this.isAuthorized = true;
                     })
                     .catch((error) => {
                         console.error(error);
+                        this.superuser = false;
+                        this.isAuthorized = error.response.data.isAuthorized;
+                        this.hideContent = !this.isAuthorized;
                     });
             }).catch(function (error) {
                 console.log(error)
+                this.superuser = false;
+                this.isAuthorized = false;
+                this.hideContent = true;
             });
         },
         handleEditCancel() {
@@ -237,14 +252,17 @@ export default {
             const path = `${API_URL}/documents/${docID}`;
 
             auth.currentUser.getIdToken(true).then(idToken => {
-                console.log(idToken);
                 const config = {
                     headers: { Authorization: `${idToken}` }
                 };
                 axios.put(path, payload, config)
-                    .then(() => {
+                    .then((res) => {
                         this.getDocument();
-                        this.message = 'Document updated!';
+                        if (res.data.status == 'success') {
+                            this.message = 'Document updated!';
+                        } else {
+                            this.message = 'Document not updated, error occured';
+                        }
                         this.showMessage = true;
                     })
                     .catch((error) => {

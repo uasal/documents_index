@@ -21,7 +21,7 @@ def create_app():
     # app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///docs.db'
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     app.config['SQLALCHEMY_DATABASE_URI'] = DB_URI    
-    db.init_app(app) # init of db is deferred
+    db.init_app(app)  # init of db is deferred
 
     # If no database exists, set to True to create database tables
     CREATE_TABLES = False
@@ -33,18 +33,28 @@ def create_app():
 
     # enable CORS (needed for Vue)
     logger.info('Enabling CORS.')
+    # CORS(app, resources={r'/*': {'origins': '*'}})
     CORS(app, resources={r'/*': {'origins': "https://dis-6bnmqttxma-uc.a.run.app"}})
 
     # register views
-    from views import Ping, AllDocuments, SingleDocument
+    from views import Ping, AllDocuments, SingleDocument, AllUsers, SingleUser
     logger.info('Registering views.')
     app.add_url_rule("/api/pong", view_func=Ping.as_view("ping"))
     app.add_url_rule("/api/documents", view_func=AllDocuments.as_view("document_list"))
     app.add_url_rule("/api/documents/<doc_identifier>", 
                      view_func=SingleDocument.as_view("single_document"))
+    app.add_url_rule("/api/users", view_func=AllUsers.as_view("user_list"))
+    app.add_url_rule("/api/users/<pk>", 
+                     view_func=SingleUser.as_view("single_user"))
     return app
 
 app = create_app()
+
+with app.app_context():
+    from models import User, db
+
+    nb_users = User.query.count()
+    logger.info(f'HERE::::: {nb_users} users')
 
 if __name__ == '__main__':
     logger.info('Starting app.')

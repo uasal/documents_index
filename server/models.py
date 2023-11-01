@@ -3,6 +3,7 @@ import re
 from sqlalchemy.sql import func
 from sqlalchemy.inspection import inspect
 from sqlalchemy.exc import NoResultFound, MultipleResultsFound
+from sqlalchemy.orm import validates 
 from app import db
 
 import logging
@@ -40,7 +41,6 @@ class Serializer(object):
             List of serialized objects
         """
         return [m.serialize() for m in obj_list]
-
 
 class Document(db.Model, Serializer):
     """
@@ -93,6 +93,13 @@ class Document(db.Model, Serializer):
             List of all the model's columns
         """
         return inspect(self).attrs.keys()
+    
+    @staticmethod
+    def _check_http(val):
+        if val.startswith('http'):
+            return val
+        else:
+            return f'https://{val}'
 
     def update(self, **kwargs):
         """
@@ -109,6 +116,10 @@ class Document(db.Model, Serializer):
         try:     
             for column in columns:
                 new_val = kwargs.get(column, None)
+
+                if column in ['compiled_url', 'source_url']:
+                    new_val = self._check_http(new_val)
+
                 if new_val is not None:
                     setattr(self, column, new_val)
             db.session.add(self)
@@ -208,10 +219,17 @@ class Document(db.Model, Serializer):
         """
         try:
             kwargs['doc_identifier'] = cls._generate_doc_identifier()
+
+            if kwargs.get('compiled_url'):
+                kwargs['compiled_url'] = cls._check_http(kwargs['compiled_url'])
+            
+            if kwargs.get('source_url'):
+                kwargs['source_url'] = cls._check_http(kwargs['source_url'])
+            
             obj = cls(**kwargs)
             db.session.add(obj)
             db.session.commit()
-            logger.info('Documents: Updating Document object.')        
+            logger.info('Documents: Creating Document object.')        
             return obj
         except Exception as e:
             logger.error(f'Documents: Creating Document object. Error: {e}')  
@@ -226,7 +244,7 @@ class Document(db.Model, Serializer):
         Parameters
         ----------
         doc_identifier : str
-            doc_identifier of entry to be deleted
+            doc_identifier of entry to be found
 
         Returns
         -------
@@ -240,11 +258,11 @@ class Document(db.Model, Serializer):
                                       filter_by(doc_identifier=doc_identifier)).one()
             return document
         except NoResultFound as e:
-            logger.error(f'AllDocuments: Error: {e}:\n Document with doc_identifier '
+            logger.error(f'Document: Error: {e}:\n Document with doc_identifier '
                         f'{doc_identifier} not found.') 
             return None
         except MultipleResultsFound as e:
-            logger.error(f'AllDocuments: Error: {e}:\n More than one document found '
+            logger.error(f'Document: Error: {e}:\n More than one document found '
                         f'with doc_identifier {doc_identifier}')
             return None
 
@@ -264,4 +282,151 @@ class Document(db.Model, Serializer):
             return True
         except Exception as e:
             logger.error(f'Documents: Deleting Document object. Error: {e}')  
+            return False
+
+
+class User(db.Model, Serializer):
+    """
+    User model class to act as interface between the Flask logic and the 
+    sqlite table.
+    """
+    pk = db.Column('pk', db.Integer, primary_key=True)
+    email = db.Column('email', db.String(100), nullable=False, unique=True)
+    superuser = db.Column('superuser', db.Boolean, default=False, nullable=False)
+    access = db.Column('access', db.Integer, nullable=True) # future-proofing
+
+    @validates('email')
+    def validate_email(self, key, email):
+        if not email:
+            raise AssertionError('No email provided')
+        if not re.match("[^@]+@[^@]+\.[^@]+", email):
+            raise AssertionError('Provided email is not an email address')
+        return email
+
+    def update(self, **kwargs):
+        """
+        Method to update an existing object's column values with those in the
+        kwargs.
+
+        Returns
+        -------
+        bool
+            Returns True is update was successful and False if an error was 
+            encountered.
+        """
+        try:     
+            for column in ['email', 'superuser']:
+                new_val = kwargs.get(column, None)
+
+                if column == 'superuser':
+                    if new_val == '':
+                        new_val = False
+                        
+                if new_val is not None:
+                    setattr(self, column, new_val)
+            db.session.add(self)
+            db.session.commit()   
+            logger.info('Users: Updating User object.')
+        except Exception as e:
+            logger.error(f'Users: Updating User object. Error: {e}')  
+            return False
+        return True
+
+    @classmethod
+    def create(cls, **kwargs):
+        """
+        Class method to create a new object and add a new entry in the 
+        user table.
+
+        Returns
+        -------
+        bool or User object
+            If table successfully updated and object succesfully created, 
+            object is returned, otherwise returns False.
+        """
+        try:
+            data = {'email': kwargs['email']}
+            if kwargs['superuser']:
+                data['superuser'] = kwargs['superuser']
+            obj = cls(**data)
+            db.session.add(obj)
+            db.session.commit()
+            logger.info('Users: Creating User object.')        
+            return obj
+        except Exception as e:
+            logger.error(f'Users: Creating User object. Error: {e}')  
+            return False
+
+
+    @classmethod
+    def get_by_email(cls, email):
+        """
+        Class method that retrieves user for a given email and logs errors.
+
+
+        Parameters
+        ----------
+        email : str
+            email of user to be found
+
+        Returns
+        -------
+        User object or None
+            User object with given email is returned if query succesful,
+            otherwise None is returned if no results found or more than one result 
+            found.
+        """
+        try:
+            user = db.session.scalars(db.select(cls).
+                                      filter_by(email=email)).one()
+            return user
+        except NoResultFound as e:
+            logger.error(f'User: Error: {e}:\n User with email '
+                        f'{email} not found.') 
+            return None
+        except MultipleResultsFound as e:
+            logger.error(f'User: Error: {e}:\n More than one user found '
+                        f'with email {email}')
+            return None
+
+    @classmethod
+    def get_by_pk(cls, pk):
+        """
+        Class method that retrieves user for a given primary key and logs errors.
+
+        Parameters
+        ----------
+        pk : int / str
+            pk of user to be found
+
+        Returns
+        -------
+        User object or None
+            User object with given pk is returned if query succesful,
+            otherwise None is returned if no results found.
+        """
+        try:
+            user = db.session.scalars(db.select(cls).filter_by(pk=int(pk))).one()
+            return user
+        except NoResultFound as e:
+            logger.error(f'User: Error: {e}:\n User with pk '
+                        f'{pk} not found.') 
+            return None
+
+    def delete_user(self):
+        """
+        Class method that deletes table entry.
+
+        Returns
+        -------
+        bool
+            If delete was successful, returns True, otherwise returns False
+        """
+        try:
+            db.session.delete(self)
+            db.session.commit()
+            logger.info('User: Deleting User object.')   
+            return True
+        except Exception as e:
+            logger.error(f'User: Deleting Usre object. Error: {e}')  
             return False
