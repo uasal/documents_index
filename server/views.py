@@ -6,7 +6,7 @@ from flask.views import MethodView
 import firebase_admin
 from firebase_admin import auth
 
-from models import db, Document
+from models import db, Document, User
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger('logger')
@@ -18,28 +18,47 @@ def token_required(f):
             firebase_admin.get_app()
         except Exception as e:
             firebase_admin.initialize_app()
-            # return {'status': 'fail', 'error': f'{e}'}, 400
         
         token = request.headers.get('Authorization')
         
         if token:
-            logger.info(f'TokenRequired: Extracted token: {token}')
+            logger.info('TokenRequired: Extracted token.')
                 
             try:
                 # decoded_token = auth.verify_id_token(token, check_revoked=True)
                 decoded_token = auth.verify_id_token(token)
             except Exception as e:
-                logger.error(f'TokenRequired: Error in decoding user token:\nmessage: {e}\nToken: {token}')
-                # return jsonify({'status': 'fail', 'message': 'Token invalid'})
-                return {'status': 'fail', 'message': 'Resource not available'}, 401
+                logger.error(f'TokenRequired: Error in decoding user token:\nmessage: {e}\n')
+                return {'status': 'fail', 'message': 'Resource not available', 'isAuthorized': False}, 401
             else:
                 logger.info('TokenRequired: Token successfully decoded')
                 setattr(request, "decoded_token", decoded_token)
-                setattr(request, "email", decoded_token.get('email'))
+
+                email = decoded_token.get('email')
+                setattr(request, "email", email)
+        
+                user = User.get_by_email(email)
+                if not user:
+                    logger.error(f'TokenRequired: User {email} not in the Users table\n')
+                    return {'status': 'fail', 'message': 'Not authorized', 'isAuthorized': False}, 401
+                setattr(request, "user", user)
+                
                 return f(*args, **kwargs)
+            
         logger.error('TokenRequired: No token found with request.')
-        # return jsonify({'status': 'fail', 'message': 'User not logged in'})
-        return {'status': 'fail', 'message': 'Resource not available'}, 401
+        return {'status': 'fail', 'message': 'Resource not available', 'isAuthorized': False}, 401
+
+        return f(*args, **kwargs)
+    return decorated_function
+
+def superuser(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        user = getattr(request, "user")        
+
+        if not user.superuser:
+            return {'status': 'fail', 'message': 'Not authorized', 'isSuperuser': False}, 403
+        return f(*args, **kwargs)
     return decorated_function
 
 # sanity check route
@@ -87,21 +106,19 @@ class AllDocuments(MethodView):
             Json response to get request. Contains 'status' and a
             list of each document serialized.
         """        
-        email = getattr(request, "email")
-        logger.info(f'AllDocuments: User {email} is viewing all documents.')                    
+        user = getattr(request, "user")
+        logger.info(f'AllDocuments: User {user.email} is viewing all documents.')                    
         documents = db.session.scalars(db.select(Document))
-
-        # from flask import request
 
         response_object = {'status': 'success', 
                            'documents': Document.serialize_list(documents),
-                        #    'origin': [request.environ.get('REMOTE_ADDR'), request.environ.get('SERVER_NAME'), request.environ.get('HTTP_HOST'), request.environ.get('HTTP_ORIGIN'), request.environ.get('HTTP_REFERER')]
+                           'superuser': user.superuser,
                         }
         return jsonify(response_object)
 
 
 class SingleDocument(MethodView):
-    """View class for the /document/<document_id> route."""
+    """View class for the /documents/<document_id> route."""
 
     decorators = [token_required]
 
@@ -121,9 +138,9 @@ class SingleDocument(MethodView):
             Json response to get request. Contains serialized Document object 
             with given document id.
         """        
-        email = getattr(request, "email")        
-        logger.info(f'AllDocuments: User {email} is viewing all documents.')
-        response_object = {'status': 'success'}
+        user = getattr(request, "user")        
+        logger.info(f'AllDocuments: User {user.email} is viewing all documents.')
+        response_object = {'status': 'success', 'superuser': user.superuser}
         document = Document.get_by_doc_identifier(doc_identifier)
         if document:
             response_object['document'] = document.serialize()
@@ -195,7 +212,7 @@ class SingleDocument(MethodView):
                 logger.info(f'SingleDocument: User {email} tried to delete document they do not own.')
                 return jsonify(response_object)
             
-            logger.info('SingleDocument: User is deleting document.')
+            logger.info(f'SingleDocument: User {email} is deleting document.')
             success = document.delete_doc()
             if not success:
                 response_object['status': 'fail']        
@@ -203,4 +220,120 @@ class SingleDocument(MethodView):
         else:
             logger.info(f'SingleDocument: User {email} tried to delete inexistent document.')
             response_object['message'] = 'Document not found'            
+        return jsonify(response_object)
+
+class AllUsers(MethodView):
+    """View class for the /users route."""
+
+    decorators = [superuser, token_required]
+
+    def post(self):
+        """
+        Method with logic for post requests.
+        Post requests are made here when the user adds a new user.
+
+        Returns
+        -------
+        json
+            Json response to post request. Contains 'status' and 'message'.
+        """
+        email = getattr(request, "email")
+        response_object = {'status': 'success'}
+        post_data = request.get_json()
+        logger.info(f'AllUsers: User {email} is adding new user {post_data.get("email")}.')        
+        success = User.create(**post_data)
+        if not success:
+            response_object['status'] = 'fail'            
+        response_object['message'] = 'User added!'
+        return jsonify(response_object)
+    
+    def get(self):
+        """
+        Method with logic for get requests.
+        Get requests here return a list of all the users in the db.
+
+        Returns
+        -------
+        json
+            Json response to get request. Contains 'status' and a
+            list of each document serialized.
+        """        
+        user = getattr(request, "user")
+        logger.info(f'AllUsers: User {user.email} is viewing all users.')                    
+        users = db.session.scalars(db.select(User))
+
+        # from flask import request
+
+        response_object = {'status': 'success', 
+                           'collaborators': User.serialize_list(users),
+                           'superuser': user.superuser,                           
+                        }
+        return jsonify(response_object)
+
+class SingleUser(MethodView):
+    """View class for the /users/<pk> route."""
+
+    decorators = [superuser, token_required]
+
+    def put(self, pk):
+        """
+        Method with logic for put requests.
+        Put requests here update the column values for the user with given 
+        private key.
+
+        Parameters
+        ----------
+        pk : int / str
+            pk of user entry to be updated.
+
+        Returns
+        -------
+        json
+            Json response to put request. Contains 'status' and 'message'.
+        """
+        email = getattr(request, "email")        
+        response_object = {'status': 'success'}
+
+        post_data = request.get_json()
+        user_to_update = User.get_by_pk(pk)
+        if user_to_update:
+            logger.info(f'SingleUser: User {email} is updating user {user_to_update}.')
+            success = user_to_update.update(**post_data)
+            if not success:
+                response_object['status': 'fail']
+            response_object['message'] = 'User updated!'
+        else:
+            logger.info(f'SingleDocument: User {email} tried to update inexistent '
+                        f'user {user_to_update}.')
+            response_object['message'] = 'User not found'
+        return jsonify(response_object)
+    
+    def delete(self, pk):
+        """
+        Method with logic for delete requests.
+        Delete requests here delete user with given primary key from the db.
+
+        Parameters
+        ----------
+        pk : int / str
+            pk of user entry to be deleted.
+
+        Returns
+        -------
+        json
+            Json response to delete request. Contains 'status' and 'message'.
+        """        
+        email = getattr(request, "email")          
+        response_object = {'status': 'success'}
+
+        user = User.get_by_pk(pk)
+        if user:
+            logger.info(f'SingleUser: User {email} is deleting user {user.email}.')
+            success = user.delete_user()
+            if not success:
+                response_object['status': 'fail']        
+            response_object['message'] = 'User removed!'
+        else:
+            logger.info(f'SingleUser: User {email} tried to delete inexistent user.')
+            response_object['message'] = 'User not found'            
         return jsonify(response_object)

@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import DocumentsAll from '../components/DocumentsAll.vue'
+import CollaboratorsAll from '../components/CollaboratorsAll.vue'
 import DocumentsItem from '../components/DocumentsItem.vue'
 import Ping from '../components/Ping.vue'
 
@@ -15,6 +16,11 @@ const router = createRouter({
       path: '/docs/:docID',
       name: 'DocumentsItem',
       component: DocumentsItem,
+    },
+    {
+      path: '/collaborators',
+      name: 'CollaboratorsAll',
+      component: CollaboratorsAll,
     },
     {
       path: '/ping',
