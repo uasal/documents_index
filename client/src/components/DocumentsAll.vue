@@ -4,15 +4,21 @@
       <div class="col-12">
         <h1>Documents</h1>
         <hr><br><br>
+        <div>
+          <p>Hello, {{ username }}</p>
+          <p>Add a new document using the button below. You can edit or delete documents you have added.</p>
+          <p>To see all details related to a document click on its Title or its Doc Identifier,
+            or, for a given Doc Identifier, add "/docs/&lt;doc_identifier&gt;" to the current URL.</p>
+        </div>
+        <br>
         <alert :message=message v-if="showMessage"></alert>
         <button type="button" class="btn btn-success btn-sm" @click="toggleAddDocumentModal">
           Add Document
         </button>
-        <div class="my-3">
+        <div class="my-3" v-if="show_table">
           <input type="text" placeholder="Filter table by any column" v-model="filter" />
         </div>
-        <p>Hello, {{ username }}, this is your email address {{ email }}</p>
-        <table class="table table-hover" v-if="filteredDocuments.length > 0">
+        <table class="table table-hover" v-if="show_table">
           <thead>
             <tr>
               <th style="min-width: 10%;" scope="col">Title</th>
@@ -28,8 +34,10 @@
           <tbody>
             <tr v-for="(doc, index) in filteredDocuments" :key="index">
               <td data-toggle="tooltip" data-placement="bottom" :title="doc.title" style="cursor: default"
-                v-if="doc.title.length > 30"><a :href="'docs/' + doc.doc_identifier" target="_blank">{{
-                  truncate(doc.title, 30) }}</a></td>
+                v-if="doc.title.length > 30">
+                <a :href="'docs/' + doc.doc_identifier" target="_blank">{{
+                  truncate(doc.title, 30) }}</a>
+              </td>
               <td v-else><a :href="'docs/' + doc.doc_identifier" target="_blank">{{ doc.title }}</a></td>
 
               <td data-toggle="tooltip" data-placement="bottom" :title="doc.author" style="cursor: default"
@@ -37,16 +45,27 @@
               <td v-else>{{ doc.author }}</td>
 
               <td data-toggle="tooltip" data-placement="bottom" :title="doc.doc_identifier" style="cursor: default"
-                v-if="doc.doc_identifier.length > 30">{{ truncate(doc.doc_identifier, 30) }}</td>
-              <td v-else>{{ doc.doc_identifier }}</td>
+                v-if="doc.doc_identifier.length > 30">
+                <a :href="'docs/' + doc.doc_identifier" target="_blank">{{
+                  truncate(doc.doc_identifier, 30) }}</a>
+              </td>
+              <td v-else><a :href="'docs/' + doc.doc_identifier" target="_blank">{{ doc.doc_identifier }}</a></td>
 
               <td data-toggle="tooltip" data-placement="bottom" :title="doc.doc_code" style="cursor: default"
                 v-if="doc.doc_code.length > 30">{{ truncate(doc.doc_code, 30) }}</td>
               <td v-else>{{ doc.doc_code }}</td>
 
-              <td><a :href=doc.compiled_url target="_blank">{{ doc.compiled_url }}</a></td>
+              <td>
+                <a :href="doc.compiled_url" target="_blank">document link</a>
+                <!-- <a class="ms-3" :href=doc.compiled_url target="_blank" download><font-awesome-icon
+                    icon="fa-solid fa-download" /></a> -->
+              </td>
 
-              <td><a :href=doc.source_url target="_blank">{{ doc.source_url }}</a></td>
+              <td>
+                <a :href="doc.source_url" target="_blank">source link</a>
+                <!-- <a class="ms-3" :href=doc.source_url target="_blank" download><font-awesome-icon
+                    icon="fa-solid fa-download" /></a> -->
+              </td>
 
               <td data-toggle="tooltip" data-placement="bottom" :title="doc.abstract" style="cursor: default"
                 v-if="doc.abstract.length > 30">{{ truncate(doc.abstract, 30) }}</td>
@@ -214,6 +233,7 @@ export default {
       },
       filter: '',
       documents: [],
+      show_table: false,
       editDocumentForm: {
         pk: '',
         title: '',
@@ -230,6 +250,15 @@ export default {
   },
   components: {
     alert: AlertMessage,
+  },
+  watch: {
+    documents: function (newVal, oldVal) {
+      if (this.documents.length > 0) {
+        this.show_table = true;
+      } else {
+        this.show_table = false;
+      }
+    }
   },
   computed: {
     filteredDocuments() {
