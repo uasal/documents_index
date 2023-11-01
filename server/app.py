@@ -24,7 +24,7 @@ def create_app():
     db.init_app(app) # init of db is deferred
 
     # If no database exists, set to True to create database tables
-    CREATE_TABLES = True
+    CREATE_TABLES = False
     if CREATE_TABLES:
         with app.app_context():
             from models import Document # noqa: F401; All models need to be imported for db.create_all() to create relevat tables
