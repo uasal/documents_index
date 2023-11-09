@@ -5,17 +5,47 @@
         <h1>Collaborators</h1>
         <hr><br><br>
         <div>
-          <p>Hello, {{ username }}</p>
+          <p>Hello, {{ username }}, you are logged in with the account {{ email }}</p>
         </div>
         <br>
         <alert :message=message v-if="showMessage"></alert>
+        <button type="button" class="btn btn-success btn-sm" @click="toggleAddDomainModal">
+          Add Domain
+        </button>
+        <div class="my-3" v-if="show_domain_table">
+          <input type="text" placeholder="Filter table by email" v-model="domain_filter" />
+        </div>
+        <table class="table table-hover" v-if="show_domain_table">
+          <thead>
+            <tr>
+              <th style="min-width: 10%;" scope="col">Email Domain</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="(col, index) in filteredDomains" :key="index">
+              <td>{{ col.email_domain }}</td>
+              <td>
+                <div class="btn-group" role="group">
+                  <button type="button" class="btn btn-warning btn-sm" @click="toggleEditDomainModal(col)">
+                    Update
+                  </button>
+                  <button type="button" class="btn btn-danger btn-sm" @click="handleDeleteDomain(col)">
+                    Delete
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <br><br>
         <button type="button" class="btn btn-success btn-sm" @click="toggleAddCollaboratorModal">
           Add Collaborator
         </button>
-        <div class="my-3" v-if="show_table">
-          <input type="text" placeholder="Filter table by email" v-model="filter" />
+        <div class="my-3" v-if="show_collaborator_table">
+          <input type="text" placeholder="Filter table by email" v-model="collaborator_filter" />
         </div>
-        <table class="table table-hover" v-if="show_table">
+        <table class="table table-hover" v-if="show_collaborator_table">
           <thead>
             <tr>
               <th style="min-width: 10%;" scope="col">Email</th>
@@ -40,9 +70,8 @@
             </tr>
           </tbody>
         </table>
-        <div v-else>
-          <p v-if="filter === ''">No collaborators.</p>
-          <p v-else>Sorry, no emails found containing <b>{{ filter }}</b>. Try a different filter.</p>
+        <div v-if="!show_collaborator_table && !show_domain_table">
+          <p>No collaborators.</p>
         </div>
       </div>
     </div>
@@ -71,10 +100,10 @@
                 <label class="form-check-label" for="addCollaboratorSuperuser">Are they superuser?</label>
               </div>
               <div class="btn-group" role="group">
-                <button type="button" class="btn btn-primary btn-sm" @click="handleAddSubmit">
+                <button type="button" class="btn btn-primary btn-sm" @click="handleAddCollaboratorSubmit">
                   Submit
                 </button>
-                <button type="button" class="btn btn-danger btn-sm" @click="handleAddReset">
+                <button type="button" class="btn btn-danger btn-sm" @click="handleAddCollaboratorReset">
                   Reset
                 </button>
               </div>
@@ -109,10 +138,10 @@
                 <label class="form-check-label" for="editCollaboratorSuperuser">Are they superuser?</label>
               </div>
               <div class="btn-group" role="group">
-                <button type="button" class="btn btn-primary btn-sm" @click="handleEditSubmit">
+                <button type="button" class="btn btn-primary btn-sm" @click="handleEditCollaboratorSubmit">
                   Submit
                 </button>
-                <button type="button" class="btn btn-danger btn-sm" @click="handleEditCancel">
+                <button type="button" class="btn btn-danger btn-sm" @click="handleEditCollaboratorCancel">
                   Cancel
                 </button>
               </div>
@@ -122,6 +151,72 @@
       </div>
     </div>
     <div v-if="activeEditCollaboratorModal" class="modal-backdrop fade show"></div>
+
+    <!-- add new domain modal -->
+    <div ref="addDomainModal" class="modal fade" :class="{ show: activeAddDomainModal, 'd-block': activeAddDomainModal }"
+      tabindex="-1" role="dialog">
+      <div class="modal-dialog" role="domain">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Add a new domain</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"
+              @click="toggleAddDomainModal">
+            </button>
+          </div>
+          <div class="modal-body">
+            <form>
+              <div class="mb-3">
+                <label for="addDomainEmail" class="form-label">Email Domain:</label>
+                <input type="text" class="form-control" id="addDomainEmail" v-model="addDomainForm.email_domain"
+                  placeholder="Enter email domain">
+              </div>
+              <div class="btn-group" role="group">
+                <button type="button" class="btn btn-primary btn-sm" @click="handleAddDomainSubmit">
+                  Submit
+                </button>
+                <button type="button" class="btn btn-danger btn-sm" @click="handleAddDomainReset">
+                  Reset
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div v-if="activeAddDomainModal" class="modal-backdrop fade show"></div>
+
+    <!-- edit domain modal -->
+    <div ref="editDomainModal" class="modal fade"
+      :class="{ show: activeEditDomainModal, 'd-block': activeEditDomainModal }" tabindex="-1" role="dialog">
+      <div class="modal-dialog" role="collaborator">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Update</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"
+              @click="toggleEditDomainModal">
+            </button>
+          </div>
+          <div class="modal-body">
+            <form>
+              <div class="mb-3">
+                <label for="editDomainEmail" class="form-label">Email:</label>
+                <input type="text" class="form-control" maxlength="100" id="editDomainEmail"
+                  v-model="editDomainForm.email" placeholder="Enter domain email">
+              </div>
+              <div class="btn-group" role="group">
+                <button type="button" class="btn btn-primary btn-sm" @click="handleEditDomainSubmit">
+                  Submit
+                </button>
+                <button type="button" class="btn btn-danger btn-sm" @click="handleEditDomainCancel">
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div v-if="activeEditDomainModal" class="modal-backdrop fade show"></div>
   </div>
 </template>
 
@@ -144,13 +239,25 @@ export default {
         email: '',
         superuser: '',
       },
-      filter: '',
+      activeAddDomainModal: false,
+      activeEditDomainModal: false,
+      addDomainForm: {
+        email_domain: '',
+      },
+      collaborator_filter: '',
+      domain_filter: '',
       collaborators: [],
-      show_table: false,
+      domains: [],
+      show_collaborator_table: false,
+      show_domain_table: false,
       editCollaboratorForm: {
         pk: '',
         email: '',
         superuser: '',
+      },
+      editDomainForm: {
+        pk: '',
+        email_domain: '',
       },
       message: '',
       showMessage: false,
@@ -163,23 +270,43 @@ export default {
   watch: {
     collaborators: function (newVal, oldVal) {
       if (this.collaborators.length > 0) {
-        this.show_table = true;
+        this.show_collaborator_table = true;
       } else {
-        this.show_table = false;
+        this.show_collaborator_table = false;
+      }
+    },
+    domains: function (newVal, oldVal) {
+      if (this.domains.length > 0) {
+        this.show_domain_table = true;
+      } else {
+        this.show_domain_table = false;
       }
     }
   },
   computed: {
     filteredCollaborators() {
-      if (this.filter === '') {
+      if (this.collaborator_filter === '') {
         return this.collaborators;
       } else {
-        return this.collaborators.filter(collaborator => {
-          const searchTerm = this.filter.toLowerCase();
+        return this.collaborators.collaborator_filter(collaborator => {
+          const searchTerm = this.collaborator_filter.toLowerCase();
 
           const email = collaborator.email.toString().toLowerCase();
 
           return email.includes(searchTerm);
+        });
+      }
+    },
+    filteredDomains() {
+      if (this.domain_filter === '') {
+        return this.domains;
+      } else {
+        return this.domains.domain_filter(domain => {
+          const searchTerm = this.domain_filter.toLowerCase();
+
+          const email_domain = domain.email_domain.toString().toLowerCase();
+
+          return email_domain.includes(searchTerm);
         });
       }
     },
@@ -237,6 +364,7 @@ export default {
         axios.post(path, payload, config)
           .then((res) => {
             this.getCollaborators();
+            this.getDomains();
             if (res.data.status == 'success') {
               this.message = 'Collaborator added!';
             } else {
@@ -247,6 +375,7 @@ export default {
           .catch((error) => {
             console.log(error);
             this.getCollaborators();
+            this.getDomains();
           });
       }).catch(function (error) {
         console.log(error)
@@ -273,10 +402,10 @@ export default {
         this.superuser = false;
       });
     },
-    handleAddReset() {
-      this.initForm();
+    handleAddCollaboratorReset() {
+      this.initCollaboratorForm();
     },
-    handleAddSubmit() {
+    handleAddCollaboratorSubmit() {
       this.toggleAddCollaboratorModal();
       const payload = {
         email: this.addCollaboratorForm.email,
@@ -284,17 +413,18 @@ export default {
         creator_email: this.email,
       };
       this.addCollaborator(payload);
-      this.initForm();
+      this.initCollaboratorForm();
     },
     handleDeleteCollaborator(collaborator) {
       this.removeCollaborator(collaborator.pk);
     },
-    handleEditCancel() {
+    handleEditCollaboratorCancel() {
       this.toggleEditCollaboratorModal(null);
-      this.initForm();
-      this.getCollaborators(); // why?
+      this.initCollaboratorForm();
+      this.getCollaborators();
+      this.getDomains();
     },
-    handleEditSubmit() {
+    handleEditCollaboratorSubmit() {
       this.toggleEditCollaboratorModal(null);
       const payload = {
         email: this.editCollaboratorForm.email,
@@ -302,7 +432,7 @@ export default {
       };
       this.updateCollaborator(payload, this.editCollaboratorForm.pk);
     },
-    initForm() {
+    initCollaboratorForm() {
       this.addCollaboratorForm.email = '';
       this.addCollaboratorForm.superuser = '';
       this.editCollaboratorForm.pk = '';
@@ -320,6 +450,7 @@ export default {
         axios.delete(path, config)
           .then((res) => {
             this.getCollaborators();
+            this.getDomains();
             if (res.data.status == 'success') {
               this.message = 'Collaborator removed!';
             } else {
@@ -330,6 +461,7 @@ export default {
           .catch((error) => {
             console.error(error);
             this.getCollaborators();
+            this.getDomains();
           });
       }).catch(function (error) {
         console.log(error)
@@ -367,6 +499,7 @@ export default {
         axios.put(path, payload, config)
           .then((res) => {
             this.getCollaborators();
+            this.getDomains();
             if (res.data.status == 'success') {
               this.message = 'Collaborator updated!';
             } else {
@@ -377,6 +510,166 @@ export default {
           .catch((error) => {
             console.error(error);
             this.getCollaborators();
+            this.getDomains();
+          });
+      }).catch(function (error) {
+        console.log(error)
+      });
+    },
+    addDomain(payload) {
+      const path = `${API_URL}/domains`;
+
+      auth.currentUser.getIdToken(true).then(idToken => {
+        const config = {
+          headers: { Authorization: `${idToken}` }
+        };
+
+        axios.post(path, payload, config)
+          .then((res) => {
+            this.getCollaborators();
+            this.getDomains();
+            if (res.data.status == 'success') {
+              this.message = 'Domain added!';
+            } else {
+              this.message = 'Domain not added, error occured';
+            }
+            this.showMessage = true;
+          })
+          .catch((error) => {
+            console.log(error);
+            this.getCollaborators();
+            this.getDomains();
+          });
+      }).catch(function (error) {
+        console.log(error)
+      });
+    },
+    getDomains() {
+      const path = `${API_URL}/domains`;
+      auth.currentUser.getIdToken(true).then(idToken => {
+        const config = {
+          headers: { Authorization: `${idToken}` }
+        };
+
+        axios.get(path, config)
+          .then((res) => {
+            this.domains = res.data.domains;
+            this.superuser = res.data.superuser;
+          })
+          .catch((error) => {
+            console.error(error);
+            this.superuser = false;
+          });
+      }).catch(function (error) {
+        console.log(error)
+        this.superuser = false;
+      });
+    },
+    handleAddDomainReset() {
+      this.initDomainForm();
+    },
+    handleAddDomainSubmit() {
+      this.toggleAddDomainModal();
+      const payload = {
+        email_domain: this.addDomainForm.email_domain,
+        creator_email: this.email,
+      };
+      this.addDomain(payload);
+      this.initDomainForm();
+    },
+    handleDeleteDomain(collaborator) {
+      this.removeDomain(collaborator.pk);
+    },
+    handleEditDomainCancel() {
+      this.toggleEditDomainModal(null);
+      this.initDomainForm();
+      this.getCollaborators();
+      this.getDomains();
+    },
+    handleEditDomainSubmit() {
+      this.toggleEditDomainModal(null);
+      const payload = {
+        email_domain: this.editDomainForm.email_domain,
+      };
+      this.updateDomain(payload, this.editDomainForm.pk);
+    },
+    initDomainForm() {
+      this.addDomainForm.email_domain = '';
+      this.editDomainForm.pk = '';
+      this.editDomainForm.email_domain = '';
+    },
+    removeDomain(cpk) {
+      const path = `${API_URL}/users/${cpk}`;
+
+      auth.currentUser.getIdToken(true).then(idToken => {
+        const config = {
+          headers: { Authorization: `${idToken}` }
+        };
+
+        axios.delete(path, config)
+          .then((res) => {
+            this.getCollaborators();
+            this.getDomains();
+            if (res.data.status == 'success') {
+              this.message = 'Domain removed!';
+            } else {
+              this.message = 'Domain not removed, error occured';
+            }
+            this.showMessage = true;
+          })
+          .catch((error) => {
+            console.error(error);
+            this.getCollaborators();
+            this.getDomains();
+          });
+      }).catch(function (error) {
+        console.log(error)
+      });
+    },
+    toggleAddDomainModal() {
+      const body = document.querySelector('body');
+      this.activeAddDomainModal = !this.activeAddDomainModal;
+      if (this.activeAddDomainModal) {
+        body.classList.add('modal-open');
+      } else {
+        body.classList.remove('modal-open');
+      }
+    },
+    toggleEditDomainModal(col) {
+      if (col) {
+        this.editDomainForm = col;
+      }
+      const body = document.querySelector('body');
+      this.activeEditDomainModal = !this.activeEditDomainModal;
+      if (this.activeEditDomainModal) {
+        body.classList.add('modal-open');
+      } else {
+        body.classList.remove('modal-open');
+      }
+    },
+    updateDomain(payload, cpk) {
+      const path = `${API_URL}/domains/${cpk}`;
+
+      auth.currentUser.getIdToken(true).then(idToken => {
+        const config = {
+          headers: { Authorization: `${idToken}` }
+        };
+
+        axios.put(path, payload, config)
+          .then((res) => {
+            this.getCollaborators();
+            this.getDomains();
+            if (res.data.status == 'success') {
+              this.message = 'Domain updated!';
+            } else {
+              this.message = 'Domain not updated, error occured';
+            }
+            this.showMessage = true;
+          })
+          .catch((error) => {
+            console.error(error);
+            this.getCollaborators();
+            this.getDomains();
           });
       }).catch(function (error) {
         console.log(error)
@@ -385,6 +678,7 @@ export default {
   },
   created() {
     this.getCollaborators();
+    this.getDomains();
   },
 };
 </script>

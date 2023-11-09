@@ -8,13 +8,13 @@
               <h1>Documents</h1>
             </div>
             <div class="d-inline-flex float-end" v-if="superuser">
-              <a role="button" class="btn btn-success" href="collaborators">Edit collaborators</a>
+              <a role="button" class="btn btn-success" href="collaborators" target="_blank">Edit collaborators</a>
             </div>
           </div>
         </div>
         <hr><br><br>
         <div>
-          <p>Hello, {{ username }}</p>
+          <p>Hello, {{ username }}, you are logged in with the account {{ email }}</p>
           <p>Add a new document using the button below. You can edit or delete documents you have added.</p>
           <p>To see all details related to a document click on its Title or its Doc Identifier,
             or, for a given Doc Identifier, add "/docs/&lt;doc_identifier&gt;" to the current URL.</p>
