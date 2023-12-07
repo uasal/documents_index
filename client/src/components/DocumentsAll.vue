@@ -98,7 +98,7 @@
           <p v-else>Sorry, no documents found containing <b>{{ filter }}</b>. Try a different filter.</p>
         </div>
       </div>
-      <div v-if="hideContent">Sorry, this page is not available or you are not authorized to view it.</div>
+      <!-- <div v-if="hideContent">Sorry, this page is not available or you are not authorized to view it.</div> -->
     </div>
 
     <!-- add new document modal -->
@@ -258,7 +258,7 @@ export default {
       message: '',
       showMessage: false,
       isAuthorized: false,
-      hideContent: false,
+      // hideContent: false,
       superuser: false,
     };
   },
@@ -386,13 +386,13 @@ export default {
             console.error(error);
             this.superuser = false;
             this.isAuthorized = error.response.data.isAuthorized;
-            this.hideContent = !this.isAuthorized;
+            // this.hideContent = !this.isAuthorized;
           });
       }).catch(function (error) {
         console.log(error)
         this.superuser = false;
         this.isAuthorized = false;
-        this.hideContent = true;
+        // this.hideContent = true;
       });
     },
     handleAddReset() {
