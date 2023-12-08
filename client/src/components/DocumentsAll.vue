@@ -221,8 +221,6 @@
 
 <script>
 import axios from 'axios';
-import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
-import { auth } from '../firebaseConfig';
 import AlertMessage from './AlertMessage.vue';
 
 const API_URL = '/api';
@@ -257,9 +255,6 @@ export default {
       },
       message: '',
       showMessage: false,
-      isAuthorized: false,
-      // hideContent: false,
-      superuser: false,
     };
   },
   components: {
@@ -300,57 +295,10 @@ export default {
         });
       }
     },
-    isLoggedIn() {
-      if (auth.currentUser) {
-        return true;
-      } else {
-        return false;
-      }
-    },
-    username() {
-      if (auth.currentUser) {
-        return auth.currentUser.displayName;
-      } else {
-        this.logInUser()
-        return '';
-      }
-    },
-    email() {
-      if (auth.currentUser) {
-        return auth.currentUser.email;
-      } else {
-        this.logInUser()
-        return '';
-      }
-    },
   },
   methods: {
-    logInUser() {
-      const provider = new GoogleAuthProvider();
-      provider.addScope('https://www.googleapis.com/auth/userinfo.email');
-      signInWithPopup(auth, provider)
-        .then(result => {
-          // Returns the signed in user along with the provider's credential
-          console.log(`${result.user.displayName} logged in.`);
-          const credential = GoogleAuthProvider.credentialFromResult(result);
-          // this.token = credential.accessToken;
-          // // The signed-in user info.
-          // this.username = result.user.displayName;
-          // this.email = result.user.email;
-        })
-        .catch(err => {
-          console.log(`Error during sign in: ${err.message}`);
-          window.alert(`Sign in failed. Retry or check your browser logs.`);
-        });
-    },
     addDocument(payload) {
       const path = `${API_URL}/documents`;
-
-      auth.currentUser.getIdToken(true).then(idToken => {
-        const config = {
-          headers: { Authorization: `${idToken}` }
-        };
-
         axios.post(path, payload, config)
           .then((res) => {
             this.getDocuments();
@@ -365,35 +313,17 @@ export default {
             console.log(error);
             this.getDocuments();
           });
-      }).catch(function (error) {
-        console.log(error)
-      });
     },
     getDocuments() {
       const path = `${API_URL}/documents`;
-      auth.currentUser.getIdToken(true).then(idToken => {
-        const config = {
-          headers: { Authorization: `${idToken}` }
-        };
 
         axios.get(path, config)
           .then((res) => {
             this.documents = res.data.documents;
-            this.superuser = res.data.superuser;
-            this.isAuthorized = true;
           })
           .catch((error) => {
             console.error(error);
-            this.superuser = false;
-            this.isAuthorized = error.response.data.isAuthorized;
-            // this.hideContent = !this.isAuthorized;
           });
-      }).catch(function (error) {
-        console.log(error)
-        this.superuser = false;
-        this.isAuthorized = false;
-        // this.hideContent = true;
-      });
     },
     handleAddReset() {
       this.initForm();
@@ -451,12 +381,7 @@ export default {
     removeDocument(docID) {
       const path = `${API_URL}/documents/${docID}`;
 
-      auth.currentUser.getIdToken(true).then(idToken => {
-        const config = {
-          headers: { Authorization: `${idToken}` }
-        };
-
-        axios.delete(path, config)
+       axios.delete(path, config)
           .then((res) => {
             this.getDocuments();
             if (res.data.status == 'success') {
@@ -470,9 +395,6 @@ export default {
             console.error(error);
             this.getDocuments();
           });
-      }).catch(function (error) {
-        console.log(error)
-      });
     },
     toggleAddDocumentModal() {
       const body = document.querySelector('body');
@@ -498,11 +420,6 @@ export default {
     updateDocument(payload, docID) {
       const path = `${API_URL}/documents/${docID}`;
 
-      auth.currentUser.getIdToken(true).then(idToken => {
-        const config = {
-          headers: { Authorization: `${idToken}` }
-        };
-
         axios.put(path, payload, config)
           .then((res) => {
             this.getDocuments();
@@ -517,9 +434,6 @@ export default {
             console.error(error);
             this.getDocuments();
           });
-      }).catch(function (error) {
-        console.log(error)
-      });
     },
     truncate(value, length) {
       if (value.length > length) {
