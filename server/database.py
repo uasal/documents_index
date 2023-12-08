@@ -44,6 +44,7 @@ def get_cred_config() -> dict[str, str]:
             "DB_PASSWORD": os.environ["DB_PASSWORD"],
             "DB_NAME": os.environ["DB_NAME"],
             "DB_HOST": os.environ.get("DB_HOST", None),
+            "CERT_PATH": os.environ.get("CERT_PATH", f"{os.getcwd()}/rds-ca-2019-root.pem"),
             "CLOUD_SQL_CONNECTION_NAME": os.environ["CLOUD_SQL_CONNECTION_NAME"],
         }
 
@@ -52,8 +53,10 @@ creds = get_cred_config()
 db_user = creds["DB_USER"]
 db_pass = creds["DB_PASSWORD"]
 db_name = creds["DB_NAME"]
-db_socket_dir = creds.get("DB_SOCKET_DIR", "/cloudsql")
+# db_socket_dir = creds.get("DB_SOCKET_DIR", "/cloudsql")
 cloud_sql_connection_name = creds["CLOUD_SQL_CONNECTION_NAME"]
 
-DB_URI = f"postgresql+pg8000://{db_user}:{db_pass}@/{db_name}?unix_sock={db_socket_dir}/{cloud_sql_connection_name}/.s.PGSQL.5432"
+# DB_URI = f"postgresql+pg8000://{db_user}:{db_pass}@/{db_name}?unix_sock={db_socket_dir}/{cloud_sql_connection_name}/.s.PGSQL.5432"
+DB_URI = f"postgresql+pg8000://{db_user}:{db_pass}@{cloud_sql_connection_name}:5432/{db_name}"
 
+CERT_PATH = creds["CERT_PATH"]
