@@ -222,6 +222,8 @@
 
 <script>
 import axios from 'axios';
+import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
+import { auth } from '../firebaseConfig';
 import AlertMessage from './AlertMessage.vue';
 
 const API_URL = '/api';
@@ -259,6 +261,7 @@ export default {
       },
       message: '',
       showMessage: false,
+      superuser: false,
     };
   },
   components: {
@@ -307,12 +310,58 @@ export default {
         });
       }
     },
+    isLoggedIn() {
+      if (auth.currentUser) {
+        return true;
+      } else {
+        return false;
+      }
+    },
+    username() {
+      if (auth.currentUser) {
+        return auth.currentUser.displayName;
+      } else {
+        this.logInUser()
+        return '';
+      }
+    },
+    email() {
+      if (auth.currentUser) {
+        return auth.currentUser.email;
+      } else {
+        this.logInUser()
+        return '';
+      }
+    },
   },
   methods: {
+    logInUser() {
+      const provider = new GoogleAuthProvider();
+      provider.addScope('https://www.googleapis.com/auth/userinfo.email');
+      signInWithPopup(auth, provider)
+        .then(result => {
+          // Returns the signed in user along with the provider's credential
+          console.log(`${result.user.displayName} logged in.`);
+          const credential = GoogleAuthProvider.credentialFromResult(result);
+          // this.token = credential.accessToken;
+          // // The signed-in user info.
+          // this.username = result.user.displayName;
+          // this.email = result.user.email;
+        })
+        .catch(err => {
+          console.log(`Error during sign in: ${err.message}`);
+          window.alert(`Sign in failed. Retry or check your browser logs.`);
+        });
+    },
     addCollaborator(payload) {
       const path = `${API_URL}/users`;
 
-      axios.post(path, payload, config)
+      auth.currentUser.getIdToken(true).then(idToken => {
+        const config = {
+          headers: { Authorization: `${idToken}` }
+        };
+
+        axios.post(path, payload, config)
           .then((res) => {
             this.getCollaborators();
             this.getDomains();
@@ -328,16 +377,30 @@ export default {
             this.getCollaborators();
             this.getDomains();
           });
+      }).catch(function (error) {
+        console.log(error)
+      });
     },
     getCollaborators() {
       const path = `${API_URL}/users`;
+      auth.currentUser.getIdToken(true).then(idToken => {
+        const config = {
+          headers: { Authorization: `${idToken}` }
+        };
+
         axios.get(path, config)
           .then((res) => {
             this.collaborators = res.data.collaborators;
+            this.superuser = res.data.superuser;
           })
           .catch((error) => {
             console.error(error);
+            this.superuser = false;
           });
+      }).catch(function (error) {
+        console.log(error)
+        this.superuser = false;
+      });
     },
     handleAddCollaboratorReset() {
       this.initCollaboratorForm();
@@ -379,6 +442,11 @@ export default {
     removeCollaborator(cpk) {
       const path = `${API_URL}/users/${cpk}`;
 
+      auth.currentUser.getIdToken(true).then(idToken => {
+        const config = {
+          headers: { Authorization: `${idToken}` }
+        };
+
         axios.delete(path, config)
           .then((res) => {
             this.getCollaborators();
@@ -395,6 +463,9 @@ export default {
             this.getCollaborators();
             this.getDomains();
           });
+      }).catch(function (error) {
+        console.log(error)
+      });
     },
     toggleAddCollaboratorModal() {
       const body = document.querySelector('body');
@@ -420,6 +491,11 @@ export default {
     updateCollaborator(payload, cpk) {
       const path = `${API_URL}/users/${cpk}`;
 
+      auth.currentUser.getIdToken(true).then(idToken => {
+        const config = {
+          headers: { Authorization: `${idToken}` }
+        };
+
         axios.put(path, payload, config)
           .then((res) => {
             this.getCollaborators();
@@ -436,11 +512,19 @@ export default {
             this.getCollaborators();
             this.getDomains();
           });
+      }).catch(function (error) {
+        console.log(error)
+      });
     },
     addDomain(payload) {
       const path = `${API_URL}/domains`;
 
-      axios.post(path, payload, config)
+      auth.currentUser.getIdToken(true).then(idToken => {
+        const config = {
+          headers: { Authorization: `${idToken}` }
+        };
+
+        axios.post(path, payload, config)
           .then((res) => {
             this.getCollaborators();
             this.getDomains();
@@ -456,17 +540,30 @@ export default {
             this.getCollaborators();
             this.getDomains();
           });
+      }).catch(function (error) {
+        console.log(error)
+      });
     },
     getDomains() {
       const path = `${API_URL}/domains`;
+      auth.currentUser.getIdToken(true).then(idToken => {
+        const config = {
+          headers: { Authorization: `${idToken}` }
+        };
+
         axios.get(path, config)
           .then((res) => {
             this.domains = res.data.domains;
+            this.superuser = res.data.superuser;
           })
           .catch((error) => {
             console.error(error);
             this.superuser = false;
           });
+      }).catch(function (error) {
+        console.log(error)
+        this.superuser = false;
+      });
     },
     handleAddDomainReset() {
       this.initDomainForm();
@@ -504,6 +601,11 @@ export default {
     removeDomain(cpk) {
       const path = `${API_URL}/users/${cpk}`;
 
+      auth.currentUser.getIdToken(true).then(idToken => {
+        const config = {
+          headers: { Authorization: `${idToken}` }
+        };
+
         axios.delete(path, config)
           .then((res) => {
             this.getCollaborators();
@@ -520,6 +622,9 @@ export default {
             this.getCollaborators();
             this.getDomains();
           });
+      }).catch(function (error) {
+        console.log(error)
+      });
     },
     toggleAddDomainModal() {
       const body = document.querySelector('body');
@@ -545,6 +650,11 @@ export default {
     updateDomain(payload, cpk) {
       const path = `${API_URL}/domains/${cpk}`;
 
+      auth.currentUser.getIdToken(true).then(idToken => {
+        const config = {
+          headers: { Authorization: `${idToken}` }
+        };
+
         axios.put(path, payload, config)
           .then((res) => {
             this.getCollaborators();
@@ -561,6 +671,9 @@ export default {
             this.getCollaborators();
             this.getDomains();
           });
+      }).catch(function (error) {
+        console.log(error)
+      });
     },
   },
   created() {

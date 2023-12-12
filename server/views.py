@@ -3,8 +3,10 @@ import logging
 
 from flask import jsonify, request
 from flask.views import MethodView
+import firebase_admin
+from firebase_admin import auth
 
-from models import db, Document, User, Domain, is_superuser
+from models import db, Document, User, Domain, get_entity, is_superuser
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("logger")
@@ -13,55 +15,52 @@ logger = logging.getLogger("logger")
 def token_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        # try:
-        #     firebase_admin.get_app()
-        # except Exception as e:
-        #     firebase_admin.initialize_app()
+        try:
+            firebase_admin.get_app()
+        except Exception as e:
+            firebase_admin.initialize_app()
 
-        # token = request.headers.get("Authorization")
+        token = request.headers.get("Authorization")
 
-        # if token:
-        #     logger.info("TokenRequired: Extracted token.")
+        if token:
+            logger.info("TokenRequired: Extracted token.")
 
-        #     try:
-        #         # decoded_token = auth.verify_id_token(token, check_revoked=True)
-        #         decoded_token = auth.verify_id_token(token)
-        #     except Exception as e:
-        #         logger.error(
-        #             f"TokenRequired: Error in decoding user token:\nmessage: {e}\n"
-        #         )
-        #         return {
-        #             "status": "fail",
-        #             "message": "Resource not available",
-        #             "isAuthorized": False,
-        #         }, 401
-        #     else:
-        #         logger.info("TokenRequired: Token successfully decoded")
-        #         setattr(request, "decoded_token", decoded_token)
+            try:
+                # decoded_token = auth.verify_id_token(token, check_revoked=True)
+                decoded_token = auth.verify_id_token(token)
+            except Exception as e:
+                logger.error(
+                    f"TokenRequired: Error in decoding user token:\nmessage: {e}\n"
+                )
+                return {
+                    "status": "fail",
+                    "message": "Resource not available",
+                    "isAuthorized": False,
+                }, 401
+            else:
+                logger.info("TokenRequired: Token successfully decoded")
+                setattr(request, "decoded_token", decoded_token)
 
-        #         email = decoded_token.get("email")
-        #         setattr(request, "email", email)
+                email = decoded_token.get("email")
+                setattr(request, "email", email)
 
-        #         entity = get_entity(email)
-        #         if not entity:
-        #             return {
-        #                 "status": "fail",
-        #                 "message": "Not authorized",
-        #                 "isAuthorized": False,
-        #             }, 401
-        #         setattr(request, "entity", entity)
+                entity = get_entity(email)
+                if not entity:
+                    return {
+                        "status": "fail",
+                        "message": "Not authorized",
+                        "isAuthorized": False,
+                    }, 401
+                setattr(request, "entity", entity)
 
-        #         return f(*args, **kwargs)
+                return f(*args, **kwargs)
 
-        # logger.error("TokenRequired: No token found with request.")
-        # return {
-        #     "status": "fail",
-        #     "message": "Resource not available",
-        #     "isAuthorized": False,
-        # }, 401
-
-        setattr(request, "email", 'is.perl.uasal@gmail.com')
-        return f(*args, **kwargs)
+        logger.error("TokenRequired: No token found with request.")
+        return {
+            "status": "fail",
+            "message": "Resource not available",
+            "isAuthorized": False,
+        }, 401
 
     return decorated_function
 
@@ -69,14 +68,14 @@ def token_required(f):
 def superuser(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        # entity = getattr(request, "entity")
+        entity = getattr(request, "entity")
 
-        # if not is_superuser(entity):
-        #     return {
-        #         "status": "fail",
-        #         "message": "Not authorized",
-        #         "isSuperuser": False,
-        #     }, 403
+        if not is_superuser(entity):
+            return {
+                "status": "fail",
+                "message": "Not authorized",
+                "isSuperuser": False,
+            }, 403
         return f(*args, **kwargs)
 
     return decorated_function
@@ -128,7 +127,7 @@ class AllDocuments(MethodView):
             Json response to get request. Contains 'status' and a
             list of each document serialized.
         """
-        # entity = getattr(request, "entity")
+        entity = getattr(request, "entity")
         email = getattr(request, "email")
         logger.info(f"AllDocuments: User {email} is viewing all documents.")
         documents = db.session.scalars(db.select(Document))
@@ -136,8 +135,7 @@ class AllDocuments(MethodView):
         response_object = {
             "status": "success",
             "documents": Document.serialize_list(documents),
-            # "superuser": is_superuser(entity),
-            "superuser": True,
+            "superuser": is_superuser(entity),
         }
         return jsonify(response_object)
 
@@ -163,11 +161,10 @@ class SingleDocument(MethodView):
             Json response to get request. Contains serialized Document object
             with given document id.
         """
-        # entity = getattr(request, "entity")
+        entity = getattr(request, "entity")
         email = getattr(request, "email")
         logger.info(f"AllDocuments: User {email} is viewing all documents.")
-        # response_object = {"status": "success", "superuser": is_superuser(entity)}
-        response_object = {"status": "success", "superuser": True,}
+        response_object = {"status": "success", "superuser": is_superuser(entity)}
         document = Document.get_by_doc_identifier(doc_identifier)
         if document:
             response_object["document"] = document.serialize()
@@ -300,7 +297,7 @@ class AllUsers(MethodView):
             Json response to get request. Contains 'status' and a
             list of each user serialized.
         """
-        # entity = getattr(request, "entity")
+        entity = getattr(request, "entity")
         email = getattr(request, "email")
         logger.info(f"AllUsers: User {email} is viewing all users.")
         users = db.session.scalars(db.select(User))
@@ -310,8 +307,7 @@ class AllUsers(MethodView):
         response_object = {
             "status": "success",
             "collaborators": User.serialize_list(users),
-            # "superuser": is_superuser(entity),
-            "superuser": True,
+            "superuser": is_superuser(entity),
         }
         return jsonify(response_object)
 
@@ -425,7 +421,7 @@ class AllDomains(MethodView):
             Json response to get request. Contains 'status' and a
             list of each domain serialized.
         """
-        # entity = getattr(request, "entity")
+        entity = getattr(request, "entity")
         email = getattr(request, "email")
         logger.info(f"AllDomains: User {email} is viewing all domains.")
         domains = db.session.scalars(db.select(Domain))
@@ -433,8 +429,7 @@ class AllDomains(MethodView):
         response_object = {
             "status": "success",
             "domains": User.serialize_list(domains),
-            # "superuser": is_superuser(entity),
-            "superuser": True,
+            "superuser": is_superuser(entity),
         }
         return jsonify(response_object)
 
