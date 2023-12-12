@@ -3,8 +3,8 @@ import { getAuth } from 'firebase/auth'
 
 /* code from our Firebase console */
 var firebaseConfig = {
-    apiKey: 'AIzaSyBIoEnJQiULMZrrLgBxjDKH21FfYUMHHmg',
-    authDomain: 'documents-index.firebaseapp.com',
+    apiKey: "AIzaSyADo4ntri-lgH8vay94EjheNez_5HqoGgU",
+    authDomain: "documents-index-ua.firebaseapp.com",
 };
 
 // Initialize Firebase

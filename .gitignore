@@ -4,4 +4,6 @@ node_modules/
 /server/data.py
 **/.vscode
 **/__pycache__
+/server/service-account-file.json
+/server/rds-ca-2019-root.pem
 postgres-secrets.json
