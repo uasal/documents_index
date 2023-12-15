@@ -140,6 +140,78 @@ class AllDocuments(MethodView):
         return jsonify(response_object)
 
 
+class UploadFile(MethodView):
+    """View class for the /documents/upload_file route."""
+
+    decorators = [token_required]
+
+    def post(self):
+        """
+        Method with logic for post requests.
+        Post requests are made here when the user uploads a file with
+        metadata for documents.
+
+        Returns
+        -------
+        json
+            Json response to post request. Contains 'status' and 'message'.
+        """
+        email = getattr(request, "email")
+        response_object = {"status": "success"}
+        logger.info(f"UploadFile: User {email} is uploading a file.")
+
+        file = request.files["file"]
+        if "text" not in file.content_type:
+            response_object["status"] = "fail"
+            return jsonify(response_object)
+
+        lines = []
+        nb_columns = 6
+        for bline in file.stream.readlines():
+            line = bline.decode()
+
+            if line.strip()[0] != "#":
+                columns = line.split("|")
+
+                if len(columns) != nb_columns:
+                    response_object["status"] = "fail"
+                    return jsonify(response_object)
+
+                lines.append(columns)
+
+        try:
+            for line in lines:
+                post_data = {
+                    "title": line[0].strip().strip("\n").strip(),
+                    "author": line[1].strip().strip("\n").strip(),
+                    "doc_code": line[2].strip().strip("\n").strip(),
+                    "compiled_url": line[3].strip().strip("\n").strip(),
+                    "source_url": line[4].strip().strip("\n").strip(),
+                    "abstract": line[5].strip().strip("\n").strip(),
+                    "creator_email": email,
+                }
+                kwargs = Document.prepare_fields(**post_data)
+
+                # Don't break upload, just skip the duplicated entry
+                if Document.duplicate_exists(**kwargs):
+                    continue
+
+                obj = Document(**kwargs)
+                db.session.add(obj)
+
+            logger.info(f"UploadFile: User {email} adding new documents from file.")
+            db.session.commit()
+        except Exception as e:
+            logger.error(
+                f"UploadFile: User {email} tried adding new"
+                f"documents from file. Errror: {e}"
+            )
+            response_object["status"] = "fail"
+
+        response_object["message"] = "Document added!"
+        return jsonify(response_object)
+
+
 class SingleDocument(MethodView):
     """View class for the /documents/<document_id> route."""
 

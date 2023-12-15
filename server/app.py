@@ -20,14 +20,16 @@ def create_app():
     app.config.from_object(__name__)
 
     logger.info("Instantiating db with Flask app.")
-    # app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///docs.db'
+    # app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///docs.db"
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
     app.config["SQLALCHEMY_DATABASE_URI"] = DB_URI
 
     ssl_context = ssl.create_default_context()
     ssl_context.verify_mode = ssl.CERT_REQUIRED
-    ssl_context.load_verify_locations(CERT_PATH) 
-    app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {"connect_args": {'ssl_context': ssl_context}}
+    ssl_context.load_verify_locations(CERT_PATH)
+    app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
+        "connect_args": {"ssl_context": ssl_context}
+    }
 
     db.init_app(app)  # init of db is deferred
 
@@ -42,13 +44,14 @@ def create_app():
 
     # enable CORS (needed for Vue)
     logger.info("Enabling CORS.")
-    CORS(app, resources={r'/*': {'origins': '*'}})
+    CORS(app, resources={r"/*": {"origins": "*"}})
     # CORS(app, resources={r"/*": {"origins": "https://dis-6bnmqttxma-uc.a.run.app"}})
 
     # register views
     from views import (
         Ping,
         AllDocuments,
+        UploadFile,
         SingleDocument,
         AllUsers,
         SingleUser,
@@ -59,6 +62,9 @@ def create_app():
     logger.info("Registering views.")
     app.add_url_rule("/api/pong", view_func=Ping.as_view("ping"))
     app.add_url_rule("/api/documents", view_func=AllDocuments.as_view("document_list"))
+    app.add_url_rule(
+        "/api/documents/upload_file", view_func=UploadFile.as_view("upload_file")
+    )
     app.add_url_rule(
         "/api/documents/<doc_identifier>",
         view_func=SingleDocument.as_view("single_document"),

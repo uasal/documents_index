@@ -218,6 +218,46 @@ class Document(db.Model, Serializer):
         return doc_identifier
 
     @classmethod
+    def prepare_fields(cls, **kwargs):
+        """
+        Class method to generate doc_identifier and check url fields before
+        adding a new entry in the documents table.
+
+        Returns
+        -------
+        dict
+            dictionary of field names and values ready to create a new Document
+            object
+        """
+        kwargs["doc_identifier"] = cls._generate_doc_identifier()
+
+        if kwargs.get("compiled_url"):
+            kwargs["compiled_url"] = cls._check_http(kwargs["compiled_url"])
+
+        if kwargs.get("source_url"):
+            kwargs["source_url"] = cls._check_http(kwargs["source_url"])
+
+        return kwargs
+
+    @classmethod
+    def duplicate_exists(cls, **kwargs):
+        """
+        Class method to check if entry with the same title exists before
+        adding a new entry in the documents table.
+
+        Returns
+        -------
+        bool
+            true if existing entry found, false if no existing entry found
+        """
+        duplicate = db.session.scalars(
+            db.select(cls).filter_by(title=kwargs["title"])
+        ).first()
+        if duplicate:
+            return True
+        return False
+
+    @classmethod
     def create(cls, **kwargs):
         """
         Class method to create a new object and add a new entry in the
@@ -230,13 +270,9 @@ class Document(db.Model, Serializer):
             object is returned, otherwise returns False.
         """
         try:
-            kwargs["doc_identifier"] = cls._generate_doc_identifier()
-
-            if kwargs.get("compiled_url"):
-                kwargs["compiled_url"] = cls._check_http(kwargs["compiled_url"])
-
-            if kwargs.get("source_url"):
-                kwargs["source_url"] = cls._check_http(kwargs["source_url"])
+            kwargs = cls.prepare_fields(**kwargs)
+            if cls.duplicate_exists(**kwargs):
+                raise ValueError("Documents: An entry with this title already exists")
 
             obj = cls(**kwargs)
             db.session.add(obj)

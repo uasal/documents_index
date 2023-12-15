@@ -1,0 +1,3 @@
+# Title, Author, Doc Code, Compiled URL, Source URL, Abstract
+Extra Solar Camera: Design and User Guide | Ewan Douglas, Jared Males, Daewook Kim, and the STP Space Coronagraph Working Groups || https://github.com/uasal/spacecoron_design_docs/raw/compiled/coronagraph_guide.pdf | https://github.com/uasal/spacecoron_design_docs | ESC high-level design doc.
+IOB Drawing Tree | Various || https://github.com/uasal/spacecoron_design_docs/blob/main/mgmt/Drawing_Tree.png | https://github.com/uasal/spacecoron_design_docs/blob/main/mgmt/Drawing_Tree.drawio | Pearl Instrument Drawing Tree

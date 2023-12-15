@@ -24,6 +24,9 @@
         <button type="button" class="btn btn-success btn-sm" @click="toggleAddDocumentModal">
           Add Document
         </button>
+        <button type="button" class="btn btn-success btn-sm ms-4" @click="toggleUploadFileModal">
+          Upload file
+        </button>
         <div class="my-3" v-if="show_table">
           <input type="text" placeholder="Filter table by any column" v-model="filter" />
         </div>
@@ -65,13 +68,13 @@
               <td v-else>{{ doc.doc_code }}</td>
 
               <td>
-                <a :href="doc.compiled_url" target="_blank">document link</a>
+                <a v-if="doc.compiled_url" :href="doc.compiled_url" target="_blank">document link</a>
                 <!-- <a class="ms-3" :href=doc.compiled_url target="_blank" download><font-awesome-icon
                     icon="fa-solid fa-download" /></a> -->
               </td>
 
               <td>
-                <a :href="doc.source_url" target="_blank">source link</a>
+                <a v-if="doc.source_url" :href="doc.source_url" target="_blank">source link</a>
                 <!-- <a class="ms-3" :href=doc.source_url target="_blank" download><font-awesome-icon
                     icon="fa-solid fa-download" /></a> -->
               </td>
@@ -159,6 +162,55 @@
     </div>
     <div v-if="activeAddDocumentModal" class="modal-backdrop fade show"></div>
 
+    <!-- add documents via file upload modal -->
+    <div ref="uploadFileModal" class="modal fade"
+      :class="{ show: activeUploadFileModal, 'd-block': activeUploadFileModal }" tabindex="-1" role="dialog">
+      <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Upload a txt file with metadata for new documents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"
+              @click="toggleUploadFileModal">
+            </button>
+          </div>
+          <div class="modal-body">
+            <p>Upload a file with values separated by bars (|).</p>
+            <p>The file must have entries for the following fields (in this order): Title | Author | Doc Code | Compiled
+              URL | Source URL | Abstract</p>
+            <p>If the file has fewer or more columns than 6, the upload will result in an error.</p>
+            <p>Columns that are optional (Doc Code and Abstract), should be included, but left blank if no value is to be
+              included.</p>
+            <p>Lines starting with '#' will be omitted.</p>
+            <p>Do not use bars in the input values.</p>
+            <p>File example:</p>
+            <div class="mb-4 text-nowrap" style="overflow-x: scroll; font-family: courier; font-size: 12px;">
+              <p class="mb-0"># Title | Author | Doc Code | Compiled URL | Source URL | Abstract</p>
+              <p class="mb-0">Extra Solar Camera: Design and User Guide | Ewan Douglas, Jared Males, Daewook Kim, and the
+                STP Space Coronagraph Working Groups ||
+                https://github.com/uasal/spacecoron_design_docs/raw/compiled/coronagraph_guide.pdf |
+                https://github.com/uasal/spacecoron_design_docs | ESC high-level design doc.</p>
+              <p class="mb-0">IOB Drawing Tree | Various ||
+                https://github.com/uasal/spacecoron_design_docs/blob/main/mgmt/Drawing_Tree.png |
+                https://github.com/uasal/spacecoron_design_docs/blob/main/mgmt/Drawing_Tree.drawio | Pearl Instrument
+                Drawing Tree</p>
+            </div>
+            <form>
+              <div class="mb-3">
+                <input type="file" class="form-control btn-primary" id="uploadFile" @change="addFile" accept=".txt"
+                  placeholder="Upload file">
+              </div>
+              <div class="btn-group" role="group">
+                <button type="button" class="btn btn-primary btn-sm" @click="handleFileUpload">
+                  Submit
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div v-if="activeUploadFileModal" class="modal-backdrop fade show"></div>
+
     <!-- edit document modal -->
     <div ref="editDocumentModal" class="modal fade"
       :class="{ show: activeEditDocumentModal, 'd-block': activeEditDocumentModal }" tabindex="-1" role="dialog">
@@ -234,6 +286,7 @@ export default {
     return {
       activeAddDocumentModal: false,
       activeEditDocumentModal: false,
+      activeUploadFileModal: false,
       addDocumentForm: {
         title: '',
         author: '',
@@ -260,6 +313,7 @@ export default {
       isAuthorized: false,
       // hideContent: false,
       superuser: false,
+      file: null,
     };
   },
   components: {
@@ -495,6 +549,15 @@ export default {
         body.classList.remove('modal-open');
       }
     },
+    toggleUploadFileModal() {
+      const body = document.querySelector('body');
+      this.activeUploadFileModal = !this.activeUploadFileModal;
+      if (this.activeUploadFileModal) {
+        body.classList.add('modal-open');
+      } else {
+        body.classList.remove('modal-open');
+      }
+    },
     updateDocument(payload, docID) {
       const path = `${API_URL}/documents/${docID}`;
 
@@ -527,6 +590,42 @@ export default {
       } else {
         return value;
       }
+    },
+    addFile(e) {
+      this.file = e.target.files[0];
+    },
+    handleFileUpload() {
+      this.toggleUploadFileModal(null);
+      const payload = {
+        file: this.file,
+      };
+      this.uploadFile(payload);
+    },
+    uploadFile(payload) {
+      const path = `${API_URL}/documents/upload_file`;
+
+      auth.currentUser.getIdToken(true).then(idToken => {
+        const config = {
+          headers: { Authorization: `${idToken}`, }
+        };
+
+        axios.postForm(path, payload, config)
+          .then((res) => {
+            this.getDocuments();
+            if (res.data.status == 'success') {
+              this.message = 'Documents added!';
+            } else {
+              this.message = 'Documents not added, error occured';
+            }
+            this.showMessage = true;
+          })
+          .catch((error) => {
+            console.error(error);
+            this.getDocuments();
+          });
+      }).catch(function (error) {
+        console.log(error)
+      });
     },
   },
   created() {
