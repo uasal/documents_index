@@ -25,7 +25,7 @@
           Add Document
         </button>
         <button type="button" class="btn btn-success btn-sm ms-4" @click="toggleUploadFileModal">
-          Upload file
+          Upload File
         </button>
         <div class="my-3" v-if="show_table">
           <input type="text" placeholder="Filter table by any column" v-model="filter" />
