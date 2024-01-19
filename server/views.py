@@ -130,7 +130,7 @@ class AllDocuments(MethodView):
         entity = getattr(request, "entity")
         email = getattr(request, "email")
         logger.info(f"AllDocuments: User {email} is viewing all documents.")
-        documents = db.session.scalars(db.select(Document))
+        documents = db.session.scalars(db.select(Document).order_by(Document.time_created.asc()))
 
         response_object = {
             "status": "success",
@@ -261,13 +261,14 @@ class SingleDocument(MethodView):
             Json response to put request. Contains 'status' and 'message'.
         """
         email = getattr(request, "email")
+        entity = getattr(request, "entity")
         response_object = {"status": "success"}
 
         post_data = request.get_json()
         document = Document.get_by_doc_identifier(doc_identifier)
         if document:
-            if document.creator_email != email:
-                response_object["status":"fail"]
+            if (document.creator_email != email) and (not entity.superuser):
+                response_object['status'] = 'fail'
                 response_object[
                     "message"
                 ] = "User not authorized to update this document"
@@ -279,7 +280,7 @@ class SingleDocument(MethodView):
             logger.info(f"SingleDocument: User {email} is updating document.")
             success = document.update(**post_data)
             if not success:
-                response_object["status":"fail"]
+                response_object['status'] = 'fail'
             response_object["message"] = "Document updated!"
         else:
             logger.info(
@@ -304,12 +305,13 @@ class SingleDocument(MethodView):
             Json response to delete request. Contains 'status' and 'message'.
         """
         email = getattr(request, "email")
+        entity = getattr(request, "entity")
         response_object = {"status": "success"}
 
         document = Document.get_by_doc_identifier(doc_identifier)
         if document:
-            if document.creator_email != email:
-                response_object["status":"fail"]
+            if (document.creator_email != email) and (not entity.superuser):
+                response_object['status'] = 'fail'
                 response_object[
                     "message"
                 ] = "User not authorized to delete this document"
@@ -321,7 +323,7 @@ class SingleDocument(MethodView):
             logger.info(f"SingleDocument: User {email} is deleting document.")
             success = document.delete_doc()
             if not success:
-                response_object["status":"fail"]
+                response_object['status'] = 'fail'
             response_object["message"] = "Document removed!"
         else:
             logger.info(
@@ -414,7 +416,7 @@ class SingleUser(MethodView):
             logger.info(f"SingleUser: User {email} is updating user {user_to_update}.")
             success = user_to_update.update(**post_data)
             if not success:
-                response_object["status":"fail"]
+                response_object['status'] = 'fail'
             response_object["message"] = "User updated!"
         else:
             logger.info(
@@ -447,7 +449,7 @@ class SingleUser(MethodView):
             logger.info(f"SingleUser: User {email} is deleting user {user.email}.")
             success = user.delete_user()
             if not success:
-                response_object["status":"fail"]
+                response_object['status'] = 'fail'
             response_object["message"] = "User removed!"
         else:
             logger.info(f"SingleUser: User {email} tried to delete inexistent user.")
@@ -536,7 +538,7 @@ class SingleDomain(MethodView):
             logger.info(f"SingleDomain: User {email} is updating domain {domain}.")
             success = domain.update(**post_data)
             if not success:
-                response_object["status":"fail"]
+                response_object['status'] = 'fail'
             response_object["message"] = "Domain updated!"
         else:
             logger.info(
@@ -568,7 +570,7 @@ class SingleDomain(MethodView):
             logger.info(f"SingleDomain: User {email} is deleting domain {domain}.")
             success = domain.delete_domain()
             if not success:
-                response_object["status":"fail"]
+                response_object['status'] = 'fail'
             response_object["message"] = "Domain removed!"
         else:
             logger.info(
