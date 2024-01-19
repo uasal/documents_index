@@ -106,7 +106,7 @@ class SingleDocument(MethodView):
         if document:
             success = document.update(**post_data)
             if not success:
-                response_object['status': 'fail']
+                response_object['status'] = 'fail'
             response_object['message'] = 'Document updated!'
         else:
             response_object['message'] = 'Document not found'
@@ -131,6 +131,6 @@ class SingleDocument(MethodView):
         logger.info('SingleDocument: User is deleting document.')
         success = Document.delete_by_doc_identifier(doc_identifier)
         if not success:
-            response_object['status': 'fail']        
+            response_object['status'] = 'fail'        
         response_object['message'] = 'Document removed!'
         return jsonify(response_object)
