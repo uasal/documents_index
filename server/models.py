@@ -56,10 +56,10 @@ class Document(db.Model, Serializer):
     title = db.Column("title", db.String(500), nullable=False)
     author = db.Column("author", db.String(500), nullable=False)
     doc_identifier = db.Column("doc_identifier", db.String(20), nullable=False)
-    doc_code = db.Column("doc_code", db.String(10))
+    doc_code = db.Column("doc_code", db.String(10), default="")
     compiled_url = db.Column("compiled_url", db.String(500))
     source_url = db.Column("source_url", db.String(500))
-    abstract = db.Column("abstract", db.Text)
+    abstract = db.Column("abstract", db.Text, default="")
     creator_email = db.Column("creator_email", db.String(100), nullable=False)
 
     def __repr__(self):
@@ -100,10 +100,13 @@ class Document(db.Model, Serializer):
 
     @staticmethod
     def _check_http(val):
+        val = val.strip()
         if val.startswith("http"):
             return val
-        else:
+        elif val:
             return f"https://{val}"
+        else:
+            return None
 
     def update(self, **kwargs):
         """
