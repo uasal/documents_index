@@ -34,9 +34,10 @@
               <th style="min-width: 10%;" scope="col">Author</th>
               <th style="min-width: 10%;" scope="col">Doc Identifier</th>
               <th style="min-width: 10%;" scope="col">Doc Code</th>
-              <th style="min-width: 15%;" scope="col">Compiled URL</th>
-              <th style="min-width: 15%;" scope="col">Source URL</th>
+              <th style="min-width: 10%;" scope="col">Compiled URL</th>
+              <th style="min-width: 10%;" scope="col">Source URL</th>
               <th style="min-width: 20%;" scope="col">Abstract</th>
+              <th style="min-width: 10%;" scope="col">Created By</th>
               <th></th>
             </tr>
           </thead>
@@ -65,13 +66,13 @@
               <td v-else>{{ doc.doc_code }}</td>
 
               <td>
-                <a :href="doc.compiled_url" target="_blank">document link</a>
+                <a v-if="doc.compiled_url" :href="doc.compiled_url" target="_blank">document link</a>
                 <!-- <a class="ms-3" :href=doc.compiled_url target="_blank" download><font-awesome-icon
                     icon="fa-solid fa-download" /></a> -->
               </td>
 
               <td>
-                <a :href="doc.source_url" target="_blank">source link</a>
+                <a v-if="doc.source_url" :href="doc.source_url" target="_blank">source link</a>
                 <!-- <a class="ms-3" :href=doc.source_url target="_blank" download><font-awesome-icon
                     icon="fa-solid fa-download" /></a> -->
               </td>
@@ -79,6 +80,11 @@
               <td data-toggle="tooltip" data-placement="bottom" :title="doc.abstract" style="cursor: default"
                 v-if="doc.abstract.length > 30">{{ truncate(doc.abstract, 30) }}</td>
               <td v-else>{{ doc.abstract }}</td>
+
+              <td data-toggle="tooltip" data-placement="bottom" :title="doc.creator_email" style="cursor: default"
+                v-if="doc.creator_email.length > 15">{{ truncate(doc.creator_email, 15) }}</td>
+              <td v-else>{{ doc.creator_email }}</td>
+
               <td v-if="(email == doc.creator_email) || superuser">
                 <div class="btn-group" role="group">
                   <button type="button" class="btn btn-warning btn-sm" @click="toggleEditDocumentModal(doc)">
