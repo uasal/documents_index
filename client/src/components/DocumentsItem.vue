@@ -20,6 +20,7 @@
                 <p><b>Document code: </b>{{ document.doc_code }}</p>
                 <p><b>Compiled URL: </b><a :href=document.compiled_url target="_blank">{{ document.compiled_url }}</a></p>
                 <p><b>Source URL: </b><a :href=document.source_url target="_blank">{{ document.source_url }}</a></p>
+                <p><b>Document entry created by: </b>{{ document.creator_email }}</p>                  
             </div>
         </div>
         <div class="row">
