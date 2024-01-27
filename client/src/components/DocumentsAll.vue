@@ -288,21 +288,23 @@ export default {
         return this.documents.filter(doc => {
           const searchTerm = this.filter.toLowerCase();
 
-          const title = doc.title.toString().toLowerCase();
-          const author = doc.author.toString().toLowerCase();
-          const doc_identifier = doc.doc_identifier.toString().toLowerCase();
-          const doc_code = doc.doc_code.toString().toLowerCase();
-          const compiled_url = doc.compiled_url.toString().toLowerCase();
-          const source_url = doc.source_url.toString().toLowerCase();
-          const abstract = doc.abstract.toString().toLowerCase();
+          const title = doc.title ? doc.title.toString().toLowerCase() : doc.title;
+          const author = doc.author ? doc.author.toString().toLowerCase() : doc.author;
+          const doc_identifier = doc.doc_identifier ? doc.doc_identifier.toString().toLowerCase() : doc.doc_identifier;
+          const doc_code = doc.doc_code ? doc.doc_code.toString().toLowerCase() : doc.doc_code;
+          const compiled_url = doc.compiled_url ? doc.compiled_url.toString().toLowerCase() : doc.compiled_url;
+          const source_url = doc.source_url ? doc.source_url.toString().toLowerCase() : doc.source_url;
+          const abstract = doc.abstract ? doc.abstract.toString().toLowerCase() : doc.abstract;
+          const creator_email = doc.creator_email ? doc.creator_email.toString().toLowerCase() : doc.creator_email;
 
-          return title.includes(searchTerm) ||
-            author.includes(searchTerm) ||
-            doc_identifier.includes(searchTerm) ||
-            doc_code.includes(searchTerm) ||
-            compiled_url.includes(searchTerm) ||
-            source_url.includes(searchTerm) ||
-            abstract.includes(searchTerm);
+          return (title && title.includes(searchTerm)) ||
+            (author && author.includes(searchTerm)) ||
+            (doc_identifier && doc_identifier.includes(searchTerm)) ||
+            (doc_code && doc_code.includes(searchTerm)) ||
+            (compiled_url && compiled_url.includes(searchTerm)) ||
+            (source_url && source_url.includes(searchTerm)) ||
+            (abstract && abstract.includes(searchTerm)) ||
+            (creator_email && creator_email.includes(searchTerm));
         });
       }
     },
