@@ -18,19 +18,19 @@
         <table class="table table-hover" v-if="show_domain_table">
           <thead>
             <tr>
-              <th style="min-width: 10%;" scope="col">Email Domain</th>
+              <th style="min-width: 10%;" scope="dom">Email Domain</th>
               <th></th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="(col, index) in filteredDomains" :key="index">
-              <td>{{ col.email_domain }}</td>
+            <tr v-for="(dom, index) in filteredDomains" :key="index">
+              <td>{{ dom.email_domain }}</td>
               <td>
                 <div class="btn-group" role="group">
-                  <button type="button" class="btn btn-warning btn-sm" @click="toggleEditDomainModal(col)">
+                  <button type="button" class="btn btn-warning btn-sm" @click="toggleEditDomainModal(dom)">
                     Update
                   </button>
-                  <button type="button" class="btn btn-danger btn-sm" @click="handleDeleteDomain(col)">
+                  <button type="button" class="btn btn-danger btn-sm" @click="handleDeleteDomain(dom)">
                     Delete
                   </button>
                 </div>
@@ -577,8 +577,8 @@ export default {
       this.addDomain(payload);
       this.initDomainForm();
     },
-    handleDeleteDomain(collaborator) {
-      this.removeDomain(collaborator.pk);
+    handleDeleteDomain(domain) {
+      this.removeDomain(domain.pk);
     },
     handleEditDomainCancel() {
       this.toggleEditDomainModal(null);
@@ -598,8 +598,8 @@ export default {
       this.editDomainForm.pk = '';
       this.editDomainForm.email_domain = '';
     },
-    removeDomain(cpk) {
-      const path = `${API_URL}/users/${cpk}`;
+    removeDomain(dpk) {
+      const path = `${API_URL}/domains/${dpk}`;
 
       auth.currentUser.getIdToken(true).then(idToken => {
         const config = {
