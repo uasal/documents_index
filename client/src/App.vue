@@ -16,7 +16,7 @@ import { ref, computed } from 'vue'; // used for conditional rendering
 import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import { auth } from './firebaseConfig';
 
-const getLogin = ref(false);
+const getLogin = ref(true);
 const isLoggedIn = ref(false);
 
 // runs after firebase is initialized
