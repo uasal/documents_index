@@ -388,8 +388,8 @@ import { auth } from '../firebaseConfig';
 import AlertMessage from './AlertMessage.vue';
 import ExcelJS from 'exceljs';
 
-const API_URL = '/api';
-// const API_URL = 'http://localhost:5001/api';
+// const API_URL = '/api';
+const API_URL = 'http://localhost:5001/api';
 
 export default {
   name: 'DocumentsAll',
