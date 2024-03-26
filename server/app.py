@@ -2,10 +2,10 @@ from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 
-import ssl
+# import ssl
 import logging
 
-from database import DB_URI, CERT_PATH
+# from database import DB_URI, CERT_PATH
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("logger")
@@ -20,16 +20,16 @@ def create_app():
     app.config.from_object(__name__)
 
     logger.info("Instantiating db with Flask app.")
-    # app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///docs.db"
+    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///docs.db"
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-    app.config["SQLALCHEMY_DATABASE_URI"] = DB_URI
+    # app.config["SQLALCHEMY_DATABASE_URI"] = DB_URI
 
-    ssl_context = ssl.create_default_context()
-    ssl_context.verify_mode = ssl.CERT_REQUIRED
-    ssl_context.load_verify_locations(CERT_PATH)
-    app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
-        "connect_args": {"ssl_context": ssl_context}
-    }
+    # ssl_context = ssl.create_default_context()
+    # ssl_context.verify_mode = ssl.CERT_REQUIRED
+    # ssl_context.load_verify_locations(CERT_PATH)
+    # app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
+    #     "connect_args": {"ssl_context": ssl_context}
+    # }
 
     db.init_app(app)  # init of db is deferred
 
