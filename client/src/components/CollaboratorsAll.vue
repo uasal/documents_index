@@ -226,8 +226,8 @@ import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import { auth } from '../firebaseConfig';
 import AlertMessage from './AlertMessage.vue';
 
-const API_URL = '/api';
-// const API_URL = 'http://localhost:5001/api';
+// const API_URL = '/api';
+const API_URL = 'http://localhost:5001/api';
 
 export default {
   name: 'CollaboratorsAll',

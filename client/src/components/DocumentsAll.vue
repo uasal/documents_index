@@ -624,8 +624,8 @@ import AlertMessage from './AlertMessage.vue';
 import DrawingCodeBuilder from './DrawingCodeBuilder.vue';
 import { loadNumberSchemes } from '../numberSchemes';
 
-const API_URL = '/api';
-// const API_URL = 'http://localhost:5001/api';
+// const API_URL = '/api';
+const API_URL = 'http://localhost:5001/api';
 
 export default {
   name: 'DocumentsAll',

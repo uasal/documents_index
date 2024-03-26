@@ -1,8 +1,8 @@
 import axios from 'axios';
 import { auth } from './firebaseConfig';
 
-const API_URL = '/api';
-// const API_URL = 'http://localhost:5001/api';
+// const API_URL = '/api';
+const API_URL = 'http://localhost:5001/api';
 
 // Both numbering schemes are owned by the server: it generates the values and
 // validates the stubs we send it, so the client just renders whatever it
