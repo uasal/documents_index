@@ -49,27 +49,27 @@
                         <form>
                             <div class="mb-3">
                                 <label for="editDocumentTitle" class="form-label">Title:</label>
-                                <input type="text" class="form-control" maxlength="100" id="editDocumentTitle"
+                                <input type="text" class="form-control" maxlength="500" id="editDocumentTitle"
                                     v-model="editDocumentForm.title" placeholder="Enter title">
                             </div>
                             <div class="mb-3">
                                 <label for="editDocumentAuthor" class="form-label">Author:</label>
-                                <input type="text" class="form-control" maxlength="100" id="editDocumentAuthor"
+                                <input type="text" class="form-control" maxlength="500" id="editDocumentAuthor"
                                     v-model="editDocumentForm.author" placeholder="Enter author">
                             </div>
                             <div class="mb-3">
                                 <label for="editDocumentDocCode" class="form-label">Doc Code (optional):</label>
-                                <input type="text" class="form-control" maxlength="20" id="editDocCode"
+                                <input type="text" class="form-control" maxlength="10" id="editDocCode"
                                     v-model="editDocumentForm.doc_code" placeholder="Enter document code">
                             </div>
                             <div class="mb-3">
                                 <label for="editDocumentCompiledUrl" class="form-label">Compiled URL:</label>
-                                <input type="text" class="form-control" maxlength="100" id="editCompiledUrl"
+                                <input type="text" class="form-control" maxlength="500" id="editCompiledUrl"
                                     v-model="editDocumentForm.compiled_url" placeholder="Enter compiled URL">
                             </div>
                             <div class="mb-3">
                                 <label for="editDocumentSourceUrl" class="form-label">Source URL:</label>
-                                <input type="text" class="form-control" maxlength="100" id="editSourceUrl"
+                                <input type="text" class="form-control" maxlength="500" id="editSourceUrl"
                                     v-model="editDocumentForm.source_url" placeholder="Enter source URL">
                             </div>
                             <div class="mb-3">
