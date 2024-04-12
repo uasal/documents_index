@@ -107,6 +107,10 @@
           <p v-else>Sorry, no documents found containing <b>{{ filter }}</b>. Try a different filter.</p>
         </div>
       </div>
+      <div class="col-12" v-else>
+        <h1>Sorry, you are not authorized to view this page.</h1>
+        <p>If you think you should have access, please contact your project PI to request access.</p>
+      </div>    
       <!-- <div v-if="hideContent">Sorry, this page is not available or you are not authorized to view it.</div> -->
     </div>
 
