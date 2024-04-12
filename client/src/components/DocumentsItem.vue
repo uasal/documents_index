@@ -59,7 +59,7 @@
                             </div>
                             <div class="mb-3">
                                 <label for="editDocumentDocCode" class="form-label">Doc Code (optional):</label>
-                                <input type="text" class="form-control" maxlength="10" id="editDocCode"
+                                <input type="text" class="form-control" maxlength="30" id="editDocCode"
                                     v-model="editDocumentForm.doc_code" placeholder="Enter document code">
                             </div>
                             <div class="mb-3">
