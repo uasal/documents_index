@@ -33,7 +33,7 @@
             </div>
         </div>
         <div class="col-12" v-else>
-            <h1>Sorry, you are not authorized to view this page.</h1>
+            <h3>Sorry, you are not authorized to view this page.</h3>
             <p>If you think you should have access, please contact your project PI to request access.</p>
         </div>     
         
