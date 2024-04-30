@@ -106,7 +106,7 @@ class Document(db.Model, Serializer):
         elif val:
             return f"https://{val}"
         else:
-            return None
+            return ""
 
     def update(self, **kwargs):
         """
