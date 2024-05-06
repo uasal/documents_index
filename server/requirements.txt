@@ -2,4 +2,4 @@ Flask==2.2.3
 Flask-Cors==3.0.10
 flask-sqlalchemy==3.0.2
 sqlalchemy==2.0.21
-werkzeug==2.2.3 # This should be handled by the Flask depndencies, but 3.0.0 has just been released, it gets installed and result in error
+werkzeug==3.0.3 # This should be handled by the Flask depndencies, but 3.0.0 has just been released, it gets installed and result in error
