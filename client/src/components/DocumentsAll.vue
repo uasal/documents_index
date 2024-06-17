@@ -34,36 +34,36 @@
           <thead>
             <tr>
               <th @click='sortColumn("title")' style="min-width: 10%;" scope="col">Title
-                <font-awesome-icon icon="fa-solid fa-sort-up" style="vertical-align: initial" v-if="this.sortBy=='title' && this.sortOrder==1"/>
-                <font-awesome-icon icon="fa-solid fa-sort-down" style="vertical-align: initial" v-if="this.sortBy=='title' && this.sortOrder==-1"/>
+                <font-awesome-icon icon="fa-solid fa-sort-up" style="vertical-align: bottom" v-if="this.sortBy=='title' && this.sortOrder==1"/>
+                <font-awesome-icon icon="fa-solid fa-sort-down" style="vertical-align: top" v-if="this.sortBy=='title' && this.sortOrder==-1"/>
               </th>
               <th @click='sortColumn("author")' style="min-width: 10%;" scope="col">Author
-                <font-awesome-icon icon="fa-solid fa-sort-up" style="vertical-align: initial" v-if="this.sortBy=='author' && this.sortOrder==1"/>
-                <font-awesome-icon icon="fa-solid fa-sort-down" style="vertical-align: initial" v-if="this.sortBy=='author' && this.sortOrder==-1"/>
+                <font-awesome-icon icon="fa-solid fa-sort-up" style="vertical-align: bottom" v-if="this.sortBy=='author' && this.sortOrder==1"/>
+                <font-awesome-icon icon="fa-solid fa-sort-down" style="vertical-align: top" v-if="this.sortBy=='author' && this.sortOrder==-1"/>
               </th>
               <th @click='sortColumn("doc_identifier")' style="min-width: 10%;" scope="col">Doc Identifier
-                <font-awesome-icon icon="fa-solid fa-sort-up" style="vertical-align: initial" v-if="this.sortBy=='doc_identifier' && this.sortOrder==1"/>
-                <font-awesome-icon icon="fa-solid fa-sort-down" style="vertical-align: initial" v-if="this.sortBy=='doc_identifier' && this.sortOrder==-1"/>                
+                <font-awesome-icon icon="fa-solid fa-sort-up" style="vertical-align: bottom" v-if="this.sortBy=='doc_identifier' && this.sortOrder==1"/>
+                <font-awesome-icon icon="fa-solid fa-sort-down" style="vertical-align: top" v-if="this.sortBy=='doc_identifier' && this.sortOrder==-1"/>                
               </th>
               <th @click='sortColumn("doc_code")' style="min-width: 10%;" scope="col">Doc Code
-                <font-awesome-icon icon="fa-solid fa-sort-up" style="vertical-align: initial" v-if="this.sortBy=='doc_code' && this.sortOrder==1"/>
-                <font-awesome-icon icon="fa-solid fa-sort-down" style="vertical-align: initial" v-if="this.sortBy=='doc_code' && this.sortOrder==-1"/>                
+                <font-awesome-icon icon="fa-solid fa-sort-up" style="vertical-align: bottom" v-if="this.sortBy=='doc_code' && this.sortOrder==1"/>
+                <font-awesome-icon icon="fa-solid fa-sort-down" style="vertical-align: top" v-if="this.sortBy=='doc_code' && this.sortOrder==-1"/>                
               </th>
               <th @click='sortColumn("compiled_url")' style="min-width: 10%;" scope="col">Compiled URL
-                <font-awesome-icon icon="fa-solid fa-sort-up" style="vertical-align: initial" v-if="this.sortBy=='compiled_url' && this.sortOrder==1"/>
-                <font-awesome-icon icon="fa-solid fa-sort-down" style="vertical-align: initial" v-if="this.sortBy=='compiled_url' && this.sortOrder==-1"/>
+                <font-awesome-icon icon="fa-solid fa-sort-up" style="vertical-align: bottom" v-if="this.sortBy=='compiled_url' && this.sortOrder==1"/>
+                <font-awesome-icon icon="fa-solid fa-sort-down" style="vertical-align: top" v-if="this.sortBy=='compiled_url' && this.sortOrder==-1"/>
               </th>
               <th @click='sortColumn("source_url")' style="min-width: 10%;" scope="col">Source URL
-                <font-awesome-icon icon="fa-solid fa-sort-up" style="vertical-align: initial" v-if="this.sortBy=='source_url' && this.sortOrder==1"/>
-                <font-awesome-icon icon="fa-solid fa-sort-down" style="vertical-align: initial" v-if="this.sortBy=='source_url' && this.sortOrder==-1"/>                
+                <font-awesome-icon icon="fa-solid fa-sort-up" style="vertical-align: bottom" v-if="this.sortBy=='source_url' && this.sortOrder==1"/>
+                <font-awesome-icon icon="fa-solid fa-sort-down" style="vertical-align: top" v-if="this.sortBy=='source_url' && this.sortOrder==-1"/>                
               </th>
               <th @click='sortColumn("abstract")' style="min-width: 20%;" scope="col">Abstract
-                <font-awesome-icon icon="fa-solid fa-sort-up" style="vertical-align: initial" v-if="this.sortBy=='abstract' && this.sortOrder==1"/>
-                <font-awesome-icon icon="fa-solid fa-sort-down" style="vertical-align: initial" v-if="this.sortBy=='abstract' && this.sortOrder==-1"/>                
+                <font-awesome-icon icon="fa-solid fa-sort-up" style="vertical-align: bottom" v-if="this.sortBy=='abstract' && this.sortOrder==1"/>
+                <font-awesome-icon icon="fa-solid fa-sort-down" style="vertical-align: top" v-if="this.sortBy=='abstract' && this.sortOrder==-1"/>                
               </th>
               <th @click='sortColumn("creator_email")' style="min-width: 10%;" scope="col">Created By
-                <font-awesome-icon icon="fa-solid fa-sort-up" style="vertical-align: initial" v-if="this.sortBy=='creator_email' && this.sortOrder==1"/>
-                <font-awesome-icon icon="fa-solid fa-sort-down" style="vertical-align: initial" v-if="this.sortBy=='creator_email' && this.sortOrder==-1"/>                
+                <font-awesome-icon icon="fa-solid fa-sort-up" style="vertical-align: bottom" v-if="this.sortBy=='creator_email' && this.sortOrder==1"/>
+                <font-awesome-icon icon="fa-solid fa-sort-down" style="vertical-align: top" v-if="this.sortBy=='creator_email' && this.sortOrder==-1"/>                
               </th>
               <th></th>
             </tr>
@@ -176,6 +176,11 @@
                 <input type="text" class="form-control" id="addSourceUrl" v-model="addDocumentForm.source_url"
                   placeholder="Enter source URL">
               </div>
+              <div class="mb-3" v-if="superuser">
+                <label for="addDocumentCreatedBy" class="form-label">Created By (superuser field):</label>
+                <input type="text" class="form-control" id="addCreatedBy" v-model="addDocumentForm.creator_email"
+                  placeholder="Enter Creator Email">
+              </div>              
               <div class="mb-3">
                 <label for="addDocumentAbstract" class="form-label">Abstract:</label>
                 <textarea class="form-control" id="addAbstract" rows="3" v-model="addDocumentForm.abstract"
@@ -283,6 +288,11 @@
                 <input type="text" class="form-control" maxlength="500" id="editSourceUrl"
                   v-model="editDocumentForm.source_url" placeholder="Enter source URL">
               </div>
+              <div class="mb-3" v-if="superuser">
+                <label for="editDocumentCreatedBy" class="form-label">Created By (superuser field):</label>
+                <input type="text" class="form-control" id="editCreatedBy" v-model="editDocumentForm.creator_email"
+                  placeholder="Enter Creator Email">
+              </div>                   
               <div class="mb-3">
                 <label for="editDocumentAbstract" class="form-label">Abstract:</label>
                 <textarea class="form-control" id="editAbstract" rows="3" v-model="editDocumentForm.abstract"
@@ -327,6 +337,7 @@ export default {
         doc_code: '',
         compiled_url: '',
         source_url: '',
+        creator_email: this.email,
         abstract: '',
       },
       filter: '',
@@ -340,6 +351,7 @@ export default {
         doc_code: '',
         compiled_url: '',
         source_url: '',
+        creator_email: '',
         abstract: '',
       },
       message: '',
@@ -499,8 +511,8 @@ export default {
         doc_code: this.addDocumentForm.doc_code,
         compiled_url: this.addDocumentForm.compiled_url,
         source_url: this.addDocumentForm.source_url,
+        creator_email: this.addDocumentForm.creator_email || this.email,        
         abstract: this.addDocumentForm.abstract,
-        creator_email: this.email,
       };
       this.addDocument(payload);
       this.initForm();
@@ -511,7 +523,7 @@ export default {
     handleEditCancel() {
       this.toggleEditDocumentModal(null);
       this.initForm();
-      this.getDocuments(); // why?
+      this.getDocuments(); // initForm sets values of doc open in modal to empty, so repopulate them
     },
     handleEditSubmit() {
       this.toggleEditDocumentModal(null);
@@ -521,6 +533,7 @@ export default {
         doc_code: this.editDocumentForm.doc_code,
         compiled_url: this.editDocumentForm.compiled_url,
         source_url: this.editDocumentForm.source_url,
+        creator_email: this.editDocumentForm.creator_email || this.email,            
         abstract: this.editDocumentForm.abstract,
       };
       this.updateDocument(payload, this.editDocumentForm.doc_identifier);
@@ -531,6 +544,7 @@ export default {
       this.addDocumentForm.doc_code = '';
       this.addDocumentForm.compiled_url = '';
       this.addDocumentForm.source_url = '';
+      this.addDocumentForm.creator_email = this.email;
       this.addDocumentForm.abstract = '';
       this.editDocumentForm.pk = '';
       this.editDocumentForm.title = '';
@@ -539,6 +553,7 @@ export default {
       this.editDocumentForm.doc_code = '';
       this.editDocumentForm.compiled_url = '';
       this.editDocumentForm.source_url = '';
+      this.editDocumentForm.creator_email = '';      
       this.editDocumentForm.abstract = '';
     },
     removeDocument(docID) {
@@ -571,6 +586,7 @@ export default {
       const body = document.querySelector('body');
       this.activeAddDocumentModal = !this.activeAddDocumentModal;
       if (this.activeAddDocumentModal) {
+        this.initForm();
         body.classList.add('modal-open');
       } else {
         body.classList.remove('modal-open');

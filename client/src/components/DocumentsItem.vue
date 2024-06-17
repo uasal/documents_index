@@ -77,6 +77,11 @@
                                 <input type="text" class="form-control" maxlength="500" id="editSourceUrl"
                                     v-model="editDocumentForm.source_url" placeholder="Enter source URL">
                             </div>
+                            <div class="mb-3" v-if="superuser">
+                                <label for="editDocumentCreatedBy" class="form-label">Created By (superuser field):</label>
+                                <input type="text" class="form-control" id="editCreatedBy" v-model="editDocumentForm.creator_email"
+                                placeholder="Enter Creator Email">
+                            </div>                              
                             <div class="mb-3">
                                 <label for="editDocumentAbstract" class="form-label">Abstract:</label>
                                 <textarea class="form-control" id="editAbstract" rows="3"
@@ -106,8 +111,8 @@ import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import { auth } from '../firebaseConfig';
 import AlertMessage from './AlertMessage.vue';
 
-const API_URL = '/api';
-// const API_URL = 'http://localhost:5001/api';
+// const API_URL = '/api';
+const API_URL = 'http://localhost:5001/api';
 
 export default {
     name: 'DocumentsItem',
@@ -123,6 +128,7 @@ export default {
                 doc_code: '',
                 compiled_url: '',
                 source_url: '',
+                creator_email: '',                
                 abstract: '',
             },
             message: '',
@@ -209,7 +215,7 @@ export default {
         handleEditCancel() {
             this.toggleEditDocumentModal(null);
             this.initForm();
-            this.getDocument(); // why?
+            this.getDocument(); // initForm sets values of doc to empty, so repopulate them
         },
         handleEditSubmit() {
             this.toggleEditDocumentModal(null);
@@ -219,6 +225,7 @@ export default {
                 doc_code: this.editDocumentForm.doc_code,
                 compiled_url: this.editDocumentForm.compiled_url,
                 source_url: this.editDocumentForm.source_url,
+                creator_email: this.editDocumentForm.creator_email || this.email,                  
                 abstract: this.editDocumentForm.abstract,
             };
             this.updateDocument(payload, this.editDocumentForm.doc_identifier);
@@ -231,16 +238,8 @@ export default {
             this.editDocumentForm.doc_code = '';
             this.editDocumentForm.compiled_url = '';
             this.editDocumentForm.source_url = '';
+            this.editDocumentForm.creator_email = '';            
             this.editDocumentForm.abstract = '';
-        },
-        toggleAddDocumentModal() {
-            const body = document.querySelector('body');
-            this.activeAddDocumentModal = !this.activeAddDocumentModal;
-            if (this.activeAddDocumentModal) {
-                body.classList.add('modal-open');
-            } else {
-                body.classList.remove('modal-open');
-            }
         },
         toggleEditDocumentModal(doc) {
             if (doc) {

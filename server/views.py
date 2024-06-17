@@ -103,11 +103,16 @@ class AllDocuments(MethodView):
         json
             Json response to post request. Contains 'status' and 'message'.
         """
+        entity = getattr(request, "entity")
         email = getattr(request, "email")
         response_object = {"status": "success"}
         logger.info(f"AllDocuments: User {email} is adding new document.")
         post_data = request.get_json()
-        post_data["creator_email"] = email
+        
+        # If user is superuser, accept input value for creator_email
+        if not is_superuser(entity):
+            post_data["creator_email"] = email
+        
         # TODO need to check if this isn't a duplicate
         # TODO should validate fields
         success = Document.create(**post_data)
@@ -264,7 +269,7 @@ class SingleDocument(MethodView):
         entity = getattr(request, "entity")
         response_object = {"status": "success"}
 
-        post_data = request.get_json()
+        post_data = request.get_json()        
         document = Document.get_by_doc_identifier(doc_identifier)
         if document:
             if (document.creator_email != email) and (not entity.superuser):
@@ -278,6 +283,11 @@ class SingleDocument(MethodView):
                 return jsonify(response_object)
 
             logger.info(f"SingleDocument: User {email} is updating document.")
+
+            # If user is superuser, accept input value for creator_email
+            if not is_superuser(entity):
+                post_data.pop("creator_email", None)
+            
             success = document.update(**post_data)
             if not success:
                 response_object['status'] = 'fail'
