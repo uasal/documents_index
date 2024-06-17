@@ -12,9 +12,11 @@ import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 /* import specific icons */
 import { faCircleArrowLeft } from '@fortawesome/free-solid-svg-icons'
 import { faDownload } from '@fortawesome/free-solid-svg-icons'
+import { faSortUp } from '@fortawesome/free-solid-svg-icons'
+import { faSortDown } from '@fortawesome/free-solid-svg-icons'
 
 /* add icons to the library */
-library.add(faCircleArrowLeft, faDownload)
+library.add(faCircleArrowLeft, faDownload, faSortUp, faSortDown)
 
 const app = createApp(App)
 

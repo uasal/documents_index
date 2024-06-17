@@ -6,4 +6,5 @@ node_modules/
 **/__pycache__
 /server/service-account-file.json
 /server/rds-ca-2019-root.pem
+/server/rds-ca-2019-root-old.pem
 postgres-secrets.json

@@ -33,14 +33,38 @@
         <table class="table table-hover" v-if="show_table">
           <thead>
             <tr>
-              <th style="min-width: 10%;" scope="col">Title</th>
-              <th style="min-width: 10%;" scope="col">Author</th>
-              <th style="min-width: 10%;" scope="col">Doc Identifier</th>
-              <th style="min-width: 10%;" scope="col">Doc Code</th>
-              <th style="min-width: 10%;" scope="col">Compiled URL</th>
-              <th style="min-width: 10%;" scope="col">Source URL</th>
-              <th style="min-width: 20%;" scope="col">Abstract</th>
-              <th style="min-width: 10%;" scope="col">Created By</th>
+              <th @click='sortColumn("title")' style="min-width: 10%;" scope="col">Title
+                <font-awesome-icon icon="fa-solid fa-sort-up" style="vertical-align: initial" v-if="this.sortBy=='title' && this.sortOrder==1"/>
+                <font-awesome-icon icon="fa-solid fa-sort-down" style="vertical-align: initial" v-if="this.sortBy=='title' && this.sortOrder==-1"/>
+              </th>
+              <th @click='sortColumn("author")' style="min-width: 10%;" scope="col">Author
+                <font-awesome-icon icon="fa-solid fa-sort-up" style="vertical-align: initial" v-if="this.sortBy=='author' && this.sortOrder==1"/>
+                <font-awesome-icon icon="fa-solid fa-sort-down" style="vertical-align: initial" v-if="this.sortBy=='author' && this.sortOrder==-1"/>
+              </th>
+              <th @click='sortColumn("doc_identifier")' style="min-width: 10%;" scope="col">Doc Identifier
+                <font-awesome-icon icon="fa-solid fa-sort-up" style="vertical-align: initial" v-if="this.sortBy=='doc_identifier' && this.sortOrder==1"/>
+                <font-awesome-icon icon="fa-solid fa-sort-down" style="vertical-align: initial" v-if="this.sortBy=='doc_identifier' && this.sortOrder==-1"/>                
+              </th>
+              <th @click='sortColumn("doc_code")' style="min-width: 10%;" scope="col">Doc Code
+                <font-awesome-icon icon="fa-solid fa-sort-up" style="vertical-align: initial" v-if="this.sortBy=='doc_code' && this.sortOrder==1"/>
+                <font-awesome-icon icon="fa-solid fa-sort-down" style="vertical-align: initial" v-if="this.sortBy=='doc_code' && this.sortOrder==-1"/>                
+              </th>
+              <th @click='sortColumn("compiled_url")' style="min-width: 10%;" scope="col">Compiled URL
+                <font-awesome-icon icon="fa-solid fa-sort-up" style="vertical-align: initial" v-if="this.sortBy=='compiled_url' && this.sortOrder==1"/>
+                <font-awesome-icon icon="fa-solid fa-sort-down" style="vertical-align: initial" v-if="this.sortBy=='compiled_url' && this.sortOrder==-1"/>
+              </th>
+              <th @click='sortColumn("source_url")' style="min-width: 10%;" scope="col">Source URL
+                <font-awesome-icon icon="fa-solid fa-sort-up" style="vertical-align: initial" v-if="this.sortBy=='source_url' && this.sortOrder==1"/>
+                <font-awesome-icon icon="fa-solid fa-sort-down" style="vertical-align: initial" v-if="this.sortBy=='source_url' && this.sortOrder==-1"/>                
+              </th>
+              <th @click='sortColumn("abstract")' style="min-width: 20%;" scope="col">Abstract
+                <font-awesome-icon icon="fa-solid fa-sort-up" style="vertical-align: initial" v-if="this.sortBy=='abstract' && this.sortOrder==1"/>
+                <font-awesome-icon icon="fa-solid fa-sort-down" style="vertical-align: initial" v-if="this.sortBy=='abstract' && this.sortOrder==-1"/>                
+              </th>
+              <th @click='sortColumn("creator_email")' style="min-width: 10%;" scope="col">Created By
+                <font-awesome-icon icon="fa-solid fa-sort-up" style="vertical-align: initial" v-if="this.sortBy=='creator_email' && this.sortOrder==1"/>
+                <font-awesome-icon icon="fa-solid fa-sort-down" style="vertical-align: initial" v-if="this.sortBy=='creator_email' && this.sortOrder==-1"/>                
+              </th>
               <th></th>
             </tr>
           </thead>
@@ -324,6 +348,8 @@ export default {
       // hideContent: false,
       superuser: false,
       file: null,
+      sortBy: "doc_identifier",
+      sortOrder: -1,      
     };
   },
   components: {
@@ -445,6 +471,7 @@ export default {
         axios.get(path, config)
           .then((res) => {
             this.documents = res.data.documents;
+            this.documents = this.sortDocuments();            
             this.superuser = res.data.superuser;
             this.isAuthorized = true;
           })
@@ -638,6 +665,24 @@ export default {
       }).catch(function (error) {
         console.log(error)
       });
+    },
+    sortColumn(sortBy){
+    	if(this.sortBy === sortBy) {
+      	this.sortOrder = -this.sortOrder;
+      } else {
+      	this.sortBy = sortBy;
+        this.sortOrder = 1;
+      };
+
+      this.documents = this.sortDocuments();
+    }, 
+    sortDocuments() {
+      return this.documents.sort((a,b) => {
+          if (a[this.sortBy] >= b[this.sortBy]) {
+          return this.sortOrder
+        }
+          return -this.sortOrder
+        });
     },
   },
   created() {
