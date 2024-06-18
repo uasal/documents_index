@@ -57,8 +57,8 @@ class Document(db.Model, Serializer):
     author = db.Column("author", db.String(500), nullable=False)
     doc_identifier = db.Column("doc_identifier", db.String(20), nullable=False)
     doc_code = db.Column("doc_code", db.String(30), default="")
-    compiled_url = db.Column("compiled_url", db.String(500))
-    source_url = db.Column("source_url", db.String(500))
+    compiled_url = db.Column("compiled_url", db.String(500), default="")
+    source_url = db.Column("source_url", db.String(500), default="")
     abstract = db.Column("abstract", db.Text, default="")
     creator_email = db.Column("creator_email", db.String(100), nullable=False)
 
