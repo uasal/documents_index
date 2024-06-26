@@ -54,6 +54,7 @@ def create_app():
         UploadFile,
         SingleDocument,
         AllUsers,
+        AllAdmins,
         SingleUser,
         AllDomains,
         SingleDomain,
@@ -71,6 +72,7 @@ def create_app():
     )
     app.add_url_rule("/api/users", view_func=AllUsers.as_view("user_list"))
     app.add_url_rule("/api/users/<pk>", view_func=SingleUser.as_view("single_user"))
+    app.add_url_rule("/api/admins", view_func=AllAdmins.as_view("admin_list"))
     app.add_url_rule("/api/domains", view_func=AllDomains.as_view("domain_list"))
     app.add_url_rule(
         "/api/domains/<pk>", view_func=SingleDomain.as_view("single_domain")

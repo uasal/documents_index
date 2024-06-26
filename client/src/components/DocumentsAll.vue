@@ -18,6 +18,13 @@
           <p>Add a new document using the button below. You can edit or delete documents you have added.</p>
           <p>To see all details related to a document click on its Title or its Doc Identifier,
             or, for a given Doc Identifier, add "/docs/&lt;doc_identifier&gt;" to the current URL.</p>
+          <p>If you encounter a problem, please contact one of teledoc's admins at:
+            <span v-for="(admin, index) in admins" :key="index">
+              <a :href="`mailto:${admin}`">{{ admin }}</a>{{ index !== admins.length - 1 ? ', ' : '.' }}
+            </span>
+          </p>
+          <p>If you notice and error in one of the entries, please click the warning button on the associated 
+            row to email and inform the entry's creator, as well as the admins.</p>
         </div>
         <br>
         <alert :message=message v-if="showMessage"></alert>
@@ -165,6 +172,10 @@
                 </div>
               </td>
               <td v-else>
+                <button type="button" class="btn text-warning" data-toggle="tooltip" 
+                data-placement="top" title="Notify maintainer that entry needs to be updated" @click="sendEmail(doc)">
+                  <font-awesome-icon icon="fa-solid fa-circle-exclamation" />
+                </button>
               </td>
             </tr>
           </tbody>
@@ -397,6 +408,7 @@ export default {
       },
       filter: '',
       documents: [],
+      admins: [],
       show_table: false,
       editDocumentForm: {
         pk: '',
@@ -561,6 +573,24 @@ export default {
         this.superuser = false;
         this.isAuthorized = false;
         // this.hideContent = true;
+      });
+    },
+    getAdmins() {
+      const path = `${API_URL}/admins`;
+      auth.currentUser.getIdToken(true).then(idToken => {
+        const config = {
+          headers: { Authorization: `${idToken}` }
+        };
+
+        axios.get(path, config)
+          .then((res) => {
+            this.admins = res.data.admins;
+          })
+          .catch((error) => {
+            console.error(error);
+          });
+      }).catch(function (error) {
+        console.log(error)
       });
     },
     handleAddReset() {
@@ -768,10 +798,35 @@ export default {
       Object.keys(this.columnFilters).forEach(key => {
         this.columnFilters[key] = '';
       });
-    },   
+    },
+    sendEmail(doc) {
+      // alert(`Sending email to ${doc.creator_email}`);
+      const emailSubject = encodeURIComponent(`Teledocs Alert: Document '${doc.title}' is out of date`);
+      const emailBody = encodeURIComponent(`Hi,\n\n
+This is to inform you that the document '${doc.title}' was reported as being out of date. The data currently associated with it is:\n
+Title: ${doc.title}\n
+Author: ${doc.author}\n
+Compiled URL: ${doc.compiled_url}\n
+Source URL: ${doc.source_url}\n
+Abstract: ${doc.abstract}\n\n
+Please update the entry at your earliest convenience.\n\nRegards,\nteledocs`);
+      const emailCC = this.admins.join(', ');
+      const mailtoUrl = `mailto:${doc.creator_email}?cc=${emailCC}&subject=${emailSubject}&body=${emailBody}`;
+
+      // Create a hidden <a> element (otherwise you need to use window.open and that opens a new tab)
+      const hiddenLink = document.createElement('a');
+      hiddenLink.href = mailtoUrl;
+
+      // Trigger click on the hidden <a> element
+      hiddenLink.style.display = 'none';
+      document.body.appendChild(hiddenLink);
+      hiddenLink.click();
+      document.body.removeChild(hiddenLink);
+    }    
   },
   created() {
     this.getDocuments();
+    this.getAdmins();
   },
 };
 </script>

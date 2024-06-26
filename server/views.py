@@ -396,6 +396,34 @@ class AllUsers(MethodView):
         return jsonify(response_object)
 
 
+class AllAdmins(MethodView):
+    """View class for the /admins route."""
+
+    decorators = [token_required]
+
+    def get(self):
+        """
+        Method with logic for get requests.
+        Get requests here return a list of all the admins in the db.
+
+        Returns
+        -------
+        json
+            Json response to get request. Contains 'status' and a
+            list of each admin serialized.
+        """
+        email = getattr(request, "email")
+        logger.info(f"AllUsers: User {email} is viewing all users.")
+        admins = db.session.scalars(db.select(User).filter_by(superuser=True))
+        admins = [a.email for a in admins]
+
+        response_object = {
+            "status": "success",
+            "admins": admins,
+        }
+        return jsonify(response_object)
+
+
 class SingleUser(MethodView):
     """View class for the /users/<pk> route."""
 
