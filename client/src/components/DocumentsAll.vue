@@ -8,7 +8,7 @@
               <h1>Documents</h1>
             </div>
             <div class="d-inline-flex float-end" v-if="superuser">
-              <a role="button" class="btn btn-success" href="collaborators" target="_blank">Edit collaborators</a>
+              <a role="button" class="btn btn-primary" href="collaborators" target="_blank">Edit collaborators</a>
             </div>
           </div>
         </div>
@@ -21,15 +21,57 @@
         </div>
         <br>
         <alert :message=message v-if="showMessage"></alert>
-        <button type="button" class="btn btn-success btn-sm" @click="toggleAddDocumentModal">
+        <button type="button" class="btn btn-primary btn-sm" @click="toggleAddDocumentModal">
           Add Document
         </button>
-        <button type="button" class="btn btn-success btn-sm ms-4" @click="toggleUploadFileModal">
+        <button type="button" class="btn btn-primary btn-sm ms-4" @click="toggleUploadFileModal">
           Upload File
         </button>
-        <div class="my-3" v-if="show_table">
-          <input type="text" placeholder="Filter table by any column" v-model="filter" />
-        </div>
+        <button v-if="show_table" type="button" class="btn btn-primary btn-sm ms-4" @click="showFilters = !showFilters">{{ filterButtonText }}
+          <font-awesome-icon icon="fa-solid fa-sort-up" style="vertical-align: bottom" v-if="showFilters"/>
+          <font-awesome-icon icon="fa-solid fa-sort-down" style="vertical-align: top" v-if="!showFilters"/>
+        </button>
+        <transition name="slide">
+          <div class="container mt-3 mb-5" v-if="showFilters">
+            <div class="row row-cols-auto">
+              <div class="col mb-3">
+                <!-- <label for="columnFiltersTitle" class="form-label">Title:</label> -->
+                <input type="text" class="form-control" id="columnFiltersTitle" v-model="columnFilters.title" placeholder="Filter by Title">           
+              </div>          
+              <div class="col mb-3">
+                <!-- <label for="columnFiltersAuthor" class="form-label">Author:</label> -->
+                <input type="text" class="form-control" id="columnFiltersAuthor" v-model="columnFilters.author" placeholder="Filter by Author">
+              </div>             
+              <div class="col mb-3">
+                <!-- <label for="columnFiltersAuthor" class="form-label">Doc Identifier:</label> -->
+                <input type="text" class="form-control" id="columnFiltersDocIdentifier" v-model="columnFilters.doc_identifier" placeholder="Filter by Doc Identifier">                            
+              </div>             
+              <div class="col mb-3">
+                <!-- <label for="columnFiltersDocNb" class="form-label">Doc Code:</label> -->
+                <input type="text" class="form-control" id="columnFiltersDocNb" v-model="columnFilters.doc_code" placeholder="Filter by Doc Code">
+              </div>             
+              <div class="col mb-3">
+                <!-- <label for="columnFiltersCompiledURL" class="form-label">Compiled URL:</label> -->
+                <input type="text" class="form-control" id="columnFiltersCompiled URL" v-model="columnFilters.compiled_url" placeholder="Filter by Compiled URL">
+              </div>             
+              <div class="col mb-3">
+                <!-- <label for="columnFiltersSourceURL" class="form-label">Source URL:</label> -->
+                <input type="text" class="form-control" id="columnFiltersSourceURL" v-model="columnFilters.source_url" placeholder="Filter by Source URL">
+              </div>             
+              <div class="col mb-3">
+                <!-- <label for="columnFiltersAbstract" class="form-label">Abstract:</label> -->
+                <input type="text" class="form-control" id="columnFiltersAbstract" v-model="columnFilters.abstract" placeholder="Filter by Abstract">
+              </div>             
+              <div class="col mb-3">
+                <!-- <label for="columnFiltersCreatorEmail" class="form-label">Creator Email:</label> -->
+                <input type="text" class="form-control" id="columnFiltersCreatorEmail" v-model="columnFilters.creator_email" placeholder="Filter by Creator Email">
+              </div>         
+            </div>    
+            <div class="row row-cols-auto" style="margin-left: 0.1rem;">
+              <button type="button" class="col btn btn-primary btn-sm" @click="resetFilters">Reset Filters</button>            
+            </div>
+          </div>
+        </transition>
         <table class="table table-hover" v-if="show_table">
           <thead>
             <tr>
@@ -122,7 +164,8 @@
                   </button>
                 </div>
               </td>
-              <td v-else></td>
+              <td v-else>
+              </td>
             </tr>
           </tbody>
         </table>
@@ -328,6 +371,18 @@ export default {
   name: 'DocumentsAll',
   data() {
     return {
+      showFilters: false,
+      filterButtonText: 'Filter Documents',      
+      columnFilters: {
+        title: '',
+        author: '',
+        doc_identifier: '',
+        doc_code: '',
+        compiled_url: '',
+        source_url: '',
+        abstract: '',
+        creator_email: ''
+      },
       activeAddDocumentModal: false,
       activeEditDocumentModal: false,
       activeUploadFileModal: false,
@@ -378,31 +433,39 @@ export default {
   },
   computed: {
     filteredDocuments() {
-      if (this.filter === '') {
-        return this.documents;
-      } else {
-        return this.documents.filter(doc => {
-          const searchTerm = this.filter.toLowerCase();
+      // if (this.filter === '') {
+      //   return this.documents;
+      // } else {
+      //   return this.documents.filter(doc => {
+      //     const searchTerm = this.filter.toLowerCase();
 
-          const title = doc.title ? doc.title.toString().toLowerCase() : doc.title;
-          const author = doc.author ? doc.author.toString().toLowerCase() : doc.author;
-          const doc_identifier = doc.doc_identifier ? doc.doc_identifier.toString().toLowerCase() : doc.doc_identifier;
-          const doc_code = doc.doc_code ? doc.doc_code.toString().toLowerCase() : doc.doc_code;
-          const compiled_url = doc.compiled_url ? doc.compiled_url.toString().toLowerCase() : doc.compiled_url;
-          const source_url = doc.source_url ? doc.source_url.toString().toLowerCase() : doc.source_url;
-          const abstract = doc.abstract ? doc.abstract.toString().toLowerCase() : doc.abstract;
-          const creator_email = doc.creator_email ? doc.creator_email.toString().toLowerCase() : doc.creator_email;
+      //     const title = doc.title ? doc.title.toString().toLowerCase() : doc.title;
+      //     const author = doc.author ? doc.author.toString().toLowerCase() : doc.author;
+      //     const doc_identifier = doc.doc_identifier ? doc.doc_identifier.toString().toLowerCase() : doc.doc_identifier;
+      //     const doc_code = doc.doc_code ? doc.doc_code.toString().toLowerCase() : doc.doc_code;
+      //     const compiled_url = doc.compiled_url ? doc.compiled_url.toString().toLowerCase() : doc.compiled_url;
+      //     const source_url = doc.source_url ? doc.source_url.toString().toLowerCase() : doc.source_url;
+      //     const abstract = doc.abstract ? doc.abstract.toString().toLowerCase() : doc.abstract;
+      //     const creator_email = doc.creator_email ? doc.creator_email.toString().toLowerCase() : doc.creator_email;
 
-          return (title && title.includes(searchTerm)) ||
-            (author && author.includes(searchTerm)) ||
-            (doc_identifier && doc_identifier.includes(searchTerm)) ||
-            (doc_code && doc_code.includes(searchTerm)) ||
-            (compiled_url && compiled_url.includes(searchTerm)) ||
-            (source_url && source_url.includes(searchTerm)) ||
-            (abstract && abstract.includes(searchTerm)) ||
-            (creator_email && creator_email.includes(searchTerm));
+      //     return (title && title.includes(searchTerm)) ||
+      //       (author && author.includes(searchTerm)) ||
+      //       (doc_identifier && doc_identifier.includes(searchTerm)) ||
+      //       (doc_code && doc_code.includes(searchTerm)) ||
+      //       (compiled_url && compiled_url.includes(searchTerm)) ||
+      //       (source_url && source_url.includes(searchTerm)) ||
+      //       (abstract && abstract.includes(searchTerm)) ||
+      //       (creator_email && creator_email.includes(searchTerm));
+      //   });
+      // }
+
+      return this.documents.filter(doc => {
+        return Object.keys(this.columnFilters).every(key => {
+          const searchTerm = this.columnFilters[key].toLowerCase();
+          const value = doc[key] ? doc[key].toString().toLowerCase() : '';
+          return value.includes(searchTerm);
         });
-      }
+      });      
     },
     isLoggedIn() {
       if (auth.currentUser) {
@@ -700,6 +763,12 @@ export default {
           return -this.sortOrder
         });
     },
+    resetFilters() {
+      // Reset all filter inputs and checkboxes
+      Object.keys(this.columnFilters).forEach(key => {
+        this.columnFilters[key] = '';
+      });
+    },   
   },
   created() {
     this.getDocuments();
