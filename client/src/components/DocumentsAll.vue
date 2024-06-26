@@ -13,7 +13,7 @@
           </div>
         </div>
         <hr><br><br>
-        <div>
+        <div class="row">
           <p>Hello, {{ username }}, you are logged in with the account {{ email }}</p>
           <p>Add a new document using the button below. You can edit or delete documents you have added.</p>
           <p>To see all details related to a document click on its Title or its Doc Identifier,
@@ -28,16 +28,22 @@
         </div>
         <br>
         <alert :message=message v-if="showMessage"></alert>
-        <button type="button" class="btn btn-primary btn-sm" @click="toggleAddDocumentModal">
-          Add Document
-        </button>
-        <button type="button" class="btn btn-primary btn-sm ms-4" @click="toggleUploadFileModal">
-          Upload File
-        </button>
-        <button v-if="show_table" type="button" class="btn btn-primary btn-sm ms-4" @click="showFilters = !showFilters">{{ filterButtonText }}
-          <font-awesome-icon icon="fa-solid fa-sort-up" style="vertical-align: bottom" v-if="showFilters"/>
-          <font-awesome-icon icon="fa-solid fa-sort-down" style="vertical-align: top" v-if="!showFilters"/>
-        </button>
+
+        <div class="row row-cols-auto mb-4" style="margin-left: initial;margin-right: initial;">
+          <button type="button" class="btn btn-primary btn-sm" @click="toggleAddDocumentModal">
+            Add Document
+          </button>
+          <button type="button" class="btn btn-primary btn-sm ms-4" @click="toggleUploadFileModal">
+            Upload File
+          </button>
+          <button v-if="show_table" type="button" class="btn btn-primary btn-sm ms-4" @click="showFilters = !showFilters">{{ filterButtonText }}
+            <font-awesome-icon icon="fa-solid fa-sort-up" style="vertical-align: bottom" v-if="showFilters"/>
+            <font-awesome-icon icon="fa-solid fa-sort-down" style="vertical-align: top" v-if="!showFilters"/>
+          </button>
+          <!-- Button for exporting to Excel -->
+          <button type="button" class="btn btn-primary btn-sm float-right" style="margin-left: auto;" @click="exportToExcel">Export to Excel</button>          
+        </div>
+
         <transition name="slide">
           <div class="container mt-3 mb-5" v-if="showFilters">
             <div class="row row-cols-auto">
@@ -79,6 +85,7 @@
             </div>
           </div>
         </transition>
+
         <table class="table table-hover" v-if="show_table">
           <thead>
             <tr>
@@ -374,6 +381,7 @@ import axios from 'axios';
 import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import { auth } from '../firebaseConfig';
 import AlertMessage from './AlertMessage.vue';
+import * as XLSX from 'xlsx';
 
 const API_URL = '/api';
 // const API_URL = 'http://localhost:5001/api';
@@ -822,7 +830,26 @@ Please update the entry at your earliest convenience.\n\nRegards,\nteledocs`);
       document.body.appendChild(hiddenLink);
       hiddenLink.click();
       document.body.removeChild(hiddenLink);
-    }    
+    },
+    exportToExcel() {
+      const documents = this.filteredDocuments;
+
+      // Convert data to an array of arrays (2D array)
+      const documentsArray = documents.map(doc => {
+        return [doc.title, doc.author, doc.doc_identifier, doc.doc_code, doc.compiled_url, doc.source_url, doc.abstract, doc.creator_email];
+      });
+
+      // Add headers
+      documentsArray.unshift(['Title', 'Author', 'Doc Identifier', 'Doc Code', 'Compiled URL', 'Source URL', 'Abstract', 'Creator Email']);
+
+      // Create a workbook
+      const workbook = XLSX.utils.book_new();
+      const sheetName = 'Sheet1';
+
+      const worksheet = XLSX.utils.aoa_to_sheet(documentsArray);
+      XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
+      XLSX.writeFile(workbook, 'exported_teledocs_entries.xlsx');
+    }        
   },
   created() {
     this.getDocuments();
