@@ -19,9 +19,8 @@
                 <div class="col-6">
                     <p><b>Author: </b>{{ document.author }}</p>
                     <p><b>Document identifier: </b>{{ document.doc_identifier }}</p>
-                    <p><b>Document code: </b>{{ document.doc_code }}</p>
-                    <p><b>Compiled URL: </b><a :href=document.compiled_url target="_blank">{{ document.compiled_url }}</a>
-                    </p>
+                    <p><b>Document number: </b>{{ document.doc_code }}</p>
+                    <p><b>Compiled URL: </b><a :href=document.compiled_url target="_blank">{{ document.compiled_url }}</a></p>
                     <p><b>Source URL: </b><a :href=document.source_url target="_blank">{{ document.source_url }}</a></p>
                     <p><b>Document entry created by: </b>{{ document.creator_email }}</p>
                 </div>
@@ -63,9 +62,13 @@
                                     v-model="editDocumentForm.author" placeholder="Enter author">
                             </div>
                             <div class="mb-3">
-                                <label for="editDocumentDocCode" class="form-label">Doc Code (optional):</label>
+                                <label for="editDocumentDocCode" class="form-label">Doc # (optional):</label>
                                 <input type="text" class="form-control" maxlength="30" id="editDocCode"
-                                    v-model="editDocumentForm.doc_code" placeholder="Enter document code">
+                                v-if="!editDocumentForm.doc_code || superuser"
+                                v-model="editDocumentForm.doc_code" placeholder="Enter document number">
+                                <input type="text" class="form-control-plaintext" maxlength="30" id="editDocCode"
+                                v-else readonly 
+                                v-model="editDocumentForm.doc_code">
                             </div>
                             <div class="mb-3">
                                 <label for="editDocumentCompiledUrl" class="form-label">Compiled URL:</label>

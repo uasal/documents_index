@@ -60,8 +60,8 @@
                 <input type="text" class="form-control" id="columnFiltersDocIdentifier" v-model="columnFilters.doc_identifier" placeholder="Filter by Doc Identifier">                            
               </div>             
               <div class="col mb-3">
-                <!-- <label for="columnFiltersDocNb" class="form-label">Doc Code:</label> -->
-                <input type="text" class="form-control" id="columnFiltersDocNb" v-model="columnFilters.doc_code" placeholder="Filter by Doc Code">
+                <!-- <label for="columnFiltersDocNb" class="form-label">Doc #:</label> -->
+                <input type="text" class="form-control" id="columnFiltersDocNb" v-model="columnFilters.doc_code" placeholder="Filter by Doc #">
               </div>             
               <div class="col mb-3">
                 <!-- <label for="columnFiltersCompiledURL" class="form-label">Compiled URL:</label> -->
@@ -101,7 +101,7 @@
                 <font-awesome-icon icon="fa-solid fa-sort-up" style="vertical-align: bottom" v-if="this.sortBy=='doc_identifier' && this.sortOrder==1"/>
                 <font-awesome-icon icon="fa-solid fa-sort-down" style="vertical-align: top" v-if="this.sortBy=='doc_identifier' && this.sortOrder==-1"/>                
               </th>
-              <th @click='sortColumn("doc_code")' style="min-width: 10%;" scope="col">Doc Code
+              <th @click='sortColumn("doc_code")' style="min-width: 10%;" scope="col">Doc #
                 <font-awesome-icon icon="fa-solid fa-sort-up" style="vertical-align: bottom" v-if="this.sortBy=='doc_code' && this.sortOrder==1"/>
                 <font-awesome-icon icon="fa-solid fa-sort-down" style="vertical-align: top" v-if="this.sortBy=='doc_code' && this.sortOrder==-1"/>                
               </th>
@@ -173,7 +173,7 @@
                   <button type="button" class="btn btn-warning btn-sm" @click="toggleEditDocumentModal(doc)">
                     Update
                   </button>
-                  <button type="button" class="btn btn-danger btn-sm" @click="handleDeleteDocument(doc)">
+                  <button v-if="!doc.doc_code || superuser" type="button" class="btn btn-danger btn-sm" @click="handleDeleteDocument(doc)">
                     Delete
                   </button>
                 </div>
@@ -223,7 +223,7 @@
                   placeholder="Enter author">
               </div>
               <div class="mb-3">
-                <label for="addDocumentDocCode" class="form-label">Doc Code (optional):</label>
+                <label for="addDocumentDocCode" class="form-label">Doc # (optional):</label>
                 <input type="text" class="form-control" id="addDocCode" v-model="addDocumentForm.doc_code"
                   placeholder="Enter document code">
               </div>
@@ -275,16 +275,16 @@
           </div>
           <div class="modal-body">
             <p>Upload a file with values separated by bars (|).</p>
-            <p>The file must have entries for the following fields (in this order): Title | Author | Doc Code | Compiled
+            <p>The file must have entries for the following fields (in this order): Title | Author | Doc # | Compiled
               URL | Source URL | Abstract</p>
             <p>If the file has fewer or more columns than 6, the upload will result in an error.</p>
-            <p>Columns that are optional (Doc Code and Abstract), should be included, but left blank if no value is to be
+            <p>Columns that are optional (Doc # and Abstract), should be included, but left blank if no value is to be
               included.</p>
             <p>Lines starting with '#' will be omitted.</p>
             <p>Do not use bars in the input values.</p>
             <p>File example:</p>
             <div class="mb-4 text-nowrap" style="overflow-x: scroll; font-family: courier; font-size: 12px;">
-              <p class="mb-0"># Title | Author | Doc Code | Compiled URL | Source URL | Abstract</p>
+              <p class="mb-0"># Title | Author | Doc # | Compiled URL | Source URL | Abstract</p>
               <p class="mb-0">Extra Solar Camera: Design and User Guide | Ewan Douglas, Jared Males, Daewook Kim, and the
                 STP Space Coronagraph Working Groups ||
                 https://github.com/uasal/spacecoron_design_docs/raw/compiled/coronagraph_guide.pdf |
@@ -335,9 +335,13 @@
                   v-model="editDocumentForm.author" placeholder="Enter author">
               </div>
               <div class="mb-3">
-                <label for="editDocumentDocCode" class="form-label">Doc Code (optional):</label>
+                <label for="editDocumentDocCode" class="form-label">Doc # (optional):</label>
                 <input type="text" class="form-control" maxlength="30" id="editDocCode"
+                  v-if="!editDocumentForm.doc_code || superuser"
                   v-model="editDocumentForm.doc_code" placeholder="Enter document code">
+                <input type="text" class="form-control-plaintext" maxlength="30" id="editDocCode"
+                  v-else readonly 
+                  v-model="editDocumentForm.doc_code">
               </div>
               <div class="mb-3">
                 <label for="editDocumentCompiledUrl" class="form-label">Compiled URL:</label>
@@ -840,7 +844,7 @@ Please update the entry at your earliest convenience.\n\nRegards,\nteledocs`);
       });
 
       // Add headers
-      documentsArray.unshift(['Title', 'Author', 'Doc Identifier', 'Doc Code', 'Compiled URL', 'Source URL', 'Abstract', 'Creator Email']);
+      documentsArray.unshift(['Title', 'Author', 'Doc Identifier', 'Doc #', 'Compiled URL', 'Source URL', 'Abstract', 'Creator Email']);
 
       // Create a workbook
       const workbook = XLSX.utils.book_new();

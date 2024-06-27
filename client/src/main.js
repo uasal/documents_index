@@ -15,9 +15,10 @@ import { faDownload } from '@fortawesome/free-solid-svg-icons'
 import { faSortUp } from '@fortawesome/free-solid-svg-icons'
 import { faSortDown } from '@fortawesome/free-solid-svg-icons'
 import { faCircleExclamation } from '@fortawesome/free-solid-svg-icons'
+import { faCircleInfo } from '@fortawesome/free-solid-svg-icons'
 
 /* add icons to the library */
-library.add(faCircleArrowLeft, faDownload, faSortUp, faSortDown, faCircleExclamation)
+library.add(faCircleArrowLeft, faDownload, faSortUp, faSortDown, faCircleExclamation, faCircleInfo)
 
 const app = createApp(App)
 
