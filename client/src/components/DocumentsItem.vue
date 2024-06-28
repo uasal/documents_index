@@ -20,8 +20,8 @@
                     <p><b>Author: </b>{{ document.author }}</p>
                     <p><b>Document identifier: </b>{{ document.doc_identifier }}</p>
                     <p><b>Document number: </b>{{ document.doc_code }}</p>
-                    <p><b><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="URLInfo"/>URL: </b><a :href=document.compiled_url target="_blank">{{ document.compiled_url }}</a></p>
-                    <p><b><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="sourceURLInfo"/>Source URL: </b><a :href=document.source_url target="_blank">{{ document.source_url }}</a></p>
+                    <p><b><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="URLInfo"/>URL: </b><font-awesome-icon v-if="document.compiled_url && document.compiled_url.toLowerCase().includes(gitLabANT)" icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="gitLabInfo"/><a :href=document.compiled_url target="_blank">{{ document.compiled_url }}</a></p>
+                    <p><b><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="sourceURLInfo"/>Source URL: </b><font-awesome-icon v-if="document.source_url && document.source_url.toLowerCase().includes(gitLabANT)" icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="gitLabInfo"/><a :href=document.source_url target="_blank">{{ document.source_url }}</a></p>
                     <p><b>Document entry created by: </b>{{ document.creator_email }}</p>
                 </div>
             </div>
@@ -136,6 +136,8 @@ export default {
             },
             URLInfo: 'The URL of the file described by the metadata in this entry.',
             sourceURLInfo: '(optional) The URL of the source components (Git repository, Power Point presentation etc.) used to compile / build the file described by the metadata in this entry.',            
+            gitLabInfo: 'This URL requires the ANT VPN to be activated.',
+            gitLabANT: 'gitlab.sc.ascendingnode.tech',
             message: '',
             showMessage: false,
             isAuthorized: false,

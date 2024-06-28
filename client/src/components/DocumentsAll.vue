@@ -149,12 +149,14 @@
               <td v-else>{{ doc.doc_code }}</td>
 
               <td>
+                <font-awesome-icon v-if="doc.compiled_url && doc.compiled_url.toLowerCase().includes(gitLabANT)" icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="gitLabInfo"/>
                 <a v-if="doc.compiled_url" :href="doc.compiled_url" target="_blank">document link</a>
                 <!-- <a class="ms-3" :href=doc.compiled_url target="_blank" download><font-awesome-icon
                     icon="fa-solid fa-download" /></a> -->
               </td>
 
               <td>
+                <font-awesome-icon v-if="doc.source_url && doc.source_url.toLowerCase().includes(gitLabANT)" icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="gitLabInfo"/>
                 <a v-if="doc.source_url" :href="doc.source_url" target="_blank">source link</a>
                 <!-- <a class="ms-3" :href=doc.source_url target="_blank" download><font-awesome-icon
                     icon="fa-solid fa-download" /></a> -->
@@ -434,6 +436,8 @@ export default {
       },
       URLInfo: 'The URL of the file described by the metadata in this entry.',
       sourceURLInfo: '(optional) The URL of the source components (Git repository, Power Point presentation etc.) used to compile / build the file described by the metadata in this entry.',
+      gitLabInfo: 'This URL requires the ANT VPN to be activated.',
+      gitLabANT: 'gitlab.sc.ascendingnode.tech',
       message: '',
       showMessage: false,
       isAuthorized: false,
