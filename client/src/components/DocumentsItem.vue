@@ -20,8 +20,8 @@
                     <p><b>Author: </b>{{ document.author }}</p>
                     <p><b>Document identifier: </b>{{ document.doc_identifier }}</p>
                     <p><b>Document number: </b>{{ document.doc_code }}</p>
-                    <p><b>Compiled URL: </b><a :href=document.compiled_url target="_blank">{{ document.compiled_url }}</a></p>
-                    <p><b>Source URL: </b><a :href=document.source_url target="_blank">{{ document.source_url }}</a></p>
+                    <p><b><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="URLInfo"/>URL: </b><a :href=document.compiled_url target="_blank">{{ document.compiled_url }}</a></p>
+                    <p><b><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="sourceURLInfo"/>Source URL: </b><a :href=document.source_url target="_blank">{{ document.source_url }}</a></p>
                     <p><b>Document entry created by: </b>{{ document.creator_email }}</p>
                 </div>
             </div>
@@ -71,12 +71,12 @@
                                 v-model="editDocumentForm.doc_code">
                             </div>
                             <div class="mb-3">
-                                <label for="editDocumentCompiledUrl" class="form-label">Compiled URL:</label>
-                                <input type="text" class="form-control" maxlength="500" id="editCompiledUrl"
-                                    v-model="editDocumentForm.compiled_url" placeholder="Enter compiled URL">
+                                <label for="editDocumentUrl" class="form-label"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="URLInfo"/>URL:</label>
+                                <input type="text" class="form-control" maxlength="500" id="editUrl"
+                                    v-model="editDocumentForm.compiled_url" placeholder="Enter URL">
                             </div>
                             <div class="mb-3">
-                                <label for="editDocumentSourceUrl" class="form-label">Source URL:</label>
+                                <label for="editDocumentSourceUrl" class="form-label"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="sourceURLInfo"/>Source URL:</label>
                                 <input type="text" class="form-control" maxlength="500" id="editSourceUrl"
                                     v-model="editDocumentForm.source_url" placeholder="Enter source URL">
                             </div>
@@ -134,6 +134,8 @@ export default {
                 creator_email: '',                
                 abstract: '',
             },
+            URLInfo: 'The URL of the file described by the metadata in this entry.',
+            sourceURLInfo: '(optional) The URL of the source components (Git repository, Power Point presentation etc.) used to compile / build the file described by the metadata in this entry.',            
             message: '',
             showMessage: false,
             isAuthorized: false,

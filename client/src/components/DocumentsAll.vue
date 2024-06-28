@@ -64,8 +64,8 @@
                 <input type="text" class="form-control" id="columnFiltersDocNb" v-model="columnFilters.doc_code" placeholder="Filter by Doc #">
               </div>             
               <div class="col mb-3">
-                <!-- <label for="columnFiltersCompiledURL" class="form-label">Compiled URL:</label> -->
-                <input type="text" class="form-control" id="columnFiltersCompiled URL" v-model="columnFilters.compiled_url" placeholder="Filter by Compiled URL">
+                <!-- <label for="columnFiltersURL" class="form-label">URL:</label> -->
+                <input type="text" class="form-control" id="columnFiltersURL" v-model="columnFilters.compiled_url" placeholder="Filter by URL">
               </div>             
               <div class="col mb-3">
                 <!-- <label for="columnFiltersSourceURL" class="form-label">Source URL:</label> -->
@@ -105,11 +105,11 @@
                 <font-awesome-icon icon="fa-solid fa-sort-up" style="vertical-align: bottom" v-if="this.sortBy=='doc_code' && this.sortOrder==1"/>
                 <font-awesome-icon icon="fa-solid fa-sort-down" style="vertical-align: top" v-if="this.sortBy=='doc_code' && this.sortOrder==-1"/>                
               </th>
-              <th @click='sortColumn("compiled_url")' style="min-width: 10%;" scope="col">Compiled URL
+              <th @click='sortColumn("compiled_url")' style="min-width: 10%;" scope="col"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="URLInfo"/>URL
                 <font-awesome-icon icon="fa-solid fa-sort-up" style="vertical-align: bottom" v-if="this.sortBy=='compiled_url' && this.sortOrder==1"/>
                 <font-awesome-icon icon="fa-solid fa-sort-down" style="vertical-align: top" v-if="this.sortBy=='compiled_url' && this.sortOrder==-1"/>
               </th>
-              <th @click='sortColumn("source_url")' style="min-width: 10%;" scope="col">Source URL
+              <th @click='sortColumn("source_url")' style="min-width: 10%;" scope="col"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="sourceURLInfo"/>Source URL
                 <font-awesome-icon icon="fa-solid fa-sort-up" style="vertical-align: bottom" v-if="this.sortBy=='source_url' && this.sortOrder==1"/>
                 <font-awesome-icon icon="fa-solid fa-sort-down" style="vertical-align: top" v-if="this.sortBy=='source_url' && this.sortOrder==-1"/>                
               </th>
@@ -228,12 +228,12 @@
                   placeholder="Enter document code">
               </div>
               <div class="mb-3">
-                <label for="addDocumentCompiledUrl" class="form-label">Compiled URL:</label>
-                <input type="text" class="form-control" id="addCompiledUrl" v-model="addDocumentForm.compiled_url"
-                  placeholder="Enter compiled URL">
+                <label for="addDocumentUrl" class="form-label"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="URLInfo"/>URL:</label>
+                <input type="text" class="form-control" id="addUrl" v-model="addDocumentForm.compiled_url"
+                  placeholder="Enter URL">
               </div>
               <div class="mb-3">
-                <label for="addDocumentSourceUrl" class="form-label">Source URL:</label>
+                <label for="addDocumentSourceUrl" class="form-label"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="sourceURLInfo"/>Source URL:</label>
                 <input type="text" class="form-control" id="addSourceUrl" v-model="addDocumentForm.source_url"
                   placeholder="Enter source URL">
               </div>
@@ -275,8 +275,7 @@
           </div>
           <div class="modal-body">
             <p>Upload a file with values separated by bars (|).</p>
-            <p>The file must have entries for the following fields (in this order): Title | Author | Doc # | Compiled
-              URL | Source URL | Abstract</p>
+            <p>The file must have entries for the following fields (in this order): Title | Author | Doc # | URL | Source URL | Abstract</p>
             <p>If the file has fewer or more columns than 6, the upload will result in an error.</p>
             <p>Columns that are optional (Doc # and Abstract), should be included, but left blank if no value is to be
               included.</p>
@@ -284,7 +283,7 @@
             <p>Do not use bars in the input values.</p>
             <p>File example:</p>
             <div class="mb-4 text-nowrap" style="overflow-x: scroll; font-family: courier; font-size: 12px;">
-              <p class="mb-0"># Title | Author | Doc # | Compiled URL | Source URL | Abstract</p>
+              <p class="mb-0"># Title | Author | Doc # | URL | Source URL | Abstract</p>
               <p class="mb-0">Extra Solar Camera: Design and User Guide | Ewan Douglas, Jared Males, Daewook Kim, and the
                 STP Space Coronagraph Working Groups ||
                 https://github.com/uasal/spacecoron_design_docs/raw/compiled/coronagraph_guide.pdf |
@@ -344,12 +343,12 @@
                   v-model="editDocumentForm.doc_code">
               </div>
               <div class="mb-3">
-                <label for="editDocumentCompiledUrl" class="form-label">Compiled URL:</label>
-                <input type="text" class="form-control" maxlength="500" id="editCompiledUrl"
-                  v-model="editDocumentForm.compiled_url" placeholder="Enter compiled URL">
+                <label for="editDocumentUrl" class="form-label"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="URLInfo"/>URL:</label>
+                <input type="text" class="form-control" maxlength="500" id="editUrl"
+                  v-model="editDocumentForm.compiled_url" placeholder="Enter URL">
               </div>
               <div class="mb-3">
-                <label for="editDocumentSourceUrl" class="form-label">Source URL:</label>
+                <label for="editDocumentSourceUrl" class="form-label"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="sourceURLInfo"/>Source URL:</label>
                 <input type="text" class="form-control" maxlength="500" id="editSourceUrl"
                   v-model="editDocumentForm.source_url" placeholder="Enter source URL">
               </div>
@@ -433,6 +432,8 @@ export default {
         creator_email: '',
         abstract: '',
       },
+      URLInfo: 'The URL of the file described by the metadata in this entry.',
+      sourceURLInfo: '(optional) The URL of the source components (Git repository, Power Point presentation etc.) used to compile / build the file described by the metadata in this entry.',
       message: '',
       showMessage: false,
       isAuthorized: false,
@@ -818,7 +819,7 @@ export default {
 This is to inform you that the document '${doc.title}' was reported as being out of date. The data currently associated with it is:\n
 Title: ${doc.title}\n
 Author: ${doc.author}\n
-Compiled URL: ${doc.compiled_url}\n
+URL: ${doc.compiled_url}\n
 Source URL: ${doc.source_url}\n
 Abstract: ${doc.abstract}\n\n
 Please update the entry at your earliest convenience.\n\nRegards,\nteledocs`);
@@ -844,7 +845,7 @@ Please update the entry at your earliest convenience.\n\nRegards,\nteledocs`);
       });
 
       // Add headers
-      documentsArray.unshift(['Title', 'Author', 'Doc Identifier', 'Doc #', 'Compiled URL', 'Source URL', 'Abstract', 'Creator Email']);
+      documentsArray.unshift(['Title', 'Author', 'Doc Identifier', 'Doc #', 'URL', 'Source URL', 'Abstract', 'Creator Email']);
 
       // Create a workbook
       const workbook = XLSX.utils.book_new();
