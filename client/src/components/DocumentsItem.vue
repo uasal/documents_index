@@ -15,6 +15,10 @@
                 @click="toggleEditDocumentModal(document)">
                 Update
             </button>
+            <button v-else type="button" class="btn btn-outline-warning mb-3" data-toggle="tooltip" 
+            data-placement="top" title="Notify maintainer that entry needs to be updated" @click="sendEmail(document)">
+                <font-awesome-icon icon="fa-solid fa-circle-exclamation" class="me-1" />Notify maintainer
+            </button>
             <div class="row">
                 <div class="col-6">
                     <p><b>Author: </b>{{ document.author }}</p>
@@ -123,6 +127,7 @@ export default {
         return {
             activeEditDocumentModal: false,
             document: {},
+            admins: [],            
             editDocumentForm: {
                 pk: '',
                 title: '',
@@ -219,6 +224,24 @@ export default {
                 // this.hideContent = true;
             });
         },
+        getAdmins() {
+            const path = `${API_URL}/admins`;
+            auth.currentUser.getIdToken(true).then(idToken => {
+                const config = {
+                headers: { Authorization: `${idToken}` }
+                };
+
+                axios.get(path, config)
+                .then((res) => {
+                    this.admins = res.data.admins;
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+            }).catch(function (error) {
+                console.log(error)
+            });
+        },        
         handleEditCancel() {
             this.toggleEditDocumentModal(null);
             this.initForm();
@@ -285,9 +308,34 @@ export default {
                 console.log(error)
             });
         },
+        sendEmail(doc) {
+            // alert(`Sending email to ${doc.creator_email}`);
+            const emailSubject = encodeURIComponent(`Teledocs Alert: Document '${doc.title}' is out of date`);
+            const emailBody = encodeURIComponent(`Hi,\n\n
+This is to inform you that the document '${doc.title}' was reported as being out of date. The data currently associated with it is:\n
+Title: ${doc.title}\n
+Author: ${doc.author}\n
+URL: ${doc.compiled_url}\n
+Source URL: ${doc.source_url}\n
+Abstract: ${doc.abstract}\n\n
+Please update the entry at your earliest convenience.\n\nRegards,\nteledocs`);
+            const emailCC = this.admins.join(', ');
+            const mailtoUrl = `mailto:${doc.creator_email}?cc=${emailCC}&subject=${emailSubject}&body=${emailBody}`;
+
+            // Create a hidden <a> element (otherwise you need to use window.open and that opens a new tab)
+            const hiddenLink = document.createElement('a');
+            hiddenLink.href = mailtoUrl;
+
+            // Trigger click on the hidden <a> element
+            hiddenLink.style.display = 'none';
+            document.body.appendChild(hiddenLink);
+            hiddenLink.click();
+            document.body.removeChild(hiddenLink);
+        },        
     },
     created() {
         this.getDocument();
+        this.getAdmins();
     },
 };
 </script>
