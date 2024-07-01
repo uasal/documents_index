@@ -22,7 +22,7 @@
                     <p><b>Document number: </b>{{ document.doc_code }}</p>
                     <p><b><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="URLInfo"/>URL: </b><font-awesome-icon v-if="document.compiled_url && document.compiled_url.toLowerCase().includes(gitLabANT)" icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="gitLabInfo"/><a :href=document.compiled_url target="_blank">{{ document.compiled_url }}</a></p>
                     <p><b><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="sourceURLInfo"/>Source URL: </b><font-awesome-icon v-if="document.source_url && document.source_url.toLowerCase().includes(gitLabANT)" icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="gitLabInfo"/><a :href=document.source_url target="_blank">{{ document.source_url }}</a></p>
-                    <p><b>Document entry created by: </b>{{ document.creator_email }}</p>
+                    <p><b>Document entry maintained by: </b>{{ document.creator_email }}</p>
                 </div>
             </div>
             <div class="row">
@@ -81,9 +81,9 @@
                                     v-model="editDocumentForm.source_url" placeholder="Enter source URL">
                             </div>
                             <div class="mb-3" v-if="superuser">
-                                <label for="editDocumentCreatedBy" class="form-label">Created By (superuser field):</label>
+                                <label for="editDocumentCreatedBy" class="form-label">Maintained By (superuser field):</label>
                                 <input type="text" class="form-control" id="editCreatedBy" v-model="editDocumentForm.creator_email"
-                                placeholder="Enter Creator Email">
+                                placeholder="Enter Maintainer Email">
                             </div>                              
                             <div class="mb-3">
                                 <label for="editDocumentAbstract" class="form-label">Abstract:</label>

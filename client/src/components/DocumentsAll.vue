@@ -24,7 +24,7 @@
             </span>
           </p>
           <p>If you notice and error in one of the entries, please click the warning button on the associated 
-            row to email and inform the entry's creator, as well as the admins.</p>
+            row to email and inform the entry's maintainer, as well as the admins.</p>
         </div>
         <br>
         <alert :message=message v-if="showMessage"></alert>
@@ -76,8 +76,8 @@
                 <input type="text" class="form-control" id="columnFiltersAbstract" v-model="columnFilters.abstract" placeholder="Filter by Abstract">
               </div>             
               <div class="col mb-3">
-                <!-- <label for="columnFiltersCreatorEmail" class="form-label">Creator Email:</label> -->
-                <input type="text" class="form-control" id="columnFiltersCreatorEmail" v-model="columnFilters.creator_email" placeholder="Filter by Creator Email">
+                <!-- <label for="columnFiltersCreatorEmail" class="form-label">Maintainer Email:</label> -->
+                <input type="text" class="form-control" id="columnFiltersCreatorEmail" v-model="columnFilters.creator_email" placeholder="Filter by Maintainer Email">
               </div>         
             </div>    
             <div class="row row-cols-auto" style="margin-left: 0.1rem;">
@@ -117,7 +117,7 @@
                 <font-awesome-icon icon="fa-solid fa-sort-up" style="vertical-align: bottom" v-if="this.sortBy=='abstract' && this.sortOrder==1"/>
                 <font-awesome-icon icon="fa-solid fa-sort-down" style="vertical-align: top" v-if="this.sortBy=='abstract' && this.sortOrder==-1"/>                
               </th>
-              <th @click='sortColumn("creator_email")' style="min-width: 10%;" scope="col">Created By
+              <th @click='sortColumn("creator_email")' style="min-width: 10%;" scope="col">Maintained By
                 <font-awesome-icon icon="fa-solid fa-sort-up" style="vertical-align: bottom" v-if="this.sortBy=='creator_email' && this.sortOrder==1"/>
                 <font-awesome-icon icon="fa-solid fa-sort-down" style="vertical-align: top" v-if="this.sortBy=='creator_email' && this.sortOrder==-1"/>                
               </th>
@@ -240,9 +240,9 @@
                   placeholder="Enter source URL">
               </div>
               <div class="mb-3" v-if="superuser">
-                <label for="addDocumentCreatedBy" class="form-label">Created By (superuser field):</label>
+                <label for="addDocumentCreatedBy" class="form-label">Maintained By (superuser field):</label>
                 <input type="text" class="form-control" id="addCreatedBy" v-model="addDocumentForm.creator_email"
-                  placeholder="Enter Creator Email">
+                  placeholder="Enter Maintainer Email">
               </div>              
               <div class="mb-3">
                 <label for="addDocumentAbstract" class="form-label">Abstract:</label>
@@ -355,9 +355,9 @@
                   v-model="editDocumentForm.source_url" placeholder="Enter source URL">
               </div>
               <div class="mb-3" v-if="superuser">
-                <label for="editDocumentCreatedBy" class="form-label">Created By (superuser field):</label>
+                <label for="editDocumentCreatedBy" class="form-label">Maintained By (superuser field):</label>
                 <input type="text" class="form-control" id="editCreatedBy" v-model="editDocumentForm.creator_email"
-                  placeholder="Enter Creator Email">
+                  placeholder="Enter Maintainer Email">
               </div>                   
               <div class="mb-3">
                 <label for="editDocumentAbstract" class="form-label">Abstract:</label>
@@ -849,7 +849,7 @@ Please update the entry at your earliest convenience.\n\nRegards,\nteledocs`);
       });
 
       // Add headers
-      documentsArray.unshift(['Title', 'Author', 'Doc Identifier', 'Doc #', 'URL', 'Source URL', 'Abstract', 'Creator Email']);
+      documentsArray.unshift(['Title', 'Author', 'Doc Identifier', 'Doc #', 'URL', 'Source URL', 'Abstract', 'Maintainer Email']);
 
       // Create a workbook
       const workbook = XLSX.utils.book_new();
