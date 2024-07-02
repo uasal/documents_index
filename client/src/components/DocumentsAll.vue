@@ -386,7 +386,7 @@ import axios from 'axios';
 import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import { auth } from '../firebaseConfig';
 import AlertMessage from './AlertMessage.vue';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 
 const API_URL = '/api';
 // const API_URL = 'http://localhost:5001/api';
@@ -841,23 +841,58 @@ Please update the entry at your earliest convenience.\n\nRegards,\nteledocs`);
       document.body.removeChild(hiddenLink);
     },
     exportToExcel() {
-      const documents = this.filteredDocuments;
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet('Documents');
 
-      // Convert data to an array of arrays (2D array)
-      const documentsArray = documents.map(doc => {
-        return [doc.title, doc.author, doc.doc_identifier, doc.doc_code, doc.compiled_url, doc.source_url, doc.abstract, doc.creator_email];
+      worksheet.columns = [
+        { title: 'Title', key: 'title'},
+        { author: 'Author', key: 'author'},
+        { doc_identifier: 'Doc Identifier', key: 'doc_identifier'},
+        { doc_code: 'Doc #', key: 'doc_code'},
+        { compiled_url: 'URL', key: 'compiled_url'},        
+        { source_url: 'Source URL', key: 'source_url'},        
+        { abstract: 'Abstract', key: 'abstract'},        
+        { creator_email: 'Maintainer Email', key: 'creator_email'},        
+      ];
+
+      worksheet.addRow({
+        title: 'Title',
+        author: 'Author',
+        doc_identifier: 'Doc Identifier',
+        doc_code: 'Doc #',
+        compiled_url: 'URL',        
+        source_url: 'Source URL',
+        abstract: 'Abstract',
+        creator_email: 'Maintainer Email',
+      })
+
+      this.filteredDocuments.forEach(doc => {
+        worksheet.addRow({
+          title: doc.title,
+          author: doc.author,
+          doc_identifier: doc.doc_identifier,
+          doc_code: doc.doc_code,
+          compiled_url: doc.compiled_url,
+          source_url: doc.source_url,
+          abstract: doc.abstract,
+          creator_email: doc.creator_email,
+        });
       });
 
-      // Add headers
-      documentsArray.unshift(['Title', 'Author', 'Doc Identifier', 'Doc #', 'URL', 'Source URL', 'Abstract', 'Maintainer Email']);
+      // Save the workbook
+      workbook.xlsx.writeBuffer().then(buffer => {
+        const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        const fileName = 'exported_teledocs_entries.xlsx';
 
-      // Create a workbook
-      const workbook = XLSX.utils.book_new();
-      const sheetName = 'Sheet1';
+        // Create a link element, simulate click to trigger download
+        const link = document.createElement('a');
+        link.href = window.URL.createObjectURL(blob);
+        link.download = fileName;
+        link.click();
 
-      const worksheet = XLSX.utils.aoa_to_sheet(documentsArray);
-      XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
-      XLSX.writeFile(workbook, 'exported_teledocs_entries.xlsx');
+        // Clean up
+        window.URL.revokeObjectURL(link.href);
+      });
     }        
   },
   created() {
