@@ -1,4 +1,5 @@
 import re
+import enum
 
 from sqlalchemy.sql import func
 from sqlalchemy.inspection import inspect
@@ -24,7 +25,8 @@ class Serializer(object):
         dict
             A dictionary with object's column names as keys and values as values
         """
-        return {c: getattr(self, c) for c in inspect(self).attrs.keys()}
+        return {c: (getattr(self, c).value if isinstance(getattr(self, c), enum.Enum) else getattr(self, c)) 
+                for c in inspect(self).attrs.keys()}
 
     @staticmethod
     def serialize_list(obj_list):
@@ -44,6 +46,11 @@ class Serializer(object):
         return [m.serialize() for m in obj_list]
 
 
+class TypeEnum(enum.Enum):
+    document = "document"
+    drawing = "drawing"
+    other = "other"
+
 class Document(db.Model, Serializer):
     """
     Document model class to act as interface between the Flask logic and the
@@ -61,6 +68,7 @@ class Document(db.Model, Serializer):
     source_url = db.Column("source_url", db.String(500), default="")
     abstract = db.Column("abstract", db.Text, default="")
     creator_email = db.Column("creator_email", db.String(100), nullable=False)
+    entry_type = db.Column("entry_type", db.Enum(TypeEnum), default=TypeEnum.document, nullable=False)
 
     def __repr__(self):
         """

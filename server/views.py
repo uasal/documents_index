@@ -6,7 +6,7 @@ from flask.views import MethodView
 import firebase_admin
 from firebase_admin import auth
 
-from models import db, Document, User, Domain, get_entity, is_superuser
+from models import db, Document, TypeEnum, User, Domain, get_entity, is_superuser
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("logger")
@@ -143,6 +143,25 @@ class AllDocuments(MethodView):
             "superuser": is_superuser(entity),
         }
         return jsonify(response_object)
+
+
+class EntryTypes(MethodView):
+    """View class for the /entry_types route."""
+
+    decorators = [token_required]
+    # Map the entry types to Font Awesome icons
+    ENTRY_TYPE_ICONS = {
+        TypeEnum.document.value: "fa-solid fa-file-lines",
+        TypeEnum.drawing.value: "fa-solid fa-compass-drafting",
+        TypeEnum.other.value: "fa-solid fa-ellipsis",
+    }
+
+    def get(self):
+        entry_types = [
+            {"value": entry_type.value, "label": entry_type.name, "icon": self.ENTRY_TYPE_ICONS[entry_type.value]}
+            for entry_type in TypeEnum
+        ]
+        return jsonify(entry_types=entry_types, default=Document.entry_type.default.arg.value)
 
 
 class UploadFile(MethodView):

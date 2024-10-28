@@ -36,14 +36,24 @@
           <button type="button" class="btn btn-primary btn-sm ms-4" @click="toggleUploadFileModal">
             Upload File
           </button>
-          <button v-if="show_table" type="button" class="btn btn-primary btn-sm ms-4" @click="showFilters = !showFilters">{{ filterButtonText }}
+
+          <!-- Filter toggle button -->
+          <button v-if="show_table" type="button" class="btn btn-primary btn-sm ms-4" :title="filterButtonText" @click="toggleAdvancedFilter">
             <font-awesome-icon icon="fa-solid fa-sort-up" style="vertical-align: bottom" v-if="showFilters"/>
             <font-awesome-icon icon="fa-solid fa-sort-down" style="vertical-align: top" v-if="!showFilters"/>
           </button>
+
+          <!-- General Filter -->
+          <div class="ps-0">
+            <input v-if="!showFilters" type="text" class="form-control" v-model="filter" placeholder="Search across all columns"/>
+            <input v-if="showFilters" type="text" class="form-control invisible"/>
+          </div>
+
           <!-- Button for exporting to Excel -->
           <button type="button" class="btn btn-primary btn-sm float-right" style="margin-left: auto;" @click="exportToExcel">Export to Excel</button>          
         </div>
 
+        <!-- Advanced Filter Fields -->
         <transition name="slide">
           <div class="container mt-3 mb-5" v-if="showFilters">
             <div class="row row-cols-auto">
@@ -57,11 +67,19 @@
               </div>             
               <div class="col mb-3">
                 <!-- <label for="columnFiltersAuthor" class="form-label">Doc Identifier:</label> -->
-                <input type="text" class="form-control" id="columnFiltersDocIdentifier" v-model="columnFilters.doc_identifier" placeholder="Filter by Doc Identifier">                            
+                <input type="text" class="form-control" id="columnFiltersDocIdentifier" v-model="columnFilters.doc_identifier" placeholder="Filter by Identifier">                            
               </div>             
               <div class="col mb-3">
                 <!-- <label for="columnFiltersDocNb" class="form-label">Doc #:</label> -->
-                <input type="text" class="form-control" id="columnFiltersDocNb" v-model="columnFilters.doc_code" placeholder="Filter by Doc #">
+                <input type="text" class="form-control" id="columnFiltersDocNb" v-model="columnFilters.doc_code" placeholder="Filter by #">
+              </div>             
+              <div class="col mb-3">
+                <select class="form-control" id="columnFiltersEntryType" v-model="columnFilters.entry_type">
+                  <option value="">All Types</option> <!-- Option to clear the filter -->
+                  <option v-for="option in entryTypeOptions" :key="option.value" :value="option.value">
+                    {{ option.label }}
+                  </option>
+                </select>
               </div>             
               <div class="col mb-3">
                 <!-- <label for="columnFiltersURL" class="form-label">URL:</label> -->
@@ -97,13 +115,17 @@
                 <font-awesome-icon icon="fa-solid fa-sort-up" style="vertical-align: bottom" v-if="this.sortBy=='author' && this.sortOrder==1"/>
                 <font-awesome-icon icon="fa-solid fa-sort-down" style="vertical-align: top" v-if="this.sortBy=='author' && this.sortOrder==-1"/>
               </th>
-              <th @click='sortColumn("doc_identifier")' style="min-width: 10%;" scope="col">Doc Identifier
+              <th @click='sortColumn("doc_identifier")' style="min-width: 10%;" scope="col">Identifier
                 <font-awesome-icon icon="fa-solid fa-sort-up" style="vertical-align: bottom" v-if="this.sortBy=='doc_identifier' && this.sortOrder==1"/>
                 <font-awesome-icon icon="fa-solid fa-sort-down" style="vertical-align: top" v-if="this.sortBy=='doc_identifier' && this.sortOrder==-1"/>                
               </th>
               <th @click='sortColumn("doc_code")' style="min-width: 10%;" scope="col">Doc #
                 <font-awesome-icon icon="fa-solid fa-sort-up" style="vertical-align: bottom" v-if="this.sortBy=='doc_code' && this.sortOrder==1"/>
                 <font-awesome-icon icon="fa-solid fa-sort-down" style="vertical-align: top" v-if="this.sortBy=='doc_code' && this.sortOrder==-1"/>                
+              </th>
+              <th @click='sortColumn("entry_type")' style="min-width: 5%;" scope="col">Type
+                <font-awesome-icon icon="fa-solid fa-sort-up" style="vertical-align: bottom" v-if="this.sortBy=='entry_type' && this.sortOrder==1"/>
+                <font-awesome-icon icon="fa-solid fa-sort-down" style="vertical-align: top" v-if="this.sortBy=='entry_type' && this.sortOrder==-1"/>                
               </th>
               <th @click='sortColumn("compiled_url")' style="min-width: 10%;" scope="col"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="URLInfo"/>URL
                 <font-awesome-icon icon="fa-solid fa-sort-up" style="vertical-align: bottom" v-if="this.sortBy=='compiled_url' && this.sortOrder==1"/>
@@ -148,16 +170,18 @@
                 v-if="doc.doc_code.length > 30">{{ truncate(doc.doc_code, 30) }}</td>
               <td v-else>{{ doc.doc_code }}</td>
 
+              <td><font-awesome-icon v-if="entryTypeIconMap[doc.entry_type]" :icon="entryTypeIconMap[doc.entry_type]" data-toggle="tooltip" data-placement="bottom" :title="doc.entry_type" class="text-secondary" /></td>
+
               <td>
                 <font-awesome-icon v-if="doc.compiled_url && doc.compiled_url.toLowerCase().includes(gitLabANT)" icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="gitLabInfo"/>
-                <a v-if="doc.compiled_url" :href="doc.compiled_url" target="_blank">document link</a>
+                <a v-if="doc.compiled_url" :href="doc.compiled_url" target="_blank">link</a>
                 <!-- <a class="ms-3" :href=doc.compiled_url target="_blank" download><font-awesome-icon
                     icon="fa-solid fa-download" /></a> -->
               </td>
 
               <td>
                 <font-awesome-icon v-if="doc.source_url && doc.source_url.toLowerCase().includes(gitLabANT)" icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="gitLabInfo"/>
-                <a v-if="doc.source_url" :href="doc.source_url" target="_blank">source link</a>
+                <a v-if="doc.source_url" :href="doc.source_url" target="_blank">link</a>
                 <!-- <a class="ms-3" :href=doc.source_url target="_blank" download><font-awesome-icon
                     icon="fa-solid fa-download" /></a> -->
               </td>
@@ -181,7 +205,7 @@
                 </div>
               </td>
               <td v-else>
-                <button type="button" class="btn text-warning" data-toggle="tooltip" 
+                <button type="button" class="btn text-primary" data-toggle="tooltip" 
                 data-placement="top" title="Notify maintainer that entry needs to be updated" @click="sendEmail(doc)">
                   <font-awesome-icon icon="fa-solid fa-circle-exclamation" />
                 </button>
@@ -228,6 +252,12 @@
                 <label for="addDocumentDocCode" class="form-label">Doc # (optional):</label>
                 <input type="text" class="form-control" id="addDocCode" v-model="addDocumentForm.doc_code"
                   placeholder="Enter document code">
+              </div>
+              <div class="mb-3">
+                <label for="addDocumentEntryType" class="form-label">Type:</label>
+                <select class="form-control" id="addEntryType" v-model="addDocumentForm.entry_type">
+                  <option v-for="option in entryTypeOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
+                </select>
               </div>
               <div class="mb-3">
                 <label for="addDocumentUrl" class="form-label"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="URLInfo"/>URL:</label>
@@ -345,6 +375,17 @@
                   v-model="editDocumentForm.doc_code">
               </div>
               <div class="mb-3">
+                <label for="editDocumentEntryType" class="form-label">Type:</label>
+                <select class="form-control" id="editDocumentEntryType" v-model="editDocumentForm.entry_type"
+                  v-if="!editDocumentForm.doc_code || superuser">
+                  <option v-for="option in entryTypeOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
+                </select>
+                <select class="form-control" id="editDocumentEntryType" v-model="editDocumentForm.entry_type"
+                  v-else disabled>
+                  <option v-for="option in entryTypeOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
+                </select>
+              </div>
+              <div class="mb-3">
                 <label for="editDocumentUrl" class="form-label"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="URLInfo"/>URL:</label>
                 <input type="text" class="form-control" maxlength="500" id="editUrl"
                   v-model="editDocumentForm.compiled_url" placeholder="Enter URL">
@@ -396,12 +437,13 @@ export default {
   data() {
     return {
       showFilters: false,
-      filterButtonText: 'Filter Documents',      
+      filterButtonText: 'Advanced Filter',      
       columnFilters: {
         title: '',
         author: '',
         doc_identifier: '',
         doc_code: '',
+        entry_type: '',
         compiled_url: '',
         source_url: '',
         abstract: '',
@@ -414,6 +456,7 @@ export default {
         title: '',
         author: '',
         doc_code: '',
+        entry_type: '',
         compiled_url: '',
         source_url: '',
         creator_email: this.email,
@@ -429,6 +472,7 @@ export default {
         author: '',
         doc_identifier: '',
         doc_code: '',
+        entry_type: '',
         compiled_url: '',
         source_url: '',
         creator_email: '',
@@ -445,7 +489,10 @@ export default {
       superuser: false,
       file: null,
       sortBy: "doc_identifier",
-      sortOrder: -1,      
+      sortOrder: -1,
+      entryTypeOptions: [],
+      entryTypeIconMap: {},
+      entryTypeDefault: null,
     };
   },
   components: {
@@ -462,39 +509,45 @@ export default {
   },
   computed: {
     filteredDocuments() {
-      // if (this.filter === '') {
-      //   return this.documents;
-      // } else {
-      //   return this.documents.filter(doc => {
-      //     const searchTerm = this.filter.toLowerCase();
+      // Apply general filter if advanced filters are not shown
+      if (!this.showFilters) {
+        if (this.filter === '') {
+          return this.documents;
+        } else {
+          return this.documents.filter(doc => {
+            const searchTerm = this.filter.toLowerCase();
 
-      //     const title = doc.title ? doc.title.toString().toLowerCase() : doc.title;
-      //     const author = doc.author ? doc.author.toString().toLowerCase() : doc.author;
-      //     const doc_identifier = doc.doc_identifier ? doc.doc_identifier.toString().toLowerCase() : doc.doc_identifier;
-      //     const doc_code = doc.doc_code ? doc.doc_code.toString().toLowerCase() : doc.doc_code;
-      //     const compiled_url = doc.compiled_url ? doc.compiled_url.toString().toLowerCase() : doc.compiled_url;
-      //     const source_url = doc.source_url ? doc.source_url.toString().toLowerCase() : doc.source_url;
-      //     const abstract = doc.abstract ? doc.abstract.toString().toLowerCase() : doc.abstract;
-      //     const creator_email = doc.creator_email ? doc.creator_email.toString().toLowerCase() : doc.creator_email;
+            const title = doc.title ? doc.title.toString().toLowerCase() : doc.title;
+            const author = doc.author ? doc.author.toString().toLowerCase() : doc.author;
+            const doc_identifier = doc.doc_identifier ? doc.doc_identifier.toString().toLowerCase() : doc.doc_identifier;
+            const doc_code = doc.doc_code ? doc.doc_code.toString().toLowerCase() : doc.doc_code;
+            const entry_type = doc.entry_type ? doc.entry_type.toString().toLowerCase() : doc.entry_type;
+            const compiled_url = doc.compiled_url ? doc.compiled_url.toString().toLowerCase() : doc.compiled_url;
+            const source_url = doc.source_url ? doc.source_url.toString().toLowerCase() : doc.source_url;
+            const abstract = doc.abstract ? doc.abstract.toString().toLowerCase() : doc.abstract;
+            const creator_email = doc.creator_email ? doc.creator_email.toString().toLowerCase() : doc.creator_email;
 
-      //     return (title && title.includes(searchTerm)) ||
-      //       (author && author.includes(searchTerm)) ||
-      //       (doc_identifier && doc_identifier.includes(searchTerm)) ||
-      //       (doc_code && doc_code.includes(searchTerm)) ||
-      //       (compiled_url && compiled_url.includes(searchTerm)) ||
-      //       (source_url && source_url.includes(searchTerm)) ||
-      //       (abstract && abstract.includes(searchTerm)) ||
-      //       (creator_email && creator_email.includes(searchTerm));
-      //   });
-      // }
+            return (title && title.includes(searchTerm)) ||
+              (author && author.includes(searchTerm)) ||
+              (doc_identifier && doc_identifier.includes(searchTerm)) ||
+              (doc_code && doc_code.includes(searchTerm)) ||
+              (entry_type && entry_type.includes(searchTerm)) ||
+              (compiled_url && compiled_url.includes(searchTerm)) ||
+              (source_url && source_url.includes(searchTerm)) ||
+              (abstract && abstract.includes(searchTerm)) ||
+              (creator_email && creator_email.includes(searchTerm));
+          });
+        }
+      }
 
+      // Apply advanced filters
       return this.documents.filter(doc => {
         return Object.keys(this.columnFilters).every(key => {
           const searchTerm = this.columnFilters[key].toLowerCase();
           const value = doc[key] ? doc[key].toString().toLowerCase() : '';
           return value.includes(searchTerm);
         });
-      });      
+      });
     },
     isLoggedIn() {
       if (auth.currentUser) {
@@ -619,6 +672,7 @@ export default {
         title: this.addDocumentForm.title,
         author: this.addDocumentForm.author,
         doc_code: this.addDocumentForm.doc_code,
+        entry_type: this.addDocumentForm.entry_type,
         compiled_url: this.addDocumentForm.compiled_url,
         source_url: this.addDocumentForm.source_url,
         creator_email: this.addDocumentForm.creator_email || this.email,        
@@ -641,6 +695,7 @@ export default {
         title: this.editDocumentForm.title,
         author: this.editDocumentForm.author,
         doc_code: this.editDocumentForm.doc_code,
+        entry_type: this.editDocumentForm.entry_type,
         compiled_url: this.editDocumentForm.compiled_url,
         source_url: this.editDocumentForm.source_url,
         creator_email: this.editDocumentForm.creator_email || this.email,            
@@ -652,6 +707,7 @@ export default {
       this.addDocumentForm.title = '';
       this.addDocumentForm.author = '';
       this.addDocumentForm.doc_code = '';
+      this.addDocumentForm.entry_type = this.entryTypeDefault;
       this.addDocumentForm.compiled_url = '';
       this.addDocumentForm.source_url = '';
       this.addDocumentForm.creator_email = this.email;
@@ -661,6 +717,7 @@ export default {
       this.editDocumentForm.author = '';
       this.editDocumentForm.doc_identifier = '';
       this.editDocumentForm.doc_code = '';
+      this.editDocumentForm.entry_type = '';
       this.editDocumentForm.compiled_url = '';
       this.editDocumentForm.source_url = '';
       this.editDocumentForm.creator_email = '';      
@@ -704,7 +761,8 @@ export default {
     },
     toggleEditDocumentModal(doc) {
       if (doc) {
-        this.editDocumentForm = doc;
+        this.editDocumentForm = { ...doc };
+        this.editDocumentForm.entry_type = doc.entry_type
       }
       const body = document.querySelector('body');
       this.activeEditDocumentModal = !this.activeEditDocumentModal;
@@ -810,6 +868,16 @@ export default {
           return -this.sortOrder
         });
     },
+    toggleAdvancedFilter() {
+      this.showFilters = !this.showFilters;
+      this.filterButtonText = this.showFilters ? 'General Filter' : 'Advanced Filter';
+      // Reset general filter when switching to advanced filters
+      if (this.showFilters) {
+        this.filter = '';
+      } else {
+        this.resetFilters(); // Reset column filters when switching back to general
+      }
+    },
     resetFilters() {
       // Reset all filter inputs and checkboxes
       Object.keys(this.columnFilters).forEach(key => {
@@ -849,6 +917,7 @@ Please update the entry at your earliest convenience.\n\nRegards,\nteledocs`);
         { author: 'Author', key: 'author'},
         { doc_identifier: 'Doc Identifier', key: 'doc_identifier'},
         { doc_code: 'Doc #', key: 'doc_code'},
+        { entry_type: 'Type', key: 'entry_type'},
         { compiled_url: 'URL', key: 'compiled_url'},        
         { source_url: 'Source URL', key: 'source_url'},        
         { abstract: 'Abstract', key: 'abstract'},        
@@ -860,6 +929,7 @@ Please update the entry at your earliest convenience.\n\nRegards,\nteledocs`);
         author: 'Author',
         doc_identifier: 'Doc Identifier',
         doc_code: 'Doc #',
+        entry_type: 'Type',
         compiled_url: 'URL',        
         source_url: 'Source URL',
         abstract: 'Abstract',
@@ -872,6 +942,7 @@ Please update the entry at your earliest convenience.\n\nRegards,\nteledocs`);
           author: doc.author,
           doc_identifier: doc.doc_identifier,
           doc_code: doc.doc_code,
+          entry_type: doc.entry_type,
           compiled_url: doc.compiled_url,
           source_url: doc.source_url,
           abstract: doc.abstract,
@@ -893,11 +964,39 @@ Please update the entry at your earliest convenience.\n\nRegards,\nteledocs`);
         // Clean up
         window.URL.revokeObjectURL(link.href);
       });
-    }        
+    },
+    getEntryTypeOptions() {
+      const path = `${API_URL}/entry_types`;
+      auth.currentUser.getIdToken(true).then(idToken => {
+      const config = {
+        headers: { Authorization: `${idToken}` }
+      };
+
+      axios.get(path, config)
+        .then((res) => {
+          this.entryTypeOptions = res.data.entry_types;
+          this.entryTypeIconMap = this.entryTypeOptions.reduce((map, option) => {
+            map[option.value] = option.icon;
+            return map;
+          }, {});
+          this.entryTypeDefault = res.data.default;
+        })
+        .catch((error) => {
+          console.error(error);
+          this.superuser = false;
+          this.isAuthorized = error.response.data.isAuthorized;
+        });
+      }).catch(function (error) {
+        console.log(error)
+        this.superuser = false;
+        this.isAuthorized = false;
+      });
+    },    
   },
   created() {
     this.getDocuments();
     this.getAdmins();
+    this.getEntryTypeOptions();
   },
 };
 </script>
