@@ -15,18 +15,19 @@
                 @click="toggleEditDocumentModal(document)">
                 Update
             </button>
-            <button v-else type="button" class="btn btn-outline-warning mb-3" data-toggle="tooltip" 
+            <button v-else type="button" class="btn btn-outline-primary mb-3" data-toggle="tooltip" 
             data-placement="top" title="Notify maintainer that entry needs to be updated" @click="sendEmail(document)">
                 <font-awesome-icon icon="fa-solid fa-circle-exclamation" class="me-1" />Notify maintainer
             </button>
             <div class="row">
                 <div class="col-6">
                     <p><b>Author: </b>{{ document.author }}</p>
-                    <p><b>Document identifier: </b>{{ document.doc_identifier }}</p>
-                    <p><b>Document number: </b>{{ document.doc_code }}</p>
+                    <p><b>Identifier: </b>{{ document.doc_identifier }}</p>
+                    <p><b>Number: </b>{{ document.doc_code }}</p>
+                    <p><b>Type: </b><font-awesome-icon v-if="entryTypeIconMap[document.entry_type]" :icon="entryTypeIconMap[document.entry_type]" data-toggle="tooltip" data-placement="bottom" :title="document.entry_type" class="text-secondary" /></p>
                     <p><b><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="URLInfo"/>URL: </b><font-awesome-icon v-if="document.compiled_url && document.compiled_url.toLowerCase().includes(gitLabANT)" icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="gitLabInfo"/><a :href=document.compiled_url target="_blank">{{ document.compiled_url }}</a></p>
                     <p><b><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="sourceURLInfo"/>Source URL: </b><font-awesome-icon v-if="document.source_url && document.source_url.toLowerCase().includes(gitLabANT)" icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="gitLabInfo"/><a :href=document.source_url target="_blank">{{ document.source_url }}</a></p>
-                    <p><b>Document entry maintained by: </b>{{ document.creator_email }}</p>
+                    <p><b>Entry maintained by: </b>{{ document.creator_email }}</p>
                 </div>
             </div>
             <div class="row">
@@ -73,6 +74,17 @@
                                 <input type="text" class="form-control-plaintext" maxlength="30" id="editDocCode"
                                 v-else readonly 
                                 v-model="editDocumentForm.doc_code">
+                            </div>
+                            <div class="mb-3">
+                                <label for="editDocumentEntryType" class="form-label">Type:</label>
+                                <select class="form-control" id="editDocumentEntryType" v-model="editDocumentForm.entry_type"
+                                    v-if="!editDocumentForm.doc_code || superuser">
+                                    <option v-for="option in entryTypeOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
+                                </select>
+                                <select class="form-control" id="editDocumentEntryType" v-model="editDocumentForm.entry_type"
+                                    v-else disabled>
+                                    <option v-for="option in entryTypeOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
+                                </select>
                             </div>
                             <div class="mb-3">
                                 <label for="editDocumentUrl" class="form-label"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="URLInfo"/>URL:</label>
@@ -134,6 +146,7 @@ export default {
                 author: '',
                 doc_identifier: '',
                 doc_code: '',
+                entry_type: '',
                 compiled_url: '',
                 source_url: '',
                 creator_email: '',                
@@ -148,6 +161,8 @@ export default {
             isAuthorized: false,
             // hideContent: false,
             superuser: false,
+            entryTypeOptions: [],
+            entryTypeIconMap: {},
         };
     },
     components: {
@@ -253,6 +268,7 @@ export default {
                 title: this.editDocumentForm.title,
                 author: this.editDocumentForm.author,
                 doc_code: this.editDocumentForm.doc_code,
+                entry_type: this.editDocumentForm.entry_type,
                 compiled_url: this.editDocumentForm.compiled_url,
                 source_url: this.editDocumentForm.source_url,
                 creator_email: this.editDocumentForm.creator_email || this.email,                  
@@ -266,6 +282,7 @@ export default {
             this.editDocumentForm.author = '';
             this.editDocumentForm.doc_identifier = '';
             this.editDocumentForm.doc_code = '';
+            this.editDocumentForm.entry_type = '';
             this.editDocumentForm.compiled_url = '';
             this.editDocumentForm.source_url = '';
             this.editDocumentForm.creator_email = '';            
@@ -273,7 +290,8 @@ export default {
         },
         toggleEditDocumentModal(doc) {
             if (doc) {
-                this.editDocumentForm = doc;
+                this.editDocumentForm = { ...doc };
+                this.editDocumentForm.entry_type = doc.entry_type
             }
             const body = document.querySelector('body');
             this.activeEditDocumentModal = !this.activeEditDocumentModal;
@@ -331,11 +349,38 @@ Please update the entry at your earliest convenience.\n\nRegards,\nteledocs`);
             document.body.appendChild(hiddenLink);
             hiddenLink.click();
             document.body.removeChild(hiddenLink);
-        },        
+        },
+        getEntryTypeOptions() {
+            const path = `${API_URL}/entry_types`;
+            auth.currentUser.getIdToken(true).then(idToken => {
+            const config = {
+                headers: { Authorization: `${idToken}` }
+            };
+
+            axios.get(path, config)
+                .then((res) => {
+                    this.entryTypeOptions = res.data.entry_types;
+                    this.entryTypeIconMap = this.entryTypeOptions.reduce((map, option) => {
+                        map[option.value] = option.icon;
+                        return map;
+                    }, {});
+                })
+                .catch((error) => {
+                    console.error(error);
+                    this.superuser = false;
+                    this.isAuthorized = error.response.data.isAuthorized;
+                });
+            }).catch(function (error) {
+                console.log(error)
+                this.superuser = false;
+                this.isAuthorized = false;
+            });
+        }, 
     },
     created() {
         this.getDocument();
         this.getAdmins();
+        this.getEntryTypeOptions();
     },
 };
 </script>
