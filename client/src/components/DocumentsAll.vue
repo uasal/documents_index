@@ -82,6 +82,14 @@
                 </select>
               </div>             
               <div class="col mb-3">
+                <select class="form-control" id="columnFiltersCriticality" v-model="columnFilters.criticality">
+                  <option value="">All Levels</option> <!-- Option to clear the filter -->
+                  <option v-for="option in criticalityOptions" :key="option.value" :value="option.value">
+                    {{ option.label }}
+                  </option>
+                </select>
+              </div>             
+              <div class="col mb-3">
                 <!-- <label for="columnFiltersURL" class="form-label">URL:</label> -->
                 <input type="text" class="form-control" id="columnFiltersURL" v-model="columnFilters.compiled_url" placeholder="Filter by URL">
               </div>             
@@ -147,7 +155,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="(doc, index) in filteredDocuments" :key="index">
+            <tr v-for="(doc, index) in filteredDocuments" :key="index" :style="criticalityStyleMap[doc.criticality]">
               <td data-toggle="tooltip" data-placement="bottom" :title="doc.title" style="cursor: default"
                 v-if="doc.title.length > 30">
                 <a :href="'docs/' + doc.doc_identifier" target="_blank">{{
@@ -257,6 +265,12 @@
                 <label for="addDocumentEntryType" class="form-label">Type:</label>
                 <select class="form-control" id="addEntryType" v-model="addDocumentForm.entry_type">
                   <option v-for="option in entryTypeOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
+                </select>
+              </div>
+              <div class="mb-3">
+                <label for="addDocumentCriticality" class="form-label">Criticality:</label>
+                <select class="form-control" id="addDocumentCriticality" v-model="addDocumentForm.criticality">
+                  <option v-for="option in criticalityOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
                 </select>
               </div>
               <div class="mb-3">
@@ -386,6 +400,12 @@
                 </select>
               </div>
               <div class="mb-3">
+                <label for="editDocumentCriticality" class="form-label">Criticality:</label>
+                <select class="form-control" id="editDocumentCriticality" v-model="editDocumentForm.criticality">
+                  <option v-for="option in criticalityOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
+                </select>
+              </div>
+              <div class="mb-3">
                 <label for="editDocumentUrl" class="form-label"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="URLInfo"/>URL:</label>
                 <input type="text" class="form-control" maxlength="500" id="editUrl"
                   v-model="editDocumentForm.compiled_url" placeholder="Enter URL">
@@ -444,6 +464,7 @@ export default {
         doc_identifier: '',
         doc_code: '',
         entry_type: '',
+        criticality: '',
         compiled_url: '',
         source_url: '',
         abstract: '',
@@ -457,6 +478,7 @@ export default {
         author: '',
         doc_code: '',
         entry_type: '',
+        criticality: '',
         compiled_url: '',
         source_url: '',
         creator_email: this.email,
@@ -473,6 +495,7 @@ export default {
         doc_identifier: '',
         doc_code: '',
         entry_type: '',
+        criticality: '',
         compiled_url: '',
         source_url: '',
         creator_email: '',
@@ -493,6 +516,9 @@ export default {
       entryTypeOptions: [],
       entryTypeIconMap: {},
       entryTypeDefault: null,
+      criticalityOptions: [],
+      criticalityStyleMap: {},
+      criticalityDefault: null,
     };
   },
   components: {
@@ -543,9 +569,15 @@ export default {
       // Apply advanced filters
       return this.documents.filter(doc => {
         return Object.keys(this.columnFilters).every(key => {
-          const searchTerm = this.columnFilters[key].toLowerCase();
-          const value = doc[key] ? doc[key].toString().toLowerCase() : '';
-          return value.includes(searchTerm);
+          if (typeof (this.columnFilters[key]) === 'number') {
+            const searchTerm = this.columnFilters[key];
+            const value = doc[key]
+            return value === searchTerm;
+          } else if (typeof (this.columnFilters[key]) === 'string') {
+            const searchTerm = this.columnFilters[key].toLowerCase();
+            const value = doc[key] ? doc[key].toString().toLowerCase() : '';
+            return value.includes(searchTerm);
+          }
         });
       });
     },
@@ -673,6 +705,7 @@ export default {
         author: this.addDocumentForm.author,
         doc_code: this.addDocumentForm.doc_code,
         entry_type: this.addDocumentForm.entry_type,
+        criticality: this.addDocumentForm.criticality,
         compiled_url: this.addDocumentForm.compiled_url,
         source_url: this.addDocumentForm.source_url,
         creator_email: this.addDocumentForm.creator_email || this.email,        
@@ -696,6 +729,7 @@ export default {
         author: this.editDocumentForm.author,
         doc_code: this.editDocumentForm.doc_code,
         entry_type: this.editDocumentForm.entry_type,
+        criticality: this.editDocumentForm.criticality,
         compiled_url: this.editDocumentForm.compiled_url,
         source_url: this.editDocumentForm.source_url,
         creator_email: this.editDocumentForm.creator_email || this.email,            
@@ -708,6 +742,7 @@ export default {
       this.addDocumentForm.author = '';
       this.addDocumentForm.doc_code = '';
       this.addDocumentForm.entry_type = this.entryTypeDefault;
+      this.addDocumentForm.criticality = this.criticalityDefault;
       this.addDocumentForm.compiled_url = '';
       this.addDocumentForm.source_url = '';
       this.addDocumentForm.creator_email = this.email;
@@ -718,6 +753,7 @@ export default {
       this.editDocumentForm.doc_identifier = '';
       this.editDocumentForm.doc_code = '';
       this.editDocumentForm.entry_type = '';
+      this.editDocumentForm.criticality = '';
       this.editDocumentForm.compiled_url = '';
       this.editDocumentForm.source_url = '';
       this.editDocumentForm.creator_email = '';      
@@ -762,7 +798,8 @@ export default {
     toggleEditDocumentModal(doc) {
       if (doc) {
         this.editDocumentForm = { ...doc };
-        this.editDocumentForm.entry_type = doc.entry_type
+        this.editDocumentForm.entry_type = doc.entry_type;
+        this.editDocumentForm.criticality = doc.criticality;
       }
       const body = document.querySelector('body');
       this.activeEditDocumentModal = !this.activeEditDocumentModal;
@@ -918,6 +955,7 @@ Please update the entry at your earliest convenience.\n\nRegards,\nteledocs`);
         { doc_identifier: 'Doc Identifier', key: 'doc_identifier'},
         { doc_code: 'Doc #', key: 'doc_code'},
         { entry_type: 'Type', key: 'entry_type'},
+        { criticality: 'Criticality', key: 'criticality'},
         { compiled_url: 'URL', key: 'compiled_url'},        
         { source_url: 'Source URL', key: 'source_url'},        
         { abstract: 'Abstract', key: 'abstract'},        
@@ -930,6 +968,7 @@ Please update the entry at your earliest convenience.\n\nRegards,\nteledocs`);
         doc_identifier: 'Doc Identifier',
         doc_code: 'Doc #',
         entry_type: 'Type',
+        criticality: 'Criticality',
         compiled_url: 'URL',        
         source_url: 'Source URL',
         abstract: 'Abstract',
@@ -943,6 +982,7 @@ Please update the entry at your earliest convenience.\n\nRegards,\nteledocs`);
           doc_identifier: doc.doc_identifier,
           doc_code: doc.doc_code,
           entry_type: doc.entry_type,
+          criticality: doc.criticality,
           compiled_url: doc.compiled_url,
           source_url: doc.source_url,
           abstract: doc.abstract,
@@ -992,11 +1032,39 @@ Please update the entry at your earliest convenience.\n\nRegards,\nteledocs`);
         this.isAuthorized = false;
       });
     },    
+    getCriticalityOptions() {
+      const path = `${API_URL}/criticality_types`;
+      auth.currentUser.getIdToken(true).then(idToken => {
+      const config = {
+        headers: { Authorization: `${idToken}` }
+      };
+
+      axios.get(path, config)
+        .then((res) => {
+          this.criticalityOptions = res.data.criticality_types;
+          this.criticalityStyleMap = this.criticalityOptions.reduce((map, option) => {
+            map[option.value] = option.tr_style;
+            return map;
+          }, {});
+          this.criticalityDefault = res.data.default;
+        })
+        .catch((error) => {
+          console.error(error);
+          this.superuser = false;
+          this.isAuthorized = error.response.data.isAuthorized;
+        });
+      }).catch(function (error) {
+        console.log(error)
+        this.superuser = false;
+        this.isAuthorized = false;
+      });
+    },    
   },
   created() {
     this.getDocuments();
     this.getAdmins();
     this.getEntryTypeOptions();
+    this.getCriticalityOptions();
   },
 };
 </script>
