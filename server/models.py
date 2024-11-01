@@ -59,7 +59,21 @@ class CriticalityEnum(enum.Enum):
     critical = 10
 
     @classmethod
-    def __contains__(cls, item): 
+    def __contains__(cls, item):
+        """
+        Magic method that checks whether there is a CriticalityEnum entry associated with
+        given item.
+
+        Parameters
+        ----------
+        item : int
+            Integer to be checked against CriticalityEnum entries.
+
+        Returns
+        -------
+        bool
+            Whether there exists or not a CriticalityEnum entry for the given item.
+        """
         try:
             cls(item)
         except ValueError:
@@ -68,18 +82,62 @@ class CriticalityEnum(enum.Enum):
             return True
 
 
-# Custom TypeDecorator to store the enum as an integer in the database
 class CriticalityType(TypeDecorator):
-    # Use Integer as the underlying column type
+    """
+    Custom TypeDecorator to store the enum as an integer in the database
+    """
+
+    # Underlying column type
     impl = db.Integer
 
     def process_bind_param(self, value, dialect):
-        # Convert the enum to its integer value before storing
-        # If not an Enum, fallback onto default value
+        """
+        From SQLAlchemy docs:
+        `Custom subclasses of TypeDecorator override this method to define custom behaviors
+        for incoming data values. This method is called at statement execution time and is 
+        passed the literal Python data value which is to be associated with a bound parameter 
+        in the statement.`
+
+        In this case, checking that the value is valid for the enum before storing it in database.
+        If not a valid value, fallback to default value.
+
+        Parameters
+        ----------
+        value : int
+            Integer associated with value in CriticalityEnum.
+        dialect: sqlalchemy.engine.Dialect
+            The sqlalchemy Dialect in use.
+
+        Returns
+        -------
+        int
+            Integer associated with value in CriticalityEnum.
+        """
         return value if CriticalityEnum.__contains__(value) else Document.criticality.default.arg.value
 
     def process_result_value(self, value, dialect):
-        # Convert the integer back to the enum when querying
+        """
+        From SQLAlchemy docs:
+        `Custom subclasses of TypeDecorator override this method to define custom behaviors
+        for incoming data values. This method is called at statement execution time and is 
+        passed the literal Python data value which is to be associated with a bound parameter 
+        in the statement.`
+
+        In this case, convert the integer back to the enum when querying.
+        If not a valid value, return None
+
+        Parameters
+        ----------
+        value : int
+            Integer associated with value in CriticalityEnum.
+        dialect: sqlalchemy.engine.Dialect
+            The sqlalchemy Dialect in use.
+
+        Returns
+        -------
+        CriticalityEnum or None
+            CriticalityEnum associated with integer.
+        """
         try:
             return CriticalityEnum(value) if value is not None else None
         except ValueError:
