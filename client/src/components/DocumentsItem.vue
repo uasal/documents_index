@@ -21,6 +21,7 @@
             </button>
             <div class="row">
                 <div class="col-6">
+                    <p v-if="document.criticality === 10"><b>Entry is mission critical</b></p>
                     <p><b>Author: </b>{{ document.author }}</p>
                     <p><b>Identifier: </b>{{ document.doc_identifier }}</p>
                     <p><b>Number: </b>{{ document.doc_code }}</p>
@@ -87,6 +88,12 @@
                                 </select>
                             </div>
                             <div class="mb-3">
+                                <label for="editDocumentCriticality" class="form-label">Criticality:</label>
+                                <select class="form-control" id="editDocumentCriticality" v-model="editDocumentForm.criticality">
+                                <option v-for="option in criticalityOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
                                 <label for="editDocumentUrl" class="form-label"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="URLInfo"/>URL:</label>
                                 <input type="text" class="form-control" maxlength="500" id="editUrl"
                                     v-model="editDocumentForm.compiled_url" placeholder="Enter URL">
@@ -147,6 +154,7 @@ export default {
                 doc_identifier: '',
                 doc_code: '',
                 entry_type: '',
+                criticality: '',
                 compiled_url: '',
                 source_url: '',
                 creator_email: '',                
@@ -163,6 +171,8 @@ export default {
             superuser: false,
             entryTypeOptions: [],
             entryTypeIconMap: {},
+            criticalityOptions: [],
+            criticalityDefault: null,
         };
     },
     components: {
@@ -269,6 +279,7 @@ export default {
                 author: this.editDocumentForm.author,
                 doc_code: this.editDocumentForm.doc_code,
                 entry_type: this.editDocumentForm.entry_type,
+                criticality: this.editDocumentForm.criticality,
                 compiled_url: this.editDocumentForm.compiled_url,
                 source_url: this.editDocumentForm.source_url,
                 creator_email: this.editDocumentForm.creator_email || this.email,                  
@@ -283,6 +294,7 @@ export default {
             this.editDocumentForm.doc_identifier = '';
             this.editDocumentForm.doc_code = '';
             this.editDocumentForm.entry_type = '';
+            this.editDocumentForm.criticality = '';
             this.editDocumentForm.compiled_url = '';
             this.editDocumentForm.source_url = '';
             this.editDocumentForm.creator_email = '';            
@@ -291,7 +303,8 @@ export default {
         toggleEditDocumentModal(doc) {
             if (doc) {
                 this.editDocumentForm = { ...doc };
-                this.editDocumentForm.entry_type = doc.entry_type
+                this.editDocumentForm.entry_type = doc.entry_type;
+                this.editDocumentForm.criticality = doc.criticality;
             }
             const body = document.querySelector('body');
             this.activeEditDocumentModal = !this.activeEditDocumentModal;
@@ -375,12 +388,40 @@ Please update the entry at your earliest convenience.\n\nRegards,\nteledocs`);
                 this.superuser = false;
                 this.isAuthorized = false;
             });
-        }, 
+        },
+        getCriticalityOptions() {
+            const path = `${API_URL}/criticality_types`;
+            auth.currentUser.getIdToken(true).then(idToken => {
+            const config = {
+                headers: { Authorization: `${idToken}` }
+            };
+
+            axios.get(path, config)
+                .then((res) => {
+                this.criticalityOptions = res.data.criticality_types;
+                this.criticalityStyleMap = this.criticalityOptions.reduce((map, option) => {
+                    map[option.value] = option.tr_style;
+                    return map;
+                }, {});
+                this.criticalityDefault = res.data.default;
+                })
+                .catch((error) => {
+                console.error(error);
+                this.superuser = false;
+                this.isAuthorized = error.response.data.isAuthorized;
+                });
+            }).catch(function (error) {
+                console.log(error)
+                this.superuser = false;
+                this.isAuthorized = false;
+            });
+        },    
     },
     created() {
         this.getDocument();
         this.getAdmins();
         this.getEntryTypeOptions();
+        this.getCriticalityOptions();
     },
 };
 </script>

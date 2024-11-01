@@ -5,6 +5,7 @@ from sqlalchemy.sql import func
 from sqlalchemy.inspection import inspect
 from sqlalchemy.exc import NoResultFound, MultipleResultsFound
 from sqlalchemy.orm import validates
+from sqlalchemy.types import TypeDecorator
 from app import db
 
 import logging
@@ -25,7 +26,9 @@ class Serializer(object):
         dict
             A dictionary with object's column names as keys and values as values
         """
-        return {c: (getattr(self, c).value if isinstance(getattr(self, c), enum.Enum) else getattr(self, c)) 
+        return {c: (getattr(self, c).value 
+                    if isinstance(getattr(self, c), enum.Enum) 
+                    else getattr(self, c))
                 for c in inspect(self).attrs.keys()}
 
     @staticmethod
@@ -51,6 +54,96 @@ class TypeEnum(enum.Enum):
     drawing = "drawing"
     other = "other"
 
+class CriticalityEnum(enum.Enum):
+    low = 0
+    critical = 10
+
+    @classmethod
+    def __contains__(cls, item):
+        """
+        Magic method that checks whether there is a CriticalityEnum entry associated with
+        given item.
+
+        Parameters
+        ----------
+        item : int
+            Integer to be checked against CriticalityEnum entries.
+
+        Returns
+        -------
+        bool
+            Whether there exists or not a CriticalityEnum entry for the given item.
+        """
+        try:
+            cls(item)
+        except ValueError:
+            return False
+        else:
+            return True
+
+
+class CriticalityType(TypeDecorator):
+    """
+    Custom TypeDecorator to store the enum as an integer in the database
+    """
+
+    # Underlying column type
+    impl = db.Integer
+
+    def process_bind_param(self, value, dialect):
+        """
+        From SQLAlchemy docs:
+        `Custom subclasses of TypeDecorator override this method to define custom behaviors
+        for incoming data values. This method is called at statement execution time and is 
+        passed the literal Python data value which is to be associated with a bound parameter 
+        in the statement.`
+
+        In this case, checking that the value is valid for the enum before storing it in database.
+        If not a valid value, fallback to default value.
+
+        Parameters
+        ----------
+        value : int
+            Integer associated with value in CriticalityEnum.
+        dialect: sqlalchemy.engine.Dialect
+            The sqlalchemy Dialect in use.
+
+        Returns
+        -------
+        int
+            Integer associated with value in CriticalityEnum.
+        """
+        return value if CriticalityEnum.__contains__(value) else Document.criticality.default.arg.value
+
+    def process_result_value(self, value, dialect):
+        """
+        From SQLAlchemy docs:
+        `Custom subclasses of TypeDecorator override this method to define custom behaviors
+        for incoming data values. This method is called at statement execution time and is 
+        passed the literal Python data value which is to be associated with a bound parameter 
+        in the statement.`
+
+        In this case, convert the integer back to the enum when querying.
+        If not a valid value, return None
+
+        Parameters
+        ----------
+        value : int
+            Integer associated with value in CriticalityEnum.
+        dialect: sqlalchemy.engine.Dialect
+            The sqlalchemy Dialect in use.
+
+        Returns
+        -------
+        CriticalityEnum or None
+            CriticalityEnum associated with integer.
+        """
+        try:
+            return CriticalityEnum(value) if value is not None else None
+        except ValueError:
+            return None
+
+
 class Document(db.Model, Serializer):
     """
     Document model class to act as interface between the Flask logic and the
@@ -69,6 +162,7 @@ class Document(db.Model, Serializer):
     abstract = db.Column("abstract", db.Text, default="")
     creator_email = db.Column("creator_email", db.String(100), nullable=False)
     entry_type = db.Column("entry_type", db.Enum(TypeEnum), default=TypeEnum.document, nullable=False)
+    criticality = db.Column("criticality", CriticalityType, default=CriticalityEnum.low, nullable=False)
 
     def __repr__(self):
         """

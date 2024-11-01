@@ -6,7 +6,7 @@ from flask.views import MethodView
 import firebase_admin
 from firebase_admin import auth
 
-from models import db, Document, TypeEnum, User, Domain, get_entity, is_superuser
+from models import db, Document, TypeEnum, CriticalityEnum, User, Domain, get_entity, is_superuser
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("logger")
@@ -158,10 +158,30 @@ class EntryTypes(MethodView):
 
     def get(self):
         entry_types = [
-            {"value": entry_type.value, "label": entry_type.name, "icon": self.ENTRY_TYPE_ICONS[entry_type.value]}
+            {"value": entry_type.value, "label": entry_type.name,
+            "icon": self.ENTRY_TYPE_ICONS[entry_type.value]}
             for entry_type in TypeEnum
         ]
         return jsonify(entry_types=entry_types, default=Document.entry_type.default.arg.value)
+
+
+class CriticalityTypes(MethodView):
+    """View class for the /criticality_types route."""
+
+    decorators = [token_required]
+    # Map the entry to style formatting
+    ENTRY_CRITICALITY_TR_STYLE = {
+        CriticalityEnum.low.value: "",
+        CriticalityEnum.critical.value: "border-left: darkred solid 0.2em;",
+    }
+
+    def get(self):
+        criticality_types = [
+            {"value": criticality_type.value, "label": criticality_type.name,
+            "tr_style": self.ENTRY_CRITICALITY_TR_STYLE[criticality_type.value]}
+            for criticality_type in CriticalityEnum
+        ]
+        return jsonify(criticality_types=criticality_types, default=Document.criticality.default.arg.value)
 
 
 class UploadFile(MethodView):
