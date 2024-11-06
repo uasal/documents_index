@@ -21,11 +21,11 @@
             </button>
             <div class="row">
                 <div class="col-6">
-                    <p v-if="document.criticality === 10"><b>Entry is mission critical</b></p>
                     <p><b>Author: </b>{{ document.author }}</p>
                     <p><b>Identifier: </b>{{ document.doc_identifier }}</p>
                     <p><b>Number: </b>{{ document.doc_code }}</p>
                     <p><b>Type: </b><font-awesome-icon v-if="entryTypeIconMap[document.entry_type]" :icon="entryTypeIconMap[document.entry_type]" data-toggle="tooltip" data-placement="bottom" :title="document.entry_type" class="text-secondary" /></p>
+                    <p><b>Change controlled: </b> {{ changeControlledValueMap[document.change_controlled] }}</p>
                     <p><b><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="URLInfo"/>URL: </b><font-awesome-icon v-if="document.compiled_url && document.compiled_url.toLowerCase().includes(gitLabANT)" icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="gitLabInfo"/><a :href=document.compiled_url target="_blank">{{ document.compiled_url }}</a></p>
                     <p><b><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="sourceURLInfo"/>Source URL: </b><font-awesome-icon v-if="document.source_url && document.source_url.toLowerCase().includes(gitLabANT)" icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="gitLabInfo"/><a :href=document.source_url target="_blank">{{ document.source_url }}</a></p>
                     <p><b>Entry maintained by: </b>{{ document.creator_email }}</p>
@@ -88,9 +88,9 @@
                                 </select>
                             </div>
                             <div class="mb-3">
-                                <label for="editDocumentCriticality" class="form-label">Criticality:</label>
-                                <select class="form-control" id="editDocumentCriticality" v-model="editDocumentForm.criticality">
-                                <option v-for="option in criticalityOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
+                                <label for="editDocumentChangeControlled" class="form-label">Change Controlled:</label>
+                                <select class="form-control" id="editDocumentChangeControlled" v-model="editDocumentForm.change_controlled">
+                                <option v-for="option in changeControlledOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
                                 </select>
                             </div>
                             <div class="mb-3">
@@ -154,7 +154,7 @@ export default {
                 doc_identifier: '',
                 doc_code: '',
                 entry_type: '',
-                criticality: '',
+                change_controlled: '',
                 compiled_url: '',
                 source_url: '',
                 creator_email: '',                
@@ -171,8 +171,8 @@ export default {
             superuser: false,
             entryTypeOptions: [],
             entryTypeIconMap: {},
-            criticalityOptions: [],
-            criticalityDefault: null,
+            changeControlledOptions: [],
+            changeControlledValueMap: {},
         };
     },
     components: {
@@ -279,7 +279,7 @@ export default {
                 author: this.editDocumentForm.author,
                 doc_code: this.editDocumentForm.doc_code,
                 entry_type: this.editDocumentForm.entry_type,
-                criticality: this.editDocumentForm.criticality,
+                change_controlled: this.editDocumentForm.change_controlled,
                 compiled_url: this.editDocumentForm.compiled_url,
                 source_url: this.editDocumentForm.source_url,
                 creator_email: this.editDocumentForm.creator_email || this.email,                  
@@ -294,7 +294,7 @@ export default {
             this.editDocumentForm.doc_identifier = '';
             this.editDocumentForm.doc_code = '';
             this.editDocumentForm.entry_type = '';
-            this.editDocumentForm.criticality = '';
+            this.editDocumentForm.change_controlled = '';
             this.editDocumentForm.compiled_url = '';
             this.editDocumentForm.source_url = '';
             this.editDocumentForm.creator_email = '';            
@@ -304,7 +304,7 @@ export default {
             if (doc) {
                 this.editDocumentForm = { ...doc };
                 this.editDocumentForm.entry_type = doc.entry_type;
-                this.editDocumentForm.criticality = doc.criticality;
+                this.editDocumentForm.change_controlled = doc.change_controlled;
             }
             const body = document.querySelector('body');
             this.activeEditDocumentModal = !this.activeEditDocumentModal;
@@ -389,8 +389,8 @@ Please update the entry at your earliest convenience.\n\nRegards,\nteledocs`);
                 this.isAuthorized = false;
             });
         },
-        getCriticalityOptions() {
-            const path = `${API_URL}/criticality_types`;
+        getChangeControlledOptions() {
+            const path = `${API_URL}/change_controlled_types`;
             auth.currentUser.getIdToken(true).then(idToken => {
             const config = {
                 headers: { Authorization: `${idToken}` }
@@ -398,12 +398,11 @@ Please update the entry at your earliest convenience.\n\nRegards,\nteledocs`);
 
             axios.get(path, config)
                 .then((res) => {
-                this.criticalityOptions = res.data.criticality_types;
-                this.criticalityStyleMap = this.criticalityOptions.reduce((map, option) => {
-                    map[option.value] = option.tr_style;
+                this.changeControlledOptions = res.data.change_controlled_types;
+                this.changeControlledValueMap = this.changeControlledOptions.reduce((map, option) => {
+                    map[option.value] = option.label;
                     return map;
                 }, {});
-                this.criticalityDefault = res.data.default;
                 })
                 .catch((error) => {
                 console.error(error);
@@ -421,7 +420,7 @@ Please update the entry at your earliest convenience.\n\nRegards,\nteledocs`);
         this.getDocument();
         this.getAdmins();
         this.getEntryTypeOptions();
-        this.getCriticalityOptions();
+        this.getChangeControlledOptions();
     },
 };
 </script>

@@ -82,9 +82,9 @@
                 </select>
               </div>             
               <div class="col mb-3">
-                <select class="form-control" id="columnFiltersCriticality" v-model="columnFilters.criticality">
-                  <option value="">All Levels</option> <!-- Option to clear the filter -->
-                  <option v-for="option in criticalityOptions" :key="option.value" :value="option.value">
+                <select class="form-control" id="columnFiltersChangeControlled" v-model="columnFilters.change_controlled">
+                  <option value="">All Change Control Levels</option> <!-- Option to clear the filter -->
+                  <option v-for="option in changeControlledOptions" :key="option.value" :value="option.value">
                     {{ option.label }}
                   </option>
                 </select>
@@ -155,7 +155,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="(doc, index) in filteredDocuments" :key="index" :style="criticalityStyleMap[doc.criticality]">
+            <tr v-for="(doc, index) in filteredDocuments" :key="index" :style="changeControlledStyleMap[doc.change_controlled]">
               <td data-toggle="tooltip" data-placement="bottom" :title="doc.title" style="cursor: default"
                 v-if="doc.title.length > 30">
                 <a :href="'docs/' + doc.doc_identifier" target="_blank">{{
@@ -268,9 +268,9 @@
                 </select>
               </div>
               <div class="mb-3">
-                <label for="addDocumentCriticality" class="form-label">Criticality:</label>
-                <select class="form-control" id="addDocumentCriticality" v-model="addDocumentForm.criticality">
-                  <option v-for="option in criticalityOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
+                <label for="addDocumentChangeControlled" class="form-label">Change Controlled:</label>
+                <select class="form-control" id="addDocumentChangeControlled" v-model="addDocumentForm.change_controlled">
+                  <option v-for="option in changeControlledOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
                 </select>
               </div>
               <div class="mb-3">
@@ -400,9 +400,9 @@
                 </select>
               </div>
               <div class="mb-3">
-                <label for="editDocumentCriticality" class="form-label">Criticality:</label>
-                <select class="form-control" id="editDocumentCriticality" v-model="editDocumentForm.criticality">
-                  <option v-for="option in criticalityOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
+                <label for="editDocumentChangeControlled" class="form-label">Change Controlled:</label>
+                <select class="form-control" id="editDocumentChangeControlled" v-model="editDocumentForm.change_controlled">
+                  <option v-for="option in changeControlledOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
                 </select>
               </div>
               <div class="mb-3">
@@ -464,7 +464,7 @@ export default {
         doc_identifier: '',
         doc_code: '',
         entry_type: '',
-        criticality: '',
+        change_controlled: '',
         compiled_url: '',
         source_url: '',
         abstract: '',
@@ -478,7 +478,7 @@ export default {
         author: '',
         doc_code: '',
         entry_type: '',
-        criticality: '',
+        change_controlled: '',
         compiled_url: '',
         source_url: '',
         creator_email: this.email,
@@ -495,7 +495,7 @@ export default {
         doc_identifier: '',
         doc_code: '',
         entry_type: '',
-        criticality: '',
+        change_controlled: '',
         compiled_url: '',
         source_url: '',
         creator_email: '',
@@ -516,9 +516,9 @@ export default {
       entryTypeOptions: [],
       entryTypeIconMap: {},
       entryTypeDefault: null,
-      criticalityOptions: [],
-      criticalityStyleMap: {},
-      criticalityDefault: null,
+      changeControlledOptions: [],
+      changeControlledStyleMap: {},
+      changeControlledDefault: null,
     };
   },
   components: {
@@ -705,7 +705,7 @@ export default {
         author: this.addDocumentForm.author,
         doc_code: this.addDocumentForm.doc_code,
         entry_type: this.addDocumentForm.entry_type,
-        criticality: this.addDocumentForm.criticality,
+        change_controlled: this.addDocumentForm.change_controlled,
         compiled_url: this.addDocumentForm.compiled_url,
         source_url: this.addDocumentForm.source_url,
         creator_email: this.addDocumentForm.creator_email || this.email,        
@@ -729,7 +729,7 @@ export default {
         author: this.editDocumentForm.author,
         doc_code: this.editDocumentForm.doc_code,
         entry_type: this.editDocumentForm.entry_type,
-        criticality: this.editDocumentForm.criticality,
+        change_controlled: this.editDocumentForm.change_controlled,
         compiled_url: this.editDocumentForm.compiled_url,
         source_url: this.editDocumentForm.source_url,
         creator_email: this.editDocumentForm.creator_email || this.email,            
@@ -742,7 +742,7 @@ export default {
       this.addDocumentForm.author = '';
       this.addDocumentForm.doc_code = '';
       this.addDocumentForm.entry_type = this.entryTypeDefault;
-      this.addDocumentForm.criticality = this.criticalityDefault;
+      this.addDocumentForm.change_controlled = this.changeControlledDefault;
       this.addDocumentForm.compiled_url = '';
       this.addDocumentForm.source_url = '';
       this.addDocumentForm.creator_email = this.email;
@@ -753,7 +753,7 @@ export default {
       this.editDocumentForm.doc_identifier = '';
       this.editDocumentForm.doc_code = '';
       this.editDocumentForm.entry_type = '';
-      this.editDocumentForm.criticality = '';
+      this.editDocumentForm.change_controlled = '';
       this.editDocumentForm.compiled_url = '';
       this.editDocumentForm.source_url = '';
       this.editDocumentForm.creator_email = '';      
@@ -799,7 +799,7 @@ export default {
       if (doc) {
         this.editDocumentForm = { ...doc };
         this.editDocumentForm.entry_type = doc.entry_type;
-        this.editDocumentForm.criticality = doc.criticality;
+        this.editDocumentForm.change_controlled = doc.change_controlled;
       }
       const body = document.querySelector('body');
       this.activeEditDocumentModal = !this.activeEditDocumentModal;
@@ -955,7 +955,7 @@ Please update the entry at your earliest convenience.\n\nRegards,\nteledocs`);
         { doc_identifier: 'Doc Identifier', key: 'doc_identifier'},
         { doc_code: 'Doc #', key: 'doc_code'},
         { entry_type: 'Type', key: 'entry_type'},
-        { criticality: 'Criticality', key: 'criticality'},
+        { change_controlled: 'Change Controlled', key: 'change_controlled'},
         { compiled_url: 'URL', key: 'compiled_url'},        
         { source_url: 'Source URL', key: 'source_url'},        
         { abstract: 'Abstract', key: 'abstract'},        
@@ -968,7 +968,7 @@ Please update the entry at your earliest convenience.\n\nRegards,\nteledocs`);
         doc_identifier: 'Doc Identifier',
         doc_code: 'Doc #',
         entry_type: 'Type',
-        criticality: 'Criticality',
+        change_controlled: 'Change Controlled',
         compiled_url: 'URL',        
         source_url: 'Source URL',
         abstract: 'Abstract',
@@ -982,7 +982,7 @@ Please update the entry at your earliest convenience.\n\nRegards,\nteledocs`);
           doc_identifier: doc.doc_identifier,
           doc_code: doc.doc_code,
           entry_type: doc.entry_type,
-          criticality: doc.criticality,
+          change_controlled: doc.change_controlled,
           compiled_url: doc.compiled_url,
           source_url: doc.source_url,
           abstract: doc.abstract,
@@ -1032,8 +1032,8 @@ Please update the entry at your earliest convenience.\n\nRegards,\nteledocs`);
         this.isAuthorized = false;
       });
     },    
-    getCriticalityOptions() {
-      const path = `${API_URL}/criticality_types`;
+    getChangeControlledOptions() {
+      const path = `${API_URL}/change_controlled_types`;
       auth.currentUser.getIdToken(true).then(idToken => {
       const config = {
         headers: { Authorization: `${idToken}` }
@@ -1041,12 +1041,12 @@ Please update the entry at your earliest convenience.\n\nRegards,\nteledocs`);
 
       axios.get(path, config)
         .then((res) => {
-          this.criticalityOptions = res.data.criticality_types;
-          this.criticalityStyleMap = this.criticalityOptions.reduce((map, option) => {
+          this.changeControlledOptions = res.data.change_controlled_types;
+          this.changeControlledStyleMap = this.changeControlledOptions.reduce((map, option) => {
             map[option.value] = option.tr_style;
             return map;
           }, {});
-          this.criticalityDefault = res.data.default;
+          this.changeControlledDefault = res.data.default;
         })
         .catch((error) => {
           console.error(error);
@@ -1064,7 +1064,7 @@ Please update the entry at your earliest convenience.\n\nRegards,\nteledocs`);
     this.getDocuments();
     this.getAdmins();
     this.getEntryTypeOptions();
-    this.getCriticalityOptions();
+    this.getChangeControlledOptions();
   },
 };
 </script>

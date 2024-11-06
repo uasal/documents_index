@@ -52,7 +52,7 @@ def create_app():
         Ping,
         AllDocuments,
         EntryTypes,
-        CriticalityTypes,
+        ChangeControlledTypes,
         UploadFile,
         SingleDocument,
         AllUsers,
@@ -69,7 +69,7 @@ def create_app():
         "/api/documents/upload_file", view_func=UploadFile.as_view("upload_file")
     )
     app.add_url_rule("/api/entry_types", view_func=EntryTypes.as_view("entry_types"))
-    app.add_url_rule("/api/criticality_types", view_func=CriticalityTypes.as_view("criticality_types"))
+    app.add_url_rule("/api/change_controlled_types", view_func=ChangeControlledTypes.as_view("change_controlled_types"))
     app.add_url_rule(
         "/api/documents/<doc_identifier>",
         view_func=SingleDocument.as_view("single_document"),

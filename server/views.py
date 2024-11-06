@@ -6,7 +6,7 @@ from flask.views import MethodView
 import firebase_admin
 from firebase_admin import auth
 
-from models import db, Document, TypeEnum, CriticalityEnum, User, Domain, get_entity, is_superuser
+from models import db, Document, TypeEnum, ChangeControlledEnum, User, Domain, get_entity, is_superuser
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("logger")
@@ -165,23 +165,23 @@ class EntryTypes(MethodView):
         return jsonify(entry_types=entry_types, default=Document.entry_type.default.arg.value)
 
 
-class CriticalityTypes(MethodView):
-    """View class for the /criticality_types route."""
+class ChangeControlledTypes(MethodView):
+    """View class for the /change_controlled_types route."""
 
     decorators = [token_required]
     # Map the entry to style formatting
-    ENTRY_CRITICALITY_TR_STYLE = {
-        CriticalityEnum.low.value: "",
-        CriticalityEnum.critical.value: "border-left: darkred solid 0.2em;",
+    ENTRY_CHANGE_CONTROLLED_TR_STYLE = {
+        ChangeControlledEnum.no.value: "",
+        ChangeControlledEnum.yes.value: "border-left: #6c757d solid 0.2em;",
     }
 
     def get(self):
-        criticality_types = [
-            {"value": criticality_type.value, "label": criticality_type.name,
-            "tr_style": self.ENTRY_CRITICALITY_TR_STYLE[criticality_type.value]}
-            for criticality_type in CriticalityEnum
+        change_controlled_types = [
+            {"value": change_controlled_type.value, "label": change_controlled_type.name,
+            "tr_style": self.ENTRY_CHANGE_CONTROLLED_TR_STYLE[change_controlled_type.value]}
+            for change_controlled_type in ChangeControlledEnum
         ]
-        return jsonify(criticality_types=criticality_types, default=Document.criticality.default.arg.value)
+        return jsonify(change_controlled_types=change_controlled_types, default=Document.change_controlled.default.arg.value)
 
 
 class UploadFile(MethodView):
