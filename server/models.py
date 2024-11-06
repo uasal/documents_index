@@ -54,25 +54,25 @@ class TypeEnum(enum.Enum):
     drawing = "drawing"
     other = "other"
 
-class CriticalityEnum(enum.Enum):
-    low = 0
-    critical = 10
+class ChangeControlledEnum(enum.Enum):
+    no = 0
+    yes = 10
 
     @classmethod
     def __contains__(cls, item):
         """
-        Magic method that checks whether there is a CriticalityEnum entry associated with
+        Magic method that checks whether there is a ChangeControlledEnum entry associated with
         given item.
 
         Parameters
         ----------
         item : int
-            Integer to be checked against CriticalityEnum entries.
+            Integer to be checked against ChangeControlledEnum entries.
 
         Returns
         -------
         bool
-            Whether there exists or not a CriticalityEnum entry for the given item.
+            Whether there exists or not a ChangeControlledEnum entry for the given item.
         """
         try:
             cls(item)
@@ -82,7 +82,7 @@ class CriticalityEnum(enum.Enum):
             return True
 
 
-class CriticalityType(TypeDecorator):
+class ChangeControlledType(TypeDecorator):
     """
     Custom TypeDecorator to store the enum as an integer in the database
     """
@@ -104,16 +104,16 @@ class CriticalityType(TypeDecorator):
         Parameters
         ----------
         value : int
-            Integer associated with value in CriticalityEnum.
+            Integer associated with value in ChangeControlledEnum.
         dialect: sqlalchemy.engine.Dialect
             The sqlalchemy Dialect in use.
 
         Returns
         -------
         int
-            Integer associated with value in CriticalityEnum.
+            Integer associated with value in ChangeControlledEnum.
         """
-        return value if CriticalityEnum.__contains__(value) else Document.criticality.default.arg.value
+        return value if ChangeControlledEnum.__contains__(value) else Document.change_controlled.default.arg.value
 
     def process_result_value(self, value, dialect):
         """
@@ -129,17 +129,17 @@ class CriticalityType(TypeDecorator):
         Parameters
         ----------
         value : int
-            Integer associated with value in CriticalityEnum.
+            Integer associated with value in ChangeControlledEnum.
         dialect: sqlalchemy.engine.Dialect
             The sqlalchemy Dialect in use.
 
         Returns
         -------
-        CriticalityEnum or None
-            CriticalityEnum associated with integer.
+        ChangeControlledEnum or None
+            ChangeControlledEnum associated with integer.
         """
         try:
-            return CriticalityEnum(value) if value is not None else None
+            return ChangeControlledEnum(value) if value is not None else None
         except ValueError:
             return None
 
@@ -162,7 +162,7 @@ class Document(db.Model, Serializer):
     abstract = db.Column("abstract", db.Text, default="")
     creator_email = db.Column("creator_email", db.String(100), nullable=False)
     entry_type = db.Column("entry_type", db.Enum(TypeEnum), default=TypeEnum.document, nullable=False)
-    criticality = db.Column("criticality", CriticalityType, default=CriticalityEnum.low, nullable=False)
+    change_controlled = db.Column("change_controlled", ChangeControlledType, default=ChangeControlledEnum.no, nullable=False)
 
     def __repr__(self):
         """
