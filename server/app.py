@@ -21,6 +21,11 @@ def create_app():
 
     logger.info("Instantiating db with Flask app.")
     # app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///docs.db"
+
+    app.config["SQLALCHEMY_BINDS"] = {
+        "sqlite_db": "sqlite:///docs.db"
+    }
+
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
     app.config["SQLALCHEMY_DATABASE_URI"] = DB_URI
 
@@ -61,6 +66,16 @@ def create_app():
         AllDomains,
         SingleDomain,
     )
+    from views_demo import (
+        DemoAllDocuments,
+        DemoUploadFile,
+        DemoSingleDocument,
+        DemoAllUsers,
+        DemoAllAdmins,
+        DemoSingleUser,
+        DemoAllDomains,
+        DemoSingleDomain,
+    )
 
     logger.info("Registering views.")
     app.add_url_rule("/api/pong", view_func=Ping.as_view("ping"))
@@ -81,8 +96,24 @@ def create_app():
     app.add_url_rule(
         "/api/domains/<pk>", view_func=SingleDomain.as_view("single_domain")
     )
-    return app
 
+    # Demo rules
+    app.add_url_rule("/api/demo/documents", view_func=DemoAllDocuments.as_view("demo_document_list"))
+    app.add_url_rule(
+        "/api/demo/documents/upload_file", view_func=DemoUploadFile.as_view("demo_upload_file")
+    )
+    app.add_url_rule(
+        "/api/demo/documents/<doc_identifier>",
+        view_func=DemoSingleDocument.as_view("demo_single_document"),
+    )
+    app.add_url_rule("/api/demo/users", view_func=DemoAllUsers.as_view("demo_user_list"))
+    app.add_url_rule("/api/demo/users/<pk>", view_func=DemoSingleUser.as_view("demo_single_user"))
+    app.add_url_rule("/api/demo/admins", view_func=DemoAllAdmins.as_view("demo_admin_list"))
+    app.add_url_rule("/api/demo/domains", view_func=DemoAllDomains.as_view("demo_domain_list"))
+    app.add_url_rule(
+        "/api/demo/domains/<pk>", view_func=DemoSingleDomain.as_view("demo_single_domain")
+    )
+    return app
 
 app = create_app()
 

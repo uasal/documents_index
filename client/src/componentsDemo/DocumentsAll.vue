@@ -1,0 +1,1164 @@
+<template>
+  <div class="container">
+    <div class="row">
+      <div class="col-12" v-if="isAuthorized">
+        <div class="row">
+          <div>
+            <div class="d-inline-flex float-start">
+              <h1>Documents</h1>
+            </div>
+            <div class="d-inline-flex float-end">
+              <a role="button" class="btn btn-primary" href="/demo/numbers" target="_blank">View Assigned Numbers</a>
+              <a v-if="superuser" role="button" class="btn btn-primary ms-4" href="/demo/collaborators" target="_blank">Edit collaborators</a>
+            </div>
+          </div>
+        </div>
+        <hr><br><br>
+        <div class="row">
+          <p>Hello, {{ username }}, you are logged in with the account {{ email }}</p>
+          <p>Add a new document using the button below. You can edit or delete documents you have added.</p>
+          <p>To see all details related to a document click on its Title or its Doc Identifier,
+            or, for a given Doc Identifier, add "/docs/&lt;doc_identifier&gt;" to the current URL.</p>
+          <p>If you encounter a problem, please contact one of teledoc's admins at:
+            <span v-for="(admin, index) in admins" :key="index">
+              <a :href="`mailto:${admin}`">{{ admin }}</a>{{ index !== admins.length - 1 ? ', ' : '.' }}
+            </span>
+          </p>
+          <p>If you notice and error in one of the entries, please click the warning button on the associated 
+            row to email and inform the entry's maintainer, as well as the admins.</p>
+        </div>
+        <br>
+        <alert :message=message v-if="showMessage"></alert>
+
+        <div class="row row-cols-auto mb-4" style="margin-left: initial;margin-right: initial;">
+          <button type="button" class="btn btn-primary btn-sm" @click="toggleAddDocumentModal">
+            Add Document
+          </button>
+          <button type="button" class="btn btn-primary btn-sm ms-4" @click="toggleUploadFileModal">
+            Upload File
+          </button>
+
+          <!-- Filter toggle button -->
+          <button v-if="show_table" type="button" class="btn btn-primary btn-sm ms-4" :title="filterButtonText" @click="toggleAdvancedFilter">
+            <font-awesome-icon icon="fa-solid fa-sort-up" style="vertical-align: bottom" v-if="showFilters"/>
+            <font-awesome-icon icon="fa-solid fa-sort-down" style="vertical-align: top" v-if="!showFilters"/>
+          </button>
+
+          <!-- General Filter -->
+          <div class="ps-0">
+            <input v-if="!showFilters" type="text" class="form-control" v-model="filter" placeholder="Search across all columns"/>
+            <input v-if="showFilters" type="text" class="form-control invisible"/>
+          </div>
+
+          <!-- Button for exporting to Excel -->
+          <button type="button" class="btn btn-primary btn-sm float-right" style="margin-left: auto;" @click="exportToExcel">Export to Excel</button>          
+        </div>
+
+        <!-- Advanced Filter Fields -->
+        <transition name="slide">
+          <div class="container mt-3 mb-5" v-if="showFilters">
+            <div class="row row-cols-auto">
+              <div class="col mb-3">
+                <!-- <label for="columnFiltersTitle" class="form-label">Title:</label> -->
+                <input type="text" class="form-control" id="columnFiltersTitle" v-model="columnFilters.title" placeholder="Filter by Title">           
+              </div>          
+              <div class="col mb-3">
+                <!-- <label for="columnFiltersAuthor" class="form-label">Author:</label> -->
+                <input type="text" class="form-control" id="columnFiltersAuthor" v-model="columnFilters.author" placeholder="Filter by Author">
+              </div>             
+              <div class="col mb-3">
+                <!-- <label for="columnFiltersAuthor" class="form-label">Doc Identifier:</label> -->
+                <input type="text" class="form-control" id="columnFiltersDocIdentifier" v-model="columnFilters.doc_identifier" placeholder="Filter by Identifier">                            
+              </div>             
+              <div class="col mb-3">
+                <!-- <label for="columnFiltersDocNb" class="form-label">Doc #:</label> -->
+                <input type="text" class="form-control" id="columnFiltersDocNb" v-model="columnFilters.doc_code" placeholder="Filter by #">
+              </div>             
+              <div class="col mb-3">
+                <select class="form-control" id="columnFiltersEntryType" v-model="columnFilters.entry_type">
+                  <option value="">All Types</option> <!-- Option to clear the filter -->
+                  <option v-for="option in entryTypeOptions" :key="option.value" :value="option.value">
+                    {{ option.label }}
+                  </option>
+                </select>
+              </div>             
+              <div class="col mb-3">
+                <select class="form-control" id="columnFiltersChangeControlled" v-model="columnFilters.change_controlled">
+                  <option value="">All Change Control Levels</option> <!-- Option to clear the filter -->
+                  <option v-for="option in changeControlledOptions" :key="option.value" :value="option.value">
+                    {{ option.label }}
+                  </option>
+                </select>
+              </div>             
+              <div class="col mb-3">
+                <!-- <label for="columnFiltersURL" class="form-label">URL:</label> -->
+                <input type="text" class="form-control" id="columnFiltersURL" v-model="columnFilters.compiled_url" placeholder="Filter by URL">
+              </div>             
+              <div class="col mb-3">
+                <!-- <label for="columnFiltersSourceURL" class="form-label">Source URL:</label> -->
+                <input type="text" class="form-control" id="columnFiltersSourceURL" v-model="columnFilters.source_url" placeholder="Filter by Source URL">
+              </div>             
+              <div class="col mb-3">
+                <!-- <label for="columnFiltersAbstract" class="form-label">Abstract:</label> -->
+                <input type="text" class="form-control" id="columnFiltersAbstract" v-model="columnFilters.abstract" placeholder="Filter by Abstract">
+              </div>             
+              <div class="col mb-3">
+                <!-- <label for="columnFiltersCreatorEmail" class="form-label">Maintainer Email:</label> -->
+                <input type="text" class="form-control" id="columnFiltersCreatorEmail" v-model="columnFilters.creator_email" placeholder="Filter by Maintainer Email">
+              </div>         
+            </div>    
+            <div class="row row-cols-auto" style="margin-left: 0.1rem;">
+              <button type="button" class="col btn btn-primary btn-sm" @click="resetFilters">Reset Filters</button>            
+            </div>
+          </div>
+        </transition>
+
+        <table class="table table-hover" v-if="show_table">
+          <thead>
+            <tr>
+              <th @click='sortColumn("title")' style="min-width: 10%;" scope="col">Title
+                <font-awesome-icon icon="fa-solid fa-sort-up" style="vertical-align: bottom" v-if="this.sortBy=='title' && this.sortOrder==1"/>
+                <font-awesome-icon icon="fa-solid fa-sort-down" style="vertical-align: top" v-if="this.sortBy=='title' && this.sortOrder==-1"/>
+              </th>
+              <th @click='sortColumn("author")' style="min-width: 10%;" scope="col">Author
+                <font-awesome-icon icon="fa-solid fa-sort-up" style="vertical-align: bottom" v-if="this.sortBy=='author' && this.sortOrder==1"/>
+                <font-awesome-icon icon="fa-solid fa-sort-down" style="vertical-align: top" v-if="this.sortBy=='author' && this.sortOrder==-1"/>
+              </th>
+              <th @click='sortColumn("doc_identifier")' style="min-width: 10%;" scope="col">Identifier
+                <font-awesome-icon icon="fa-solid fa-sort-up" style="vertical-align: bottom" v-if="this.sortBy=='doc_identifier' && this.sortOrder==1"/>
+                <font-awesome-icon icon="fa-solid fa-sort-down" style="vertical-align: top" v-if="this.sortBy=='doc_identifier' && this.sortOrder==-1"/>                
+              </th>
+              <th @click='sortColumn("doc_code")' style="min-width: 10%;" scope="col">Doc #
+                <font-awesome-icon icon="fa-solid fa-sort-up" style="vertical-align: bottom" v-if="this.sortBy=='doc_code' && this.sortOrder==1"/>
+                <font-awesome-icon icon="fa-solid fa-sort-down" style="vertical-align: top" v-if="this.sortBy=='doc_code' && this.sortOrder==-1"/>                
+              </th>
+              <th @click='sortColumn("entry_type")' style="min-width: 5%;" scope="col">Type
+                <font-awesome-icon icon="fa-solid fa-sort-up" style="vertical-align: bottom" v-if="this.sortBy=='entry_type' && this.sortOrder==1"/>
+                <font-awesome-icon icon="fa-solid fa-sort-down" style="vertical-align: top" v-if="this.sortBy=='entry_type' && this.sortOrder==-1"/>                
+              </th>
+              <th @click='sortColumn("compiled_url")' style="min-width: 10%;" scope="col"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="URLInfo"/>URL
+                <font-awesome-icon icon="fa-solid fa-sort-up" style="vertical-align: bottom" v-if="this.sortBy=='compiled_url' && this.sortOrder==1"/>
+                <font-awesome-icon icon="fa-solid fa-sort-down" style="vertical-align: top" v-if="this.sortBy=='compiled_url' && this.sortOrder==-1"/>
+              </th>
+              <th @click='sortColumn("source_url")' style="min-width: 10%;" scope="col"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="sourceURLInfo"/>Source URL
+                <font-awesome-icon icon="fa-solid fa-sort-up" style="vertical-align: bottom" v-if="this.sortBy=='source_url' && this.sortOrder==1"/>
+                <font-awesome-icon icon="fa-solid fa-sort-down" style="vertical-align: top" v-if="this.sortBy=='source_url' && this.sortOrder==-1"/>                
+              </th>
+              <th @click='sortColumn("abstract")' style="min-width: 20%;" scope="col">Abstract
+                <font-awesome-icon icon="fa-solid fa-sort-up" style="vertical-align: bottom" v-if="this.sortBy=='abstract' && this.sortOrder==1"/>
+                <font-awesome-icon icon="fa-solid fa-sort-down" style="vertical-align: top" v-if="this.sortBy=='abstract' && this.sortOrder==-1"/>                
+              </th>
+              <th @click='sortColumn("creator_email")' style="min-width: 10%;" scope="col">Maintained By
+                <font-awesome-icon icon="fa-solid fa-sort-up" style="vertical-align: bottom" v-if="this.sortBy=='creator_email' && this.sortOrder==1"/>
+                <font-awesome-icon icon="fa-solid fa-sort-down" style="vertical-align: top" v-if="this.sortBy=='creator_email' && this.sortOrder==-1"/>                
+              </th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="(doc, index) in filteredDocuments" :key="index" :style="changeControlledStyleMap[doc.change_controlled]">
+              <td data-toggle="tooltip" data-placement="bottom" :title="doc.title" style="cursor: default"
+                v-if="doc.title.length > 30">
+                <a :href="'docs/' + doc.doc_identifier" target="_blank">{{
+                  truncate(doc.title, 30) }}</a>
+              </td>
+              <td v-else><a :href="'docs/' + doc.doc_identifier" target="_blank">{{ doc.title }}</a></td>
+
+              <td data-toggle="tooltip" data-placement="bottom" :title="doc.author" style="cursor: default"
+                v-if="doc.author.length > 30">{{ truncate(doc.author, 30) }}</td>
+              <td v-else>{{ doc.author }}</td>
+
+              <td data-toggle="tooltip" data-placement="bottom" :title="doc.doc_identifier" style="cursor: default"
+                v-if="doc.doc_identifier.length > 30">
+                <a :href="'docs/' + doc.doc_identifier" target="_blank">{{
+                  truncate(doc.doc_identifier, 30) }}</a>
+              </td>
+              <td v-else><a :href="'docs/' + doc.doc_identifier" target="_blank">{{ doc.doc_identifier }}</a></td>
+
+              <td data-toggle="tooltip" data-placement="bottom" :title="doc.doc_code" style="cursor: default"
+                v-if="doc.doc_code.length > 30">{{ truncate(doc.doc_code, 30) }}</td>
+              <td v-else>{{ doc.doc_code }}</td>
+
+              <td><font-awesome-icon v-if="entryTypeIconMap[doc.entry_type]" :icon="entryTypeIconMap[doc.entry_type]" data-toggle="tooltip" data-placement="bottom" :title="doc.entry_type" class="text-secondary" /></td>
+
+              <td>
+                <font-awesome-icon v-if="doc.compiled_url && doc.compiled_url.toLowerCase().includes(gitLabANT)" icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="gitLabInfo"/>
+                <a v-if="doc.compiled_url" :href="doc.compiled_url" target="_blank">link</a>
+                <!-- <a class="ms-3" :href=doc.compiled_url target="_blank" download><font-awesome-icon
+                    icon="fa-solid fa-download" /></a> -->
+              </td>
+
+              <td>
+                <font-awesome-icon v-if="doc.source_url && doc.source_url.toLowerCase().includes(gitLabANT)" icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="gitLabInfo"/>
+                <a v-if="doc.source_url" :href="doc.source_url" target="_blank">link</a>
+                <!-- <a class="ms-3" :href=doc.source_url target="_blank" download><font-awesome-icon
+                    icon="fa-solid fa-download" /></a> -->
+              </td>
+
+              <td data-toggle="tooltip" data-placement="bottom" :title="doc.abstract" style="cursor: default"
+                v-if="doc.abstract.length > 30">{{ truncate(doc.abstract, 30) }}</td>
+              <td v-else>{{ doc.abstract }}</td>
+
+              <td data-toggle="tooltip" data-placement="bottom" :title="doc.creator_email" style="cursor: default"
+                v-if="doc.creator_email.length > 15">{{ truncate(doc.creator_email, 15) }}</td>
+              <td v-else>{{ doc.creator_email }}</td>
+
+              <td v-if="(email == doc.creator_email) || superuser">
+                <div class="btn-group" role="group">
+                  <button type="button" class="btn btn-warning btn-sm" @click="toggleEditDocumentModal(doc)">
+                    Update
+                  </button>
+                  <button v-if="!doc.doc_code || superuser" type="button" class="btn btn-danger btn-sm" @click="handleDeleteDocument(doc)">
+                    Delete
+                  </button>
+                </div>
+              </td>
+              <td v-else>
+                <button type="button" class="btn text-primary" data-toggle="tooltip" 
+                data-placement="top" title="Notify maintainer that entry needs to be updated" @click="sendEmail(doc)">
+                  <font-awesome-icon icon="fa-solid fa-circle-exclamation" />
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <div v-else>
+          <p v-if="filter === ''">No documents stored.</p>
+          <p v-else>Sorry, no documents found containing <b>{{ filter }}</b>. Try a different filter.</p>
+        </div>
+      </div>
+      <div class="col-12" v-else>
+        <h3>Sorry, you are not authorized to view this page.</h3>
+        <p>If you think you should have access, please contact your project PI to request access.</p>
+      </div>    
+      <!-- <div v-if="hideContent">Sorry, this page is not available or you are not authorized to view it.</div> -->
+    </div>
+
+    <!-- add new document modal -->
+    <div ref="addDocumentModal" class="modal fade"
+      :class="{ show: activeAddDocumentModal, 'd-block': activeAddDocumentModal }" tabindex="-1" role="dialog">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Add a new document</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"
+              @click="toggleAddDocumentModal">
+            </button>
+          </div>
+          <div class="modal-body">
+            <form>
+              <div class="mb-3">
+                <label for="addDocumentTitle" class="form-label">Title:</label>
+                <input type="text" class="form-control" id="addDocumentTitle" v-model="addDocumentForm.title"
+                  placeholder="Enter title">
+              </div>
+              <div class="mb-3">
+                <label for="addDocumentAuthor" class="form-label">Author:</label>
+                <input type="text" class="form-control" id="addDocumentAuthor" v-model="addDocumentForm.author"
+                  placeholder="Enter author">
+              </div>
+              <div class="mb-3">
+                <label for="addDocumentEntryType" class="form-label">Type:</label>
+                <select class="form-control" id="addEntryType" v-model="addDocumentForm.entry_type">
+                  <option v-for="option in entryTypeOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
+                </select>
+              </div>
+              <div class="mb-3">
+                <label for="addDocumentChangeControlled" class="form-label">Change Controlled:</label>
+                <select class="form-control" id="addDocumentChangeControlled" v-model="addDocumentForm.change_controlled">
+                  <option v-for="option in changeControlledOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
+                </select>
+              </div>
+              <div class="mb-3" v-if="(addDocumentForm.change_controlled === 10) && ((addDocumentForm.entry_type === 'document' || addDocumentForm.entry_type === 'diagram'))">
+                <label for="addDocumentDocCode" class="form-label">New Number:</label>
+                <!-- Adding key ensures full re-render on reset -->
+                <DocumentCodeBuilder
+                  :initialSteps="documentCodeStepsAll['document']"
+                  @codeComplete="handleCodeComplete"
+                  @resetCode="handleCodeReset"
+                  @partialCodeUpdate="handlePartialCodeUpdate"
+                  :key="builderKey"
+                />
+                <input type="text" class="form-control mt-2" id="addDocumentDocCode" v-model="addDocumentForm.doc_code" readonly />
+              </div>
+              <div class="mb-3">
+                <label for="addDocumentUrl" class="form-label"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="URLInfo"/>URL:</label>
+                <input type="text" class="form-control" id="addUrl" v-model="addDocumentForm.compiled_url"
+                  placeholder="Enter URL">
+              </div>
+              <div class="mb-3">
+                <label for="addDocumentSourceUrl" class="form-label"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="sourceURLInfo"/>Source URL:</label>
+                <input type="text" class="form-control" id="addSourceUrl" v-model="addDocumentForm.source_url"
+                  placeholder="Enter source URL">
+              </div>
+              <div class="mb-3" v-if="superuser">
+                <label for="addDocumentCreatedBy" class="form-label">Maintained By (superuser field):</label>
+                <input type="text" class="form-control" id="addCreatedBy" v-model="addDocumentForm.creator_email"
+                  placeholder="Enter Maintainer Email">
+              </div>              
+              <div class="mb-3">
+                <label for="addDocumentAbstract" class="form-label">Abstract:</label>
+                <textarea class="form-control" id="addAbstract" rows="3" v-model="addDocumentForm.abstract"
+                  placeholder="Enter abstract"></textarea>
+              </div>
+              <div class="btn-group" role="group">
+                <button type="button" class="btn btn-primary btn-sm" @click="handleAddSubmit">
+                  Submit
+                </button>
+                <button type="button" class="btn btn-danger btn-sm" @click="handleAddReset">
+                  Reset
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div v-if="activeAddDocumentModal" class="modal-backdrop fade show"></div>
+
+    <!-- add documents via file upload modal -->
+    <div ref="uploadFileModal" class="modal fade"
+      :class="{ show: activeUploadFileModal, 'd-block': activeUploadFileModal }" tabindex="-1" role="dialog">
+      <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Upload a txt file with metadata for new documents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"
+              @click="toggleUploadFileModal">
+            </button>
+          </div>
+          <div class="modal-body">
+            <p>Upload a file with values separated by bars (|).</p>
+            <p>The file must have entries for the following fields (in this order): Title | Author | Doc # | URL | Source URL | Abstract</p>
+            <p>If the file has fewer or more columns than 6, the upload will result in an error.</p>
+            <p>Columns that are optional (Doc # and Abstract), should be included, but left blank if no value is to be
+              included.</p>
+            <p>Lines starting with '#' will be omitted.</p>
+            <p>Do not use bars in the input values.</p>
+            <p>File example:</p>
+            <div class="mb-4 text-nowrap" style="overflow-x: scroll; font-family: courier; font-size: 12px;">
+              <p class="mb-0"># Title | Author | Doc # | URL | Source URL | Abstract</p>
+              <p class="mb-0">Extra Solar Camera: Design and User Guide | Ewan Douglas, Jared Males, Daewook Kim, and the
+                STP Space Coronagraph Working Groups ||
+                https://github.com/uasal/spacecoron_design_docs/raw/compiled/coronagraph_guide.pdf |
+                https://github.com/uasal/spacecoron_design_docs | ESC high-level design doc.</p>
+              <p class="mb-0">IOB Drawing Tree | Various ||
+                https://github.com/uasal/spacecoron_design_docs/blob/main/mgmt/Drawing_Tree.png |
+                https://github.com/uasal/spacecoron_design_docs/blob/main/mgmt/Drawing_Tree.drawio | Pearl Instrument
+                Drawing Tree</p>
+            </div>
+            <form>
+              <div class="mb-3">
+                <input type="file" class="form-control btn-primary" id="uploadFile" @change="addFile" accept=".txt"
+                  placeholder="Upload file">
+              </div>
+              <div class="btn-group" role="group">
+                <button type="button" class="btn btn-primary btn-sm" @click="handleFileUpload">
+                  Submit
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div v-if="activeUploadFileModal" class="modal-backdrop fade show"></div>
+
+    <!-- edit document modal -->
+    <div ref="editDocumentModal" class="modal fade"
+      :class="{ show: activeEditDocumentModal, 'd-block': activeEditDocumentModal }" tabindex="-1" role="dialog">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Update</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"
+              @click="toggleEditDocumentModal">
+            </button>
+          </div>
+          <div class="modal-body">
+            <form>
+              <div class="mb-3">
+                <label for="editDocumentTitle" class="form-label">Title:</label>
+                <input type="text" class="form-control" maxlength="500" id="editDocumentTitle"
+                  v-model="editDocumentForm.title" placeholder="Enter title">
+              </div>
+              <div class="mb-3">
+                <label for="editDocumentAuthor" class="form-label">Author:</label>
+                <input type="text" class="form-control" maxlength="500" id="editDocumentAuthor"
+                  v-model="editDocumentForm.author" placeholder="Enter author">
+              </div>
+              <div class="mb-3">
+                <label for="editDocumentDocCode" class="form-label">Doc # (optional):</label>
+                <input type="text" class="form-control" maxlength="30" id="editDocCode"
+                  v-if="!editDocumentForm.doc_code || superuser"
+                  v-model="editDocumentForm.doc_code" placeholder="Enter document code">
+                <input type="text" class="form-control-plaintext" maxlength="30" id="editDocCode"
+                  v-else readonly 
+                  v-model="editDocumentForm.doc_code">
+              </div>
+              <div class="mb-3">
+                <label for="editDocumentEntryType" class="form-label">Type:</label>
+                <select class="form-control" id="editDocumentEntryType" v-model="editDocumentForm.entry_type"
+                  v-if="!editDocumentForm.doc_code || superuser">
+                  <option v-for="option in entryTypeOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
+                </select>
+                <select class="form-control" id="editDocumentEntryType" v-model="editDocumentForm.entry_type"
+                  v-else disabled>
+                  <option v-for="option in entryTypeOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
+                </select>
+              </div>
+              <div class="mb-3">
+                <label for="editDocumentChangeControlled" class="form-label">Change Controlled:</label>
+                <select class="form-control" id="editDocumentChangeControlled" v-model="editDocumentForm.change_controlled">
+                  <option v-for="option in changeControlledOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
+                </select>
+              </div>
+              <div class="mb-3">
+                <label for="editDocumentUrl" class="form-label"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="URLInfo"/>URL:</label>
+                <input type="text" class="form-control" maxlength="500" id="editUrl"
+                  v-model="editDocumentForm.compiled_url" placeholder="Enter URL">
+              </div>
+              <div class="mb-3">
+                <label for="editDocumentSourceUrl" class="form-label"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="sourceURLInfo"/>Source URL:</label>
+                <input type="text" class="form-control" maxlength="500" id="editSourceUrl"
+                  v-model="editDocumentForm.source_url" placeholder="Enter source URL">
+              </div>
+              <div class="mb-3" v-if="superuser">
+                <label for="editDocumentCreatedBy" class="form-label">Maintained By (superuser field):</label>
+                <input type="text" class="form-control" id="editCreatedBy" v-model="editDocumentForm.creator_email"
+                  placeholder="Enter Maintainer Email">
+              </div>                   
+              <div class="mb-3">
+                <label for="editDocumentAbstract" class="form-label">Abstract:</label>
+                <textarea class="form-control" id="editAbstract" rows="3" v-model="editDocumentForm.abstract"
+                  placeholder="Enter abstract"></textarea>
+              </div>
+              <div class="btn-group" role="group">
+                <button type="button" class="btn btn-primary btn-sm" @click="handleEditSubmit">
+                  Submit
+                </button>
+                <button type="button" class="btn btn-danger btn-sm" @click="handleEditCancel">
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div v-if="activeEditDocumentModal" class="modal-backdrop fade show"></div>
+  </div>
+</template>
+
+<script>
+
+import axios from 'axios';
+import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
+import { auth } from '../firebaseConfig';
+import ExcelJS from 'exceljs';
+import AlertMessage from './AlertMessage.vue';
+import DocumentCodeBuilder from './DocumentCodeBuilder.vue';
+
+const API_URL = '/api/demo';
+// const API_URL = 'http://localhost:5001/api/demo';
+
+export default {
+  name: 'DocumentsAll',
+  data() {
+    return {
+      showFilters: false,
+      filterButtonText: 'Advanced Filter',      
+      columnFilters: {
+        title: '',
+        author: '',
+        doc_identifier: '',
+        doc_code: '',
+        entry_type: '',
+        change_controlled: '',
+        compiled_url: '',
+        source_url: '',
+        abstract: '',
+        creator_email: ''
+      },
+      activeAddDocumentModal: false,
+      activeEditDocumentModal: false,
+      activeUploadFileModal: false,
+      addDocumentForm: {
+        title: '',
+        author: '',
+        doc_code: '',
+        entry_type: '',
+        change_controlled: '',
+        compiled_url: '',
+        source_url: '',
+        creator_email: this.email,
+        abstract: '',
+      },
+      documentCodeSteps: [],
+      documentCodeStepsAll: {
+        'document': [
+          {
+            label: 'Step 1A',
+            options: [
+              { label: 'Option 1A.1', value: '1A.1' },
+              { label: 'Option 1A.2', value: '1A.2' }
+            ]
+          },
+          {
+            label: 'Step 2A',
+            options: [
+              { label: 'Option 2A.1', value: '2A.1' },
+              { label: 'Option 2A.2', value: '2A.2' }
+            ]
+          },
+          {
+            label: 'Step 3A',
+            options: [
+              { label: 'Option 3A.1', value: '3A.1' },
+              { label: 'Option 3A.2', value: '3A.2' }
+            ]
+          },
+        ],
+        'diagram': [
+          {
+            label: 'Step 1B',
+            options: [
+              { label: 'Option 1B.1', value: '1B.1' },
+              { label: 'Option 1B.2', value: '1B.2' }
+            ]
+          },
+          {
+            label: 'Step 2B',
+            options: [
+              { label: 'Option 2B.1', value: '2B.1' },
+              { label: 'Option 2B.2', value: '2B.2' }
+            ]
+          },
+          {
+            label: 'Step 3B',
+            options: [
+              { label: 'Option 3B.1', value: '3B.1' },
+              { label: 'Option 3B.2', value: '3B.2' }
+            ]
+          },
+        ],
+      },
+      builderKey: 0,
+      filter: '',
+      documents: [],
+      admins: [],
+      show_table: false,
+      editDocumentForm: {
+        pk: '',
+        title: '',
+        author: '',
+        doc_identifier: '',
+        doc_code: '',
+        entry_type: '',
+        change_controlled: '',
+        compiled_url: '',
+        source_url: '',
+        creator_email: '',
+        abstract: '',
+      },
+      URLInfo: 'The URL of the file described by the metadata in this entry.',
+      sourceURLInfo: '(optional) The URL of the source components (Git repository, Power Point presentation etc.) used to compile / build the file described by the metadata in this entry.',
+      gitLabInfo: 'This URL requires the ANT VPN to be activated.',
+      gitLabANT: 'gitlab.sc.ascendingnode.tech',
+      message: '',
+      showMessage: false,
+      isAuthorized: false,
+      // hideContent: false,
+      superuser: false,
+      file: null,
+      sortBy: "doc_identifier",
+      sortOrder: -1,
+      entryTypeOptions: [],
+      entryTypeIconMap: {},
+      entryTypeDefault: null,
+      changeControlledOptions: [],
+      changeControlledStyleMap: {},
+      changeControlledDefault: null,
+    };
+  },
+  components: {
+    alert: AlertMessage,
+    DocumentCodeBuilder: DocumentCodeBuilder,
+  },
+  watch: {
+    documents: function (newVal, oldVal) {
+      if (this.documents.length > 0) {
+        this.show_table = true;
+      } else {
+        this.show_table = false;
+      }
+    },
+    'addDocumentForm.change_controlled'(newVal) {
+      if (newVal === 0) {
+        this.addDocumentForm.doc_code = "";
+      }
+    },
+    'addDocumentForm.entry_type'(newVal) {
+      this.resetDocumentCodeBuilder();
+    }
+  },
+  computed: {
+    filteredDocuments() {
+      // Apply general filter if advanced filters are not shown
+      if (!this.showFilters) {
+        if (this.filter === '') {
+          return this.documents;
+        } else {
+          return this.documents.filter(doc => {
+            const searchTerm = this.filter.toLowerCase();
+
+            const title = doc.title ? doc.title.toString().toLowerCase() : doc.title;
+            const author = doc.author ? doc.author.toString().toLowerCase() : doc.author;
+            const doc_identifier = doc.doc_identifier ? doc.doc_identifier.toString().toLowerCase() : doc.doc_identifier;
+            const doc_code = doc.doc_code ? doc.doc_code.toString().toLowerCase() : doc.doc_code;
+            const entry_type = doc.entry_type ? doc.entry_type.toString().toLowerCase() : doc.entry_type;
+            const compiled_url = doc.compiled_url ? doc.compiled_url.toString().toLowerCase() : doc.compiled_url;
+            const source_url = doc.source_url ? doc.source_url.toString().toLowerCase() : doc.source_url;
+            const abstract = doc.abstract ? doc.abstract.toString().toLowerCase() : doc.abstract;
+            const creator_email = doc.creator_email ? doc.creator_email.toString().toLowerCase() : doc.creator_email;
+
+            return (title && title.includes(searchTerm)) ||
+              (author && author.includes(searchTerm)) ||
+              (doc_identifier && doc_identifier.includes(searchTerm)) ||
+              (doc_code && doc_code.includes(searchTerm)) ||
+              (entry_type && entry_type.includes(searchTerm)) ||
+              (compiled_url && compiled_url.includes(searchTerm)) ||
+              (source_url && source_url.includes(searchTerm)) ||
+              (abstract && abstract.includes(searchTerm)) ||
+              (creator_email && creator_email.includes(searchTerm));
+          });
+        }
+      }
+
+      // Apply advanced filters
+      return this.documents.filter(doc => {
+        return Object.keys(this.columnFilters).every(key => {
+          if (typeof (this.columnFilters[key]) === 'number') {
+            const searchTerm = this.columnFilters[key];
+            const value = doc[key]
+            return value === searchTerm;
+          } else if (typeof (this.columnFilters[key]) === 'string') {
+            const searchTerm = this.columnFilters[key].toLowerCase();
+            const value = doc[key] ? doc[key].toString().toLowerCase() : '';
+            return value.includes(searchTerm);
+          }
+        });
+      });
+    },
+    isLoggedIn() {
+      if (auth.currentUser) {
+        return true;
+      } else {
+        return false;
+      }
+    },
+    username() {
+      if (auth.currentUser) {
+        return auth.currentUser.displayName;
+      } else {
+        this.logInUser()
+        return '';
+      }
+    },
+    email() {
+      if (auth.currentUser) {
+        return auth.currentUser.email;
+      } else {
+        this.logInUser()
+        return '';
+      }
+    },
+  },
+  methods: {
+    logInUser() {
+      const provider = new GoogleAuthProvider();
+      provider.addScope('https://www.googleapis.com/auth/userinfo.email');
+      signInWithPopup(auth, provider)
+        .then(result => {
+          // Returns the signed in user along with the provider's credential
+          console.log(`${result.user.displayName} logged in.`);
+          const credential = GoogleAuthProvider.credentialFromResult(result);
+          // this.token = credential.accessToken;
+          // // The signed-in user info.
+          // this.username = result.user.displayName;
+          // this.email = result.user.email;
+        })
+        .catch(err => {
+          console.log(`Error during sign in: ${err.message}`);
+          window.alert(`Sign in failed. Retry or check your browser logs.`);
+        });
+    },
+    addDocument(payload) {
+      const path = `${API_URL}/documents`;
+
+      auth.currentUser.getIdToken(true).then(idToken => {
+        const config = {
+          headers: { Authorization: `${idToken}` }
+        };
+
+        axios.post(path, payload, config)
+          .then((res) => {
+            this.getDocuments();
+            if (res.data.status == 'success') {
+              this.message = 'Document added!';
+            } else {
+              this.message = 'Document not added, error occured';
+            }
+            this.showMessage = true;
+          })
+          .catch((error) => {
+            console.log(error);
+            this.getDocuments();
+          });
+      }).catch(function (error) {
+        console.log(error)
+      });
+    },
+    getDocuments() {
+      const path = `${API_URL}/documents`;
+      auth.currentUser.getIdToken(true).then(idToken => {
+        const config = {
+          headers: { Authorization: `${idToken}` }
+        };
+
+        axios.get(path, config)
+          .then((res) => {
+            this.documents = res.data.documents;
+            this.documents = this.sortDocuments();            
+            this.superuser = res.data.superuser;
+            this.isAuthorized = true;
+          })
+          .catch((error) => {
+            console.error(error);
+            this.superuser = false;
+            this.isAuthorized = error.response.data.isAuthorized;
+            // this.hideContent = !this.isAuthorized;
+          });
+      }).catch(function (error) {
+        console.log(error)
+        this.superuser = false;
+        this.isAuthorized = false;
+        // this.hideContent = true;
+      });
+    },
+    getAdmins() {
+      const path = `${API_URL}/admins`;
+      auth.currentUser.getIdToken(true).then(idToken => {
+        const config = {
+          headers: { Authorization: `${idToken}` }
+        };
+
+        axios.get(path, config)
+          .then((res) => {
+            this.admins = res.data.admins;
+          })
+          .catch((error) => {
+            console.error(error);
+          });
+      }).catch(function (error) {
+        console.log(error)
+      });
+    },
+    handleAddReset() {
+      this.initForm();
+    },
+    handleAddSubmit() {
+      this.toggleAddDocumentModal();
+      const payload = {
+        title: this.addDocumentForm.title,
+        author: this.addDocumentForm.author,
+        doc_code: this.addDocumentForm.doc_code,
+        entry_type: this.addDocumentForm.entry_type,
+        change_controlled: this.addDocumentForm.change_controlled,
+        compiled_url: this.addDocumentForm.compiled_url,
+        source_url: this.addDocumentForm.source_url,
+        creator_email: this.addDocumentForm.creator_email || this.email,        
+        abstract: this.addDocumentForm.abstract,
+      };
+      this.addDocument(payload);
+      this.initForm();
+    },
+    handleDeleteDocument(document) {
+      this.removeDocument(document.doc_identifier);
+    },
+    handleEditCancel() {
+      this.toggleEditDocumentModal(null);
+      this.initForm();
+      this.getDocuments(); // initForm sets values of doc open in modal to empty, so repopulate them
+    },
+    handleEditSubmit() {
+      this.toggleEditDocumentModal(null);
+      const payload = {
+        title: this.editDocumentForm.title,
+        author: this.editDocumentForm.author,
+        doc_code: this.editDocumentForm.doc_code,
+        entry_type: this.editDocumentForm.entry_type,
+        change_controlled: this.editDocumentForm.change_controlled,
+        compiled_url: this.editDocumentForm.compiled_url,
+        source_url: this.editDocumentForm.source_url,
+        creator_email: this.editDocumentForm.creator_email || this.email,            
+        abstract: this.editDocumentForm.abstract,
+      };
+      this.updateDocument(payload, this.editDocumentForm.doc_identifier);
+    },
+    initForm() {
+      this.addDocumentForm.title = '';
+      this.addDocumentForm.author = '';
+      this.addDocumentForm.doc_code = '';
+      this.addDocumentForm.entry_type = this.entryTypeDefault;
+      this.addDocumentForm.change_controlled = this.changeControlledDefault;
+      this.addDocumentForm.compiled_url = '';
+      this.addDocumentForm.source_url = '';
+      this.addDocumentForm.creator_email = this.email;
+      this.addDocumentForm.abstract = '';
+      this.editDocumentForm.pk = '';
+      this.editDocumentForm.title = '';
+      this.editDocumentForm.author = '';
+      this.editDocumentForm.doc_identifier = '';
+      this.editDocumentForm.doc_code = '';
+      this.editDocumentForm.entry_type = '';
+      this.editDocumentForm.change_controlled = '';
+      this.editDocumentForm.compiled_url = '';
+      this.editDocumentForm.source_url = '';
+      this.editDocumentForm.creator_email = '';      
+      this.editDocumentForm.abstract = '';
+    },
+    removeDocument(docID) {
+      const path = `${API_URL}/documents/${docID}`;
+
+      auth.currentUser.getIdToken(true).then(idToken => {
+        const config = {
+          headers: { Authorization: `${idToken}` }
+        };
+
+        axios.delete(path, config)
+          .then((res) => {
+            this.getDocuments();
+            if (res.data.status == 'success') {
+              this.message = 'Document removed!';
+            } else {
+              this.message = 'Document not removed, error occured';
+            }
+            this.showMessage = true;
+          })
+          .catch((error) => {
+            console.error(error);
+            this.getDocuments();
+          });
+      }).catch(function (error) {
+        console.log(error)
+      });
+    },
+    handleCodeComplete(code) {
+      this.addDocumentForm.doc_code = code;
+    },
+    handlePartialCodeUpdate(partialCode) {
+        this.addDocumentForm.doc_code = partialCode;
+    },
+    handleCodeReset() {
+      // Reset document code on builder reset
+      this.addDocumentForm.doc_code = "";
+    },
+    resetDocumentCodeBuilder() {
+      // Set the steps based on the value of addDocumentEntryType
+      if (this.addDocumentEntryType === 'document') {
+        this.documentCodeSteps = this.documentCodeStepsAll['document'];
+      } else if (this.addDocumentEntryType === 'diagram') {
+        this.documentCodeSteps = this.documentCodeStepsAll['diagram'];
+      }
+      this.addDocumentForm.doc_code = "";
+      // Change the key to force a re-render of DocumentCodeBuilder
+      this.builderKey++;
+    },
+    toggleAddDocumentModal() {
+      const body = document.querySelector('body');
+      this.activeAddDocumentModal = !this.activeAddDocumentModal;
+      if (this.activeAddDocumentModal) {
+        this.initForm();
+        body.classList.add('modal-open');
+      } else {
+        body.classList.remove('modal-open');
+      }
+    },
+    toggleEditDocumentModal(doc) {
+      if (doc) {
+        this.editDocumentForm = { ...doc };
+        this.editDocumentForm.entry_type = doc.entry_type;
+        this.editDocumentForm.change_controlled = doc.change_controlled;
+      }
+      const body = document.querySelector('body');
+      this.activeEditDocumentModal = !this.activeEditDocumentModal;
+      if (this.activeEditDocumentModal) {
+        body.classList.add('modal-open');
+      } else {
+        body.classList.remove('modal-open');
+      }
+    },
+    toggleUploadFileModal() {
+      const body = document.querySelector('body');
+      this.activeUploadFileModal = !this.activeUploadFileModal;
+      if (this.activeUploadFileModal) {
+        body.classList.add('modal-open');
+      } else {
+        body.classList.remove('modal-open');
+      }
+    },
+    updateDocument(payload, docID) {
+      const path = `${API_URL}/documents/${docID}`;
+
+      auth.currentUser.getIdToken(true).then(idToken => {
+        const config = {
+          headers: { Authorization: `${idToken}` }
+        };
+
+        axios.put(path, payload, config)
+          .then((res) => {
+            this.getDocuments();
+            if (res.data.status == 'success') {
+              this.message = 'Document updated!';
+            } else {
+              this.message = 'Document not updated, error occured';
+            }
+            this.showMessage = true;
+          })
+          .catch((error) => {
+            console.error(error);
+            this.getDocuments();
+          });
+      }).catch(function (error) {
+        console.log(error)
+      });
+    },
+    truncate(value, length) {
+      if (value.length > length) {
+        return value.substring(0, length) + "...";
+      } else {
+        return value;
+      }
+    },
+    addFile(e) {
+      this.file = e.target.files[0];
+    },
+    handleFileUpload() {
+      this.toggleUploadFileModal(null);
+      const payload = {
+        file: this.file,
+      };
+      this.uploadFile(payload);
+    },
+    uploadFile(payload) {
+      const path = `${API_URL}/documents/upload_file`;
+
+      auth.currentUser.getIdToken(true).then(idToken => {
+        const config = {
+          headers: { Authorization: `${idToken}`, }
+        };
+
+        axios.postForm(path, payload, config)
+          .then((res) => {
+            this.getDocuments();
+            if (res.data.status == 'success') {
+              this.message = 'Documents added!';
+            } else {
+              this.message = 'Documents not added, error occured';
+            }
+            this.showMessage = true;
+          })
+          .catch((error) => {
+            console.error(error);
+            this.getDocuments();
+          });
+      }).catch(function (error) {
+        console.log(error)
+      });
+    },
+    sortColumn(sortBy){
+    	if(this.sortBy === sortBy) {
+      	this.sortOrder = -this.sortOrder;
+      } else {
+      	this.sortBy = sortBy;
+        this.sortOrder = 1;
+      };
+
+      this.documents = this.sortDocuments();
+    }, 
+    sortDocuments() {
+      return this.documents.sort((a,b) => {
+          if (a[this.sortBy] >= b[this.sortBy]) {
+          return this.sortOrder
+        }
+          return -this.sortOrder
+        });
+    },
+    toggleAdvancedFilter() {
+      this.showFilters = !this.showFilters;
+      this.filterButtonText = this.showFilters ? 'General Filter' : 'Advanced Filter';
+      // Reset general filter when switching to advanced filters
+      if (this.showFilters) {
+        this.filter = '';
+      } else {
+        this.resetFilters(); // Reset column filters when switching back to general
+      }
+    },
+    resetFilters() {
+      // Reset all filter inputs and checkboxes
+      Object.keys(this.columnFilters).forEach(key => {
+        this.columnFilters[key] = '';
+      });
+    },
+    sendEmail(doc) {
+      // alert(`Sending email to ${doc.creator_email}`);
+      const emailSubject = encodeURIComponent(`Teledocs Alert: Document '${doc.title}' is out of date`);
+      const emailBody = encodeURIComponent(`Hi,\n\n
+This is to inform you that the document '${doc.title}' was reported as being out of date. The data currently associated with it is:\n
+Title: ${doc.title}\n
+Author: ${doc.author}\n
+URL: ${doc.compiled_url}\n
+Source URL: ${doc.source_url}\n
+Abstract: ${doc.abstract}\n\n
+Please update the entry at your earliest convenience.\n\nRegards,\nteledocs`);
+      const emailCC = this.admins.join(', ');
+      const mailtoUrl = `mailto:${doc.creator_email}?cc=${emailCC}&subject=${emailSubject}&body=${emailBody}`;
+
+      // Create a hidden <a> element (otherwise you need to use window.open and that opens a new tab)
+      const hiddenLink = document.createElement('a');
+      hiddenLink.href = mailtoUrl;
+
+      // Trigger click on the hidden <a> element
+      hiddenLink.style.display = 'none';
+      document.body.appendChild(hiddenLink);
+      hiddenLink.click();
+      document.body.removeChild(hiddenLink);
+    },
+    exportToExcel() {
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet('Documents');
+
+      worksheet.columns = [
+        { title: 'Title', key: 'title'},
+        { author: 'Author', key: 'author'},
+        { doc_identifier: 'Doc Identifier', key: 'doc_identifier'},
+        { doc_code: 'Doc #', key: 'doc_code'},
+        { entry_type: 'Type', key: 'entry_type'},
+        { change_controlled: 'Change Controlled', key: 'change_controlled'},
+        { compiled_url: 'URL', key: 'compiled_url'},        
+        { source_url: 'Source URL', key: 'source_url'},        
+        { abstract: 'Abstract', key: 'abstract'},        
+        { creator_email: 'Maintainer Email', key: 'creator_email'},        
+      ];
+
+      worksheet.addRow({
+        title: 'Title',
+        author: 'Author',
+        doc_identifier: 'Doc Identifier',
+        doc_code: 'Doc #',
+        entry_type: 'Type',
+        change_controlled: 'Change Controlled',
+        compiled_url: 'URL',        
+        source_url: 'Source URL',
+        abstract: 'Abstract',
+        creator_email: 'Maintainer Email',
+      })
+
+      this.filteredDocuments.forEach(doc => {
+        worksheet.addRow({
+          title: doc.title,
+          author: doc.author,
+          doc_identifier: doc.doc_identifier,
+          doc_code: doc.doc_code,
+          entry_type: doc.entry_type,
+          change_controlled: doc.change_controlled,
+          compiled_url: doc.compiled_url,
+          source_url: doc.source_url,
+          abstract: doc.abstract,
+          creator_email: doc.creator_email,
+        });
+      });
+
+      // Save the workbook
+      workbook.xlsx.writeBuffer().then(buffer => {
+        const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        const fileName = 'exported_teledocs_entries.xlsx';
+
+        // Create a link element, simulate click to trigger download
+        const link = document.createElement('a');
+        link.href = window.URL.createObjectURL(blob);
+        link.download = fileName;
+        link.click();
+
+        // Clean up
+        window.URL.revokeObjectURL(link.href);
+      });
+    },
+    getEntryTypeOptions() {
+      const path = `${API_URL}/../entry_types`;
+      auth.currentUser.getIdToken(true).then(idToken => {
+      const config = {
+        headers: { Authorization: `${idToken}` }
+      };
+
+      axios.get(path, config)
+        .then((res) => {
+          this.entryTypeOptions = res.data.entry_types;
+          this.entryTypeIconMap = this.entryTypeOptions.reduce((map, option) => {
+            map[option.value] = option.icon;
+            return map;
+          }, {});
+          this.entryTypeDefault = res.data.default;
+        })
+        .catch((error) => {
+          console.error(error);
+          this.superuser = false;
+          this.isAuthorized = error.response.data.isAuthorized;
+        });
+      }).catch(function (error) {
+        console.log(error)
+        this.superuser = false;
+        this.isAuthorized = false;
+      });
+    },    
+    getChangeControlledOptions() {
+      const path = `${API_URL}/../change_controlled_types`;
+      auth.currentUser.getIdToken(true).then(idToken => {
+      const config = {
+        headers: { Authorization: `${idToken}` }
+      };
+
+      axios.get(path, config)
+        .then((res) => {
+          this.changeControlledOptions = res.data.change_controlled_types;
+          this.changeControlledStyleMap = this.changeControlledOptions.reduce((map, option) => {
+            map[option.value] = option.tr_style;
+            return map;
+          }, {});
+          this.changeControlledDefault = res.data.default;
+        })
+        .catch((error) => {
+          console.error(error);
+          this.superuser = false;
+          this.isAuthorized = error.response.data.isAuthorized;
+        });
+      }).catch(function (error) {
+        console.log(error)
+        this.superuser = false;
+        this.isAuthorized = false;
+      });
+    },    
+  },
+  created() {
+    this.getDocuments();
+    this.getAdmins();
+    this.getEntryTypeOptions();
+    this.getChangeControlledOptions();
+  },
+  mounted() {
+    // Initialize steps for the current value of addDocumentEntryType
+    this.resetDocumentCodeBuilder();
+  }
+};
+</script>
