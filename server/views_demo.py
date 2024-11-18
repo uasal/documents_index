@@ -3,8 +3,10 @@ import logging
 from flask import jsonify, request
 from flask.views import MethodView
 
+from sqlalchemy import select
+from sqlalchemy.orm import joinedload
 from models import is_superuser, TypeEnum, ChangeControlledEnum
-from models_demo import db, DemoDocument, DemoUser, DemoDomain
+from models_demo import db, DemoDocument, DemoUser, DemoDomain, DemoNumber
 
 from views import token_required, superuser
 
@@ -59,11 +61,72 @@ class DemoAllDocuments(MethodView):
         entity = getattr(request, "entity")
         email = getattr(request, "email")
         logger.info(f"AllDocuments: User {email} is viewing all documents.")
-        documents = db.session.scalars(db.select(DemoDocument).order_by(DemoDocument.time_created.asc()))
+
+        documents = (
+            db.session.execute(
+                select(DemoDocument)
+                .options(
+                    # Here 'joinedload' can be replaced by "selectinload"
+                    # 'joinedload' is good if no duplicates (which should be out case), 
+                    # "selectinload" has better performance if duplicates
+                    joinedload(DemoDocument.number),
+                    joinedload(DemoDocument.aliases),
+                )
+                .order_by(DemoDocument.time_created.asc())
+            )
+            .unique()
+            .scalars()
+            .all()
+        )
 
         response_object = {
             "status": "success",
             "documents": DemoDocument.serialize_list(documents),
+            "superuser": is_superuser(entity),
+        }
+        return jsonify(response_object)
+
+
+class DemoAllNumbers(MethodView):
+    """View class for the /documents route."""
+
+    decorators = [token_required]
+
+    def get(self):
+        """
+        Method with logic for get requests.
+        Get requests here return a list of all the Numbers in the db.
+
+        Returns
+        -------
+        json
+            Json response to get request. Contains 'status' and a
+            list of each document serialized.
+        """
+        entity = getattr(request, "entity")
+        email = getattr(request, "email")
+        logger.info(f"AllNumbers: User {email} is viewing all numbers.")
+
+        numbers = (
+            db.session.execute(
+                select(DemoNumber)
+                .options(
+                    # Here 'joinedload' can be replaced by "selectinload"
+                    # 'joinedload' is good if no duplicates (which should be out case), 
+                    # "selectinload" has better performance if duplicates
+                    joinedload(DemoNumber.document),
+                    joinedload(DemoNumber.document).joinedload(DemoDocument.aliases),
+                )
+                .order_by(DemoNumber.time_created.desc())
+            )
+            .unique()
+            .scalars()
+            .all()
+        )
+
+        response_object = {
+            "status": "success",
+            "numbers": DemoNumber.serialize_list(numbers, max_depth=4),
             "superuser": is_superuser(entity),
         }
         return jsonify(response_object)
@@ -185,7 +248,7 @@ class DemoSingleDocument(MethodView):
 
     decorators = [token_required]
 
-    def get(self, doc_identifier):
+    def get(self, doc_string):
         """
         Method with logic for get requests.
         Get requests here returns details for document with given document id.
@@ -205,14 +268,14 @@ class DemoSingleDocument(MethodView):
         email = getattr(request, "email")
         logger.info(f"AllDocuments: User {email} is viewing all documents.")
         response_object = {"status": "success", "superuser": is_superuser(entity)}
-        document = DemoDocument.get_by_doc_identifier(doc_identifier)
+        document = DemoDocument.get_by_doc_string(doc_string)
         if document:
             response_object["document"] = document.serialize()
         else:
             response_object["message"] = "No document found."
         return jsonify(response_object)
 
-    def put(self, doc_identifier):
+    def put(self, doc_string):
         """
         Method with logic for put requests.
         Put requests here update the column values for the document
@@ -220,7 +283,7 @@ class DemoSingleDocument(MethodView):
 
         Parameters
         ----------
-        doc_identifier : str
+        doc_string : str
             doc_identifier of document entry to be updated.
 
         Returns
@@ -233,7 +296,7 @@ class DemoSingleDocument(MethodView):
         response_object = {"status": "success"}
 
         post_data = request.get_json()        
-        document = DemoDocument.get_by_doc_identifier(doc_identifier)
+        document = DemoDocument.get_by_doc_string(doc_string)
         if document:
             if (document.creator_email != email) and (not entity.superuser):
                 response_object['status'] = 'fail'
@@ -262,14 +325,14 @@ class DemoSingleDocument(MethodView):
             response_object["message"] = "Document not found"
         return jsonify(response_object)
 
-    def delete(self, doc_identifier):
+    def delete(self, doc_string):
         """
         Method with logic for delete requests.
         Delete requests here delete document with given doc_identifier from the db.
 
         Parameters
         ----------
-        doc_identifier : str
+        doc_string : str
             doc_identifier of document entry to be deleted.
 
         Returns
@@ -281,7 +344,7 @@ class DemoSingleDocument(MethodView):
         entity = getattr(request, "entity")
         response_object = {"status": "success"}
 
-        document = DemoDocument.get_by_doc_identifier(doc_identifier)
+        document = DemoDocument.get_by_doc_string(doc_string)
         if document:
             if (document.creator_email != email) and (not entity.superuser):
                 response_object['status'] = 'fail'

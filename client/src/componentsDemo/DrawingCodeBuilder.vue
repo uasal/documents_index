@@ -8,6 +8,7 @@
                     class="form-control"
                     v-model="selectedOptions[index]"
                     @change="handleOptionChange(index)"
+                    :disabled="isComplete"
                 >
                     <option value="" disabled selected hidden>Select an option</option>
                     <option v-for="option in step.options" :key="option.value" :value="option.value">{{ option.label }}</option>
@@ -16,15 +17,17 @@
         </div>
   
         <div class="doc-code-controls">
-            <button v-if="currentStep > 0" type="button" class="btn btn-primary btn-sm" @click="previousStep">
-            Back
-            </button>
-            <button v-if="currentStep < steps.length - 1" type="button" class="btn btn-primary btn-sm" @click="nextStep">
-            Next
-            </button>
-            <button v-if="currentStep === steps.length - 1" type="button" class="btn btn-success btn-sm" @click="submitCode">
-            Complete
-            </button>
+            <div class="btn-group" role="group">
+                <button type="button" class="btn btn-primary btn-sm" @click="previousStep" :disabled="currentStep == 0 || isComplete">
+                Back
+                </button>
+                <button v-if="!branchEnd && (currentStep < steps.length - 1)" type="button" class="btn btn-primary btn-sm" @click="nextStep" :disabled="!selectedOptions[currentStep] || isComplete">
+                Next
+                </button>
+                <button v-if="branchEnd || (currentStep === steps.length - 1)" type="button" class="btn btn-success btn-sm" @click="submitCode">
+                Complete
+                </button>
+            </div>
             <button type="button" class="btn btn-secondary btn-sm" @click="resetBuilder">Reset</button>
         </div>
     </div>
@@ -67,14 +70,21 @@ export default {
     },
     data() {
         return {
-            steps: this.initialSteps,
-            selectedOptions: Array(this.initialSteps.length).fill(""),
-            currentStep: 0
+            steps: JSON.parse(JSON.stringify(this.initialSteps)), // deep clone, otherwise can't revert to initialSteps
+            root: "PRL",
+            selectedOptions: Array(this.initialSteps.length+1).fill(""),
+            currentStep: 0,
+            isComplete: false,
+            branchEnd: false 
         };
     },
     watch: {
-        steps(newSteps) {
-            this.resetBuilder(); // Reset if steps change
+        initialSteps: {
+            handler(newSteps) {
+                this.steps = JSON.parse(JSON.stringify(newSteps));
+                this.resetBuilder();
+            },
+            deep: true
         },
         selectedOptions: {
             handler() {
@@ -86,19 +96,32 @@ export default {
     methods: {
         handleOptionChange(stepIndex) {
             const selectedValue = this.selectedOptions[stepIndex];
-            
-            if (stepIndex < this.steps.length - 1) {
+
+            // Reset all subsequent selections
+            for (let i = stepIndex + 1; i < this.steps.length; i++) {
+                this.selectedOptions[i] = "";
+                this.steps[i].options = JSON.parse(JSON.stringify(this.initialSteps[i].options));
+            }
+
+            // Load next options dynamically
+            if ((stepIndex < this.steps.length - 1) && selectedValue) {
                 this.loadNextOptions(stepIndex, selectedValue);
             }
         },
-        loadNextOptions(stepIndex, selectedValue) {
-            // Logic to update options for the next step based on the selected value of the current step
-            // Update `this.steps[stepIndex + 1].options` based on selectedValue
-            pass;
+        loadNextOptions(stepIndex) {
+            var key = this.buildCode("_");
+            if (stepIndex < this.steps.length - 1) {
+                const nextOptions = this.steps[stepIndex + 1].options[key] || [];
+                this.steps[stepIndex + 1].options = nextOptions;
+
+                // Check if the next step has valid options
+                this.branchEnd = nextOptions.length === 0;
+            }
         },
         previousStep() {
             if (this.currentStep > 0) {
                 this.selectedOptions[this.currentStep] = "";
+                this.branchEnd = false;
                 this.currentStep--;
                 this.emitPartialCode();
             }
@@ -110,21 +133,27 @@ export default {
             }
         },
         submitCode() {
-            const documentCode = this.selectedOptions.filter(option => option).join("-");
-            this.$emit("codeComplete", documentCode);
+            this.isComplete = true;
+            const drawingCode = this.buildCode("-");;
+            this.$emit("codeComplete", drawingCode);
         },
         resetBuilder() {
+            this.isComplete = false;
+            this.branchEnd = false;
             this.selectedOptions.fill("");
             this.currentStep = 0;
+            this.steps = JSON.parse(JSON.stringify(this.initialSteps));
             this.$emit("resetCode");
         },
         emitPartialCode() {
-            const partialCode = this.selectedOptions
-                .filter(option => option)
-                .join("-");
+            const partialCode = this.buildCode("-");
             this.$emit("partialCodeUpdate", partialCode);
+        },
+        buildCode(connector) {
+            return this.root + connector + this.selectedOptions
+                .filter(option => option)
+                .join(connector);
         }
-    }
+    },
 };
 </script>
-  

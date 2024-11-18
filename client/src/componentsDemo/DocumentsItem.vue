@@ -23,7 +23,12 @@
                 <div class="col-6">
                     <p><b>Author: </b>{{ document.author }}</p>
                     <p><b>Identifier: </b>{{ document.doc_identifier }}</p>
-                    <p><b>Number: </b>{{ document.doc_code }}</p>
+                    <p><b>Number: </b>
+                        <a v-if="document.number" :href="'docs/' + document.number.value" target="_blank" class="d-block">{{ document.number.value }}</a>
+                    </p>
+                    <p v-if="document.aliases"><b>Other handles: </b>
+                        <a v-for="(alias, index) in document.aliases" :key="index" :href="'docs/' + alias.value" target="_blank" class="d-block">{{ alias.value }}</a>
+                    </p>
                     <p><b>Type: </b><font-awesome-icon v-if="entryTypeIconMap[document.entry_type]" :icon="entryTypeIconMap[document.entry_type]" data-toggle="tooltip" data-placement="bottom" :title="document.entry_type" class="text-secondary" /></p>
                     <p><b>Change controlled: </b> {{ changeControlledValueMap[document.change_controlled] }}</p>
                     <p><b><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="URLInfo"/>URL: </b><font-awesome-icon v-if="document.compiled_url && document.compiled_url.toLowerCase().includes(gitLabANT)" icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="gitLabInfo"/><a :href=document.compiled_url target="_blank">{{ document.compiled_url }}</a></p>

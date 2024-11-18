@@ -17,7 +17,7 @@ logger = logging.getLogger("logger")
 class Serializer(object):
     """A mix-in to serialize SQLAlchemy models."""
 
-    def serialize(self):
+    def serialize(self, depth=0, max_depth=2):
         """
         Serializes a single model object.
 
@@ -26,13 +26,29 @@ class Serializer(object):
         dict
             A dictionary with object's column names as keys and values as values
         """
-        return {c: (getattr(self, c).value 
-                    if isinstance(getattr(self, c), enum.Enum) 
-                    else getattr(self, c))
-                for c in inspect(self).attrs.keys()}
+        serialized = {}
+
+        if depth < max_depth:
+            for c in inspect(self).attrs.keys():
+                match value := getattr(self, c):
+                    case enum.Enum():
+                        serialized[c] = value.value
+
+                    case list():
+                        serialized[c] = self.serialize_list(value, depth+1, max_depth)
+
+                    case db.Model():
+                        serialized[c] = value.serialize(depth+1, max_depth)
+
+                    case _:
+                        serialized[c] = value
+        else:
+            serialized["pk"] = self.pk
+
+        return serialized
 
     @staticmethod
-    def serialize_list(obj_list):
+    def serialize_list(obj_list, depth=0, max_depth=2):
         """
         Given a list of model objects returns a list with the objects serialized.
 
@@ -46,7 +62,7 @@ class Serializer(object):
         list
             List of serialized objects
         """
-        return [m.serialize() for m in obj_list]
+        return [m.serialize(depth, max_depth) for m in obj_list]
 
 
 class TypeEnum(enum.Enum):

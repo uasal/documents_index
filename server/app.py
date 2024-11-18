@@ -75,6 +75,7 @@ def create_app():
         DemoSingleUser,
         DemoAllDomains,
         DemoSingleDomain,
+        DemoAllNumbers
     )
 
     logger.info("Registering views.")
@@ -103,7 +104,7 @@ def create_app():
         "/api/demo/documents/upload_file", view_func=DemoUploadFile.as_view("demo_upload_file")
     )
     app.add_url_rule(
-        "/api/demo/documents/<doc_identifier>",
+        "/api/demo/documents/<doc_string>",
         view_func=DemoSingleDocument.as_view("demo_single_document"),
     )
     app.add_url_rule("/api/demo/users", view_func=DemoAllUsers.as_view("demo_user_list"))
@@ -113,6 +114,7 @@ def create_app():
     app.add_url_rule(
         "/api/demo/domains/<pk>", view_func=DemoSingleDomain.as_view("demo_single_domain")
     )
+    app.add_url_rule("/api/demo/numbers", view_func=DemoAllNumbers.as_view("demo_number_list"))
     return app
 
 app = create_app()

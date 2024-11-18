@@ -72,7 +72,7 @@
               </div>             
               <div class="col mb-3">
                 <!-- <label for="columnFiltersDocNb" class="form-label">Doc #:</label> -->
-                <input type="text" class="form-control" id="columnFiltersDocNb" v-model="columnFilters.doc_code" placeholder="Filter by #">
+                <input type="text" class="form-control" id="columnFiltersDocNb" v-model="columnFilters.number" placeholder="Filter by #">
               </div>             
               <div class="col mb-3">
                 <select class="form-control" id="columnFiltersEntryType" v-model="columnFilters.entry_type">
@@ -128,9 +128,9 @@
                 <font-awesome-icon icon="fa-solid fa-sort-up" style="vertical-align: bottom" v-if="this.sortBy=='doc_identifier' && this.sortOrder==1"/>
                 <font-awesome-icon icon="fa-solid fa-sort-down" style="vertical-align: top" v-if="this.sortBy=='doc_identifier' && this.sortOrder==-1"/>                
               </th>
-              <th @click='sortColumn("doc_code")' style="min-width: 10%;" scope="col">Doc #
-                <font-awesome-icon icon="fa-solid fa-sort-up" style="vertical-align: bottom" v-if="this.sortBy=='doc_code' && this.sortOrder==1"/>
-                <font-awesome-icon icon="fa-solid fa-sort-down" style="vertical-align: top" v-if="this.sortBy=='doc_code' && this.sortOrder==-1"/>                
+              <th @click='sortColumn("number")' style="min-width: 15%;" scope="col">Doc #
+                <font-awesome-icon icon="fa-solid fa-sort-up" style="vertical-align: bottom" v-if="this.sortBy=='number' && this.sortOrder==1"/>
+                <font-awesome-icon icon="fa-solid fa-sort-down" style="vertical-align: top" v-if="this.sortBy=='number' && this.sortOrder==-1"/>                
               </th>
               <th @click='sortColumn("entry_type")' style="min-width: 5%;" scope="col">Type
                 <font-awesome-icon icon="fa-solid fa-sort-up" style="vertical-align: bottom" v-if="this.sortBy=='entry_type' && this.sortOrder==1"/>
@@ -175,10 +175,28 @@
               </td>
               <td v-else><a :href="'docs/' + doc.doc_identifier" target="_blank">{{ doc.doc_identifier }}</a></td>
 
-              <td data-toggle="tooltip" data-placement="bottom" :title="doc.doc_code" style="cursor: default"
-                v-if="doc.doc_code.length > 30">{{ truncate(doc.doc_code, 30) }}</td>
-              <td v-else>{{ doc.doc_code }}</td>
-
+              <td v-if="doc.number" data-toggle="tooltip" data-placement="bottom" :title="doc.number" style="cursor: default">
+                <ul>
+                  <li>
+                    <a v-if="(doc.number.value.length > 30)" :href="'docs/' + doc.number.value" target="_blank" class="d-block">{{ truncate(doc.number.value, 30) }}</a>
+                    <a v-else :href="'docs/' + doc.number.value" target="_blank" class="d-block">{{ doc.number.value }}</a>
+                  </li>
+                  
+                  <!-- No truncation for aliases, pretty awkward to solve. Will revisit if it becomes a problem -->
+                  <li v-if="doc.aliases.length > 0">
+                    <a v-for="(alias, index) in doc.aliases" :key="index" :href="'docs/' + alias.value" target="_blank" class="d-block">{{ alias.value }}</a>
+                  </li>
+                </ul>
+              </td>
+              <td v-else>
+                <ul>
+                  <!-- No truncation for aliases, pretty awkward to solve. Will revisit if it becomes a problem -->
+                  <li v-if="doc.aliases.length > 0">
+                    <a v-for="(alias, index) in doc.aliases" :key="index" :href="'docs/' + alias.value" target="_blank" class="d-block">{{ alias.value }}</a>
+                  </li>
+                </ul>
+              </td>
+              
               <td><font-awesome-icon v-if="entryTypeIconMap[doc.entry_type]" :icon="entryTypeIconMap[doc.entry_type]" data-toggle="tooltip" data-placement="bottom" :title="doc.entry_type" class="text-secondary" /></td>
 
               <td>
@@ -208,7 +226,7 @@
                   <button type="button" class="btn btn-warning btn-sm" @click="toggleEditDocumentModal(doc)">
                     Update
                   </button>
-                  <button v-if="!doc.doc_code || superuser" type="button" class="btn btn-danger btn-sm" @click="handleDeleteDocument(doc)">
+                  <button v-if="!doc.number || superuser" type="button" class="btn btn-danger btn-sm" @click="handleDeleteDocument(doc)">
                     Delete
                   </button>
                 </div>
@@ -269,17 +287,17 @@
                   <option v-for="option in changeControlledOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
                 </select>
               </div>
-              <div class="mb-3" v-if="(addDocumentForm.change_controlled === 10) && ((addDocumentForm.entry_type === 'document' || addDocumentForm.entry_type === 'diagram'))">
+              <div class="mb-3" v-if="(addDocumentForm.change_controlled === 10) && (addDocumentForm.entry_type === 'drawing')">
                 <label for="addDocumentDocCode" class="form-label">New Number:</label>
                 <!-- Adding key ensures full re-render on reset -->
-                <DocumentCodeBuilder
-                  :initialSteps="documentCodeStepsAll['document']"
-                  @codeComplete="handleCodeComplete"
-                  @resetCode="handleCodeReset"
-                  @partialCodeUpdate="handlePartialCodeUpdate"
+                <DrawingCodeBuilder
+                  :initialSteps="codeStepsDrawing"
+                  @codeComplete="handleAddCodeComplete"
+                  @resetCode="handleAddCodeReset"
+                  @partialCodeUpdate="handleAddPartialCodeUpdate"
                   :key="builderKey"
                 />
-                <input type="text" class="form-control mt-2" id="addDocumentDocCode" v-model="addDocumentForm.doc_code" readonly />
+                <input type="text" class="form-control mt-2" id="addDocumentDocCode" v-model="addDocumentForm.number" readonly />
               </div>
               <div class="mb-3">
                 <label for="addDocumentUrl" class="form-label"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="URLInfo"/>URL:</label>
@@ -302,7 +320,8 @@
                   placeholder="Enter abstract"></textarea>
               </div>
               <div class="btn-group" role="group">
-                <button type="button" class="btn btn-primary btn-sm" @click="handleAddSubmit">
+                <button type="button" class="btn btn-primary btn-sm" @click="handleAddSubmit"
+                      :disabled="!builderComplete && (addDocumentForm.change_controlled === 10) && (addDocumentForm.entry_type === 'drawing')">
                   Submit
                 </button>
                 <button type="button" class="btn btn-danger btn-sm" @click="handleAddReset">
@@ -388,18 +407,9 @@
                   v-model="editDocumentForm.author" placeholder="Enter author">
               </div>
               <div class="mb-3">
-                <label for="editDocumentDocCode" class="form-label">Doc # (optional):</label>
-                <input type="text" class="form-control" maxlength="30" id="editDocCode"
-                  v-if="!editDocumentForm.doc_code || superuser"
-                  v-model="editDocumentForm.doc_code" placeholder="Enter document code">
-                <input type="text" class="form-control-plaintext" maxlength="30" id="editDocCode"
-                  v-else readonly 
-                  v-model="editDocumentForm.doc_code">
-              </div>
-              <div class="mb-3">
                 <label for="editDocumentEntryType" class="form-label">Type:</label>
                 <select class="form-control" id="editDocumentEntryType" v-model="editDocumentForm.entry_type"
-                  v-if="!editDocumentForm.doc_code || superuser">
+                  v-if="!editDocumentForm.number || superuser">
                   <option v-for="option in entryTypeOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
                 </select>
                 <select class="form-control" id="editDocumentEntryType" v-model="editDocumentForm.entry_type"
@@ -412,6 +422,18 @@
                 <select class="form-control" id="editDocumentChangeControlled" v-model="editDocumentForm.change_controlled">
                   <option v-for="option in changeControlledOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
                 </select>
+              </div>
+              <div class="mb-3" v-if="(editDocumentForm.change_controlled === 10) && (editDocumentForm.entry_type === 'drawing')">
+                <label for="editDocumentDocCode" class="form-label">New Number:</label>
+                <!-- Adding key ensures full re-render on reset -->
+                <DrawingCodeBuilder
+                  :initialSteps="codeStepsDrawing"
+                  @codeComplete="handleEditCodeComplete"
+                  @resetCode="handleEditCodeReset"
+                  @partialCodeUpdate="handleEditPartialCodeUpdate"
+                  :key="builderKey"
+                />
+                <input type="text" class="form-control mt-2" id="editDocumentDocCode" v-model="editDocumentForm.number" readonly />
               </div>
               <div class="mb-3">
                 <label for="editDocumentUrl" class="form-label"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="URLInfo"/>URL:</label>
@@ -434,7 +456,8 @@
                   placeholder="Enter abstract"></textarea>
               </div>
               <div class="btn-group" role="group">
-                <button type="button" class="btn btn-primary btn-sm" @click="handleEditSubmit">
+                <button type="button" class="btn btn-primary btn-sm" @click="handleEditSubmit"
+                      :disabled="!builderComplete && (editDocumentForm.change_controlled === 10) && (editDocumentForm.entry_type === 'drawing')">
                   Submit
                 </button>
                 <button type="button" class="btn btn-danger btn-sm" @click="handleEditCancel">
@@ -457,7 +480,7 @@ import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import { auth } from '../firebaseConfig';
 import ExcelJS from 'exceljs';
 import AlertMessage from './AlertMessage.vue';
-import DocumentCodeBuilder from './DocumentCodeBuilder.vue';
+import DrawingCodeBuilder from './DrawingCodeBuilder.vue';
 
 const API_URL = '/api/demo';
 // const API_URL = 'http://localhost:5001/api/demo';
@@ -472,7 +495,7 @@ export default {
         title: '',
         author: '',
         doc_identifier: '',
-        doc_code: '',
+        number: '',
         entry_type: '',
         change_controlled: '',
         compiled_url: '',
@@ -486,7 +509,7 @@ export default {
       addDocumentForm: {
         title: '',
         author: '',
-        doc_code: '',
+        number: '',
         entry_type: '',
         change_controlled: '',
         compiled_url: '',
@@ -494,55 +517,172 @@ export default {
         creator_email: this.email,
         abstract: '',
       },
-      documentCodeSteps: [],
-      documentCodeStepsAll: {
-        'document': [
-          {
-            label: 'Step 1A',
-            options: [
-              { label: 'Option 1A.1', value: '1A.1' },
-              { label: 'Option 1A.2', value: '1A.2' }
+      codeStepsDrawing: [
+        {
+          label: 'Category:',
+          options: [
+              { label: 'Telescope', value: 'TEL' },
+              { label: 'Analyses', value: 'A' },
+              { label: 'Spacecraft Bus', value: 'BUS' },
+              { label: 'Interface Control Drawing', value: 'ICD' },
             ]
+        },
+        {
+          label: 'Assembly:',
+          options: {
+            PRL_TEL: [
+            { label: 'Aft Optics Aseembly', value: 'AOA' },
+            { label: 'Fore Optics Assembly', value: 'FOA' },
+            { label: 'Interface Control Drawing', value: 'ICD' },
+            ], 
+          }
+        },
+        {
+          label: 'Main Element:',
+          options: {
+            PRL_TEL_ICD: [
+              { label: 'Interface Control Drawing', value: '00' },
+              { label: 'Telescope-BUS ICD', value: '01' },
+              { label: 'Telescope Optical Definition', value: '02' },
+            ],
+            PRL_TEL_FOA: [
+              { label: 'Top Level Assembly', value: 'ASY' },
+              { label: 'COTS Parts', value: 'COT' },
+              { label: 'Electrical (not in IBS, M1S, etc.)', value: 'ELE' },
+              { label: 'Ground Support Equipment', value: 'GSE' },
+              { label: 'Inner Baffle System', value: 'IBS' },
+              { label: 'Interface Control Drawing', value: 'ICD' },
+              { label: 'Primary Mirror System', value: 'M1S' },
+              { label: 'Secondary Mirror System', value: 'M2S' },
+            ],
+            PRL_TEL_AOA: [
+              { label: 'Piece Parts', value: '9' },
+              { label: 'Coronagraph', value: 'ESC' },
+              { label: 'Interface Control Drawing', value: 'ICD' },
+              { label: 'IR Spectograph', value: 'IFS' },
+              { label: 'Optics', value: 'OPT' },
+              { label: 'Scrappy', value: 'SCR' },
+              { label: 'Structure', value: 'STC' },
+              { label: 'Shack-Hartmann Wavefront Sensor', value: 'SWS' },
+              { label: 'UV Spectograph', value: 'UVS' },
+              { label: 'Context Camera Assembly', value: 'WCC' },
+            ],
+          }
+        },
+        {
+          label: 'Sub Element:',
+          options: {
+            // PRL_TEL_FOA_ASY: [
+            //   { label: 'ASY Subasssembly', value: '00' },
+            //   ],
+            PRL_TEL_FOA_COT: [
+              { label: 'COT Subasssembly', value: '00' },
+              { label: 'COT Electrical - Subasssembly', value: '10' },
+              { label: 'COT Electrical - Part', value: '11' },
+              { label: 'COT Mechanical - Subasssembly', value: '30' },
+              { label: 'COT Mechanical - Part', value: '31' },
+            ],
+            PRL_TEL_FOA_ELE: [
+              { label: 'ELE Subassembly', value: '00' },
+              { label: 'ELE Thermal Control - Subassembly', value: '10' },
+              { label: 'ELE Thermal Control - Part', value: '11' },
+              { label: 'ELE Hardware & Cabling - Subassembly', value: '20' },
+              { label: 'ELE Hardware & Cabling - Part', value: '21' },
+              { label: 'ELE Other - Subassembly', value: '30' },
+              { label: 'ELE Other - Part', value: '31' },
+            ],
+            PRL_TEL_FOA_GSE: [
+              { label: 'GSE Subassembly', value: '10' },
+              { label: 'GSE Part', value: '11' },
+            ],
+            PRL_TEL_FOA_IBS: [
+              { label: 'IBS Subassembly', value: '00' },
+              { label: 'IBS Thermal Control - Subassembly', value: '10' },
+              { label: 'IBS Thermal Control - Part', value: '11' },
+              { label: 'IBS Hardware & Cabling - Subassembly', value: '20' },
+              { label: 'IBS Hardware & Cabling - Part', value: '21' },
+              { label: 'IBS Inner Baffle - Subassembly', value: '30' },
+              { label: 'IBS Inner Baffle - Part', value: '31' },
+            ],
+            // PRL_FOA_ICD: [
+            //   { label: 'Interface Control Drawing', value: '00' },
+            // ],
+            PRL_TEL_FOA_M1S: [
+              { label: 'M1S Subassembly', value: '00' },
+              { label: 'M1S Thermal Control - Subassembly', value: '10' },
+              { label: 'M1S Thermal Control - Part', value: '11' },
+              { label: 'M1S Hardware & Cabling - Subassembly', value: '20' },
+              { label: 'M1S Hardware & Cabling - Part', value: '21' },
+              { label: 'M1S Mirror - Subassembly', value: '30' },
+              { label: 'M1S Mirror - Part', value: '31' },
+            ],
+            PRL_TEL_FOA_M2S: [
+              { label: 'M2S Subassembly', value: '00' },
+              { label: 'M2S Thermal Control - Subassembly', value: '10' },
+              { label: 'M2S Thermal Control - Part', value: '11' },
+              { label: 'M2S Hardware & Cabling - Subassembly', value: '20' },
+              { label: 'M2S Hardware & Cabling - Part', value: '21' },
+              { label: 'M2S Mirror - Subassembly', value: '30' },
+              { label: 'M2S Mirror - Part', value: '31' },
+              { label: 'M2S Hub - Subassembly', value: '40' },
+              { label: 'M2S Hub - Part', value: '41' },
+              { label: 'M2S Tripod - Subassembly', value: '50' },
+              { label: 'M2S Tripod - Part', value: '51' },
+            ],
+            PRL_TEL_FOA_PMS: [
+              { label: 'PMS Subassembly', value: '00' },
+              { label: 'PMS Thermal Control - Subassembly', value: '10' },
+              { label: 'PMS Thermal Control - Part', value: '11' },
+              { label: 'PMS Hardware & Cabling - Subassembly', value: '20' },
+              { label: 'PMS Hardware & Cabling - Part', value: '21' },
+              { label: 'PMS PMSS - Subassembly', value: '30' },
+              { label: 'PMS PMSS - Part', value: '31' },
+              { label: 'PMS Hardpoint - Subassembly', value: '40' },
+              { label: 'PMS Hardpoint - Part', value: '41' },
+              { label: 'PMS Actuator - Subassembly', value: '50' },
+              { label: 'PMS Actuator - Part', value: '51' },
+            ],
+            // PRL_TEL_AOA_9: [
+            //   { label: 'Piece Parts', value: '00' },
+            // ],
+            // PRL_TEL_AOA_ESC: [
+            //   { label: 'Coronagraph', value: '00' },
+            // ],
+            PRL_TEL_AOA_ICD: [
+              { label: 'Mechanical ICD', value: '10' },
+              { label: 'UV Spectograph ICD', value: '31' },
+              { label: 'Mechanical ICD', value: '32' },
+            ],
+            // PRL_TEL_AOA_IFS: [
+            //   { label: 'IR Spectograph', value: '00' },
+            // ],
+            PRL_TEL_AOA_OPT: [
+              { label: 'M4 Tripod Assembly', value: '1' },
+              { label: 'M3 Assembly', value: '2' },
+            ],
+            PRL_TEL_AOA_SCR: [
+              { label: 'Scrappy', value: '1' },
+            ],
+            PRL_TEL_AOA_STC: [
+              { label: 'Piece Parts', value: '9' },
+              { label: 'AOA Horizontal Handling Fixture', value: 'G1' },
+              { label: 'AOA Breakover Fixture', value: 'G11' },
+              { label: 'AOA Primary Structure Analysis', value: 'A1' },
+            ],
+            // PRL_TEL_AOA_SWS: [
+            //   { label: 'Shack-Hartmann Wavefront Sensor', value: '00' },
+            // ],
+            // PRL_TEL_AOA_UVS: [
+            //   { label: 'UV Spectograph', value: '00' },
+            // ],
+            PRL_TEL_AOA_WCC: [
+              { label: 'Context Camera Assembly', value: '1' },
+              { label: 'Context Camera Deployable Cover Assembly', value: '2' },
+            ],
           },
-          {
-            label: 'Step 2A',
-            options: [
-              { label: 'Option 2A.1', value: '2A.1' },
-              { label: 'Option 2A.2', value: '2A.2' }
-            ]
-          },
-          {
-            label: 'Step 3A',
-            options: [
-              { label: 'Option 3A.1', value: '3A.1' },
-              { label: 'Option 3A.2', value: '3A.2' }
-            ]
-          },
-        ],
-        'diagram': [
-          {
-            label: 'Step 1B',
-            options: [
-              { label: 'Option 1B.1', value: '1B.1' },
-              { label: 'Option 1B.2', value: '1B.2' }
-            ]
-          },
-          {
-            label: 'Step 2B',
-            options: [
-              { label: 'Option 2B.1', value: '2B.1' },
-              { label: 'Option 2B.2', value: '2B.2' }
-            ]
-          },
-          {
-            label: 'Step 3B',
-            options: [
-              { label: 'Option 3B.1', value: '3B.1' },
-              { label: 'Option 3B.2', value: '3B.2' }
-            ]
-          },
-        ],
-      },
+        },
+      ],
+      builderComplete: false,
       builderKey: 0,
       filter: '',
       documents: [],
@@ -553,7 +693,7 @@ export default {
         title: '',
         author: '',
         doc_identifier: '',
-        doc_code: '',
+        number: '',
         entry_type: '',
         change_controlled: '',
         compiled_url: '',
@@ -583,7 +723,7 @@ export default {
   },
   components: {
     alert: AlertMessage,
-    DocumentCodeBuilder: DocumentCodeBuilder,
+    DrawingCodeBuilder: DrawingCodeBuilder,
   },
   watch: {
     documents: function (newVal, oldVal) {
@@ -595,12 +735,26 @@ export default {
     },
     'addDocumentForm.change_controlled'(newVal) {
       if (newVal === 0) {
-        this.addDocumentForm.doc_code = "";
-      }
+        this.addDocumentForm.number = "";
+      };
+      if (newVal === 10) {
+        this.resetDrawingCodeBuilder();
+      };
     },
     'addDocumentForm.entry_type'(newVal) {
-      this.resetDocumentCodeBuilder();
-    }
+      this.resetDrawingCodeBuilder();
+    },
+    'editDocumentForm.change_controlled'(newVal) {
+      if (newVal === 0) {
+        this.addDocumentForm.number = "";
+      };
+      if (newVal === 10) {
+        this.resetDrawingCodeBuilder();
+      };
+    },
+    'editDocumentForm.entry_type'(newVal) {
+      this.resetDrawingCodeBuilder();
+    },
   },
   computed: {
     filteredDocuments() {
@@ -615,22 +769,29 @@ export default {
             const title = doc.title ? doc.title.toString().toLowerCase() : doc.title;
             const author = doc.author ? doc.author.toString().toLowerCase() : doc.author;
             const doc_identifier = doc.doc_identifier ? doc.doc_identifier.toString().toLowerCase() : doc.doc_identifier;
-            const doc_code = doc.doc_code ? doc.doc_code.toString().toLowerCase() : doc.doc_code;
+            const number = (doc.number && doc.number.value) ? doc.number.value.toString().toLowerCase() : doc.number.value;
             const entry_type = doc.entry_type ? doc.entry_type.toString().toLowerCase() : doc.entry_type;
             const compiled_url = doc.compiled_url ? doc.compiled_url.toString().toLowerCase() : doc.compiled_url;
             const source_url = doc.source_url ? doc.source_url.toString().toLowerCase() : doc.source_url;
             const abstract = doc.abstract ? doc.abstract.toString().toLowerCase() : doc.abstract;
             const creator_email = doc.creator_email ? doc.creator_email.toString().toLowerCase() : doc.creator_email;
 
+            // Also check if searchTerm is in any alias
+            const foundInAliases = doc.aliases && doc.aliases.some(alias => {
+              const value = alias.value ? alias.value.toString().toLowerCase() : null;
+              return value && value.includes(searchTerm);
+            });
+
             return (title && title.includes(searchTerm)) ||
               (author && author.includes(searchTerm)) ||
               (doc_identifier && doc_identifier.includes(searchTerm)) ||
-              (doc_code && doc_code.includes(searchTerm)) ||
+              (number && number.includes(searchTerm)) ||
               (entry_type && entry_type.includes(searchTerm)) ||
               (compiled_url && compiled_url.includes(searchTerm)) ||
               (source_url && source_url.includes(searchTerm)) ||
               (abstract && abstract.includes(searchTerm)) ||
-              (creator_email && creator_email.includes(searchTerm));
+              (creator_email && creator_email.includes(searchTerm)) ||
+              foundInAliases;
           });
         }
       }
@@ -638,7 +799,22 @@ export default {
       // Apply advanced filters
       return this.documents.filter(doc => {
         return Object.keys(this.columnFilters).every(key => {
-          if (typeof (this.columnFilters[key]) === 'number') {
+          if (key === "number") {
+            const searchTerm = this.columnFilters["number"].toLowerCase();
+            const value = doc.number ? doc.number.value.toString().toLowerCase() : '';
+            // Check if string in associated number
+            if (value.includes(searchTerm)) {
+              return true;
+            // If string not found, check aliases too
+            } else if (doc.aliases && doc.aliases.length > 0) {
+              return doc.aliases.some(alias => {
+                  const aliasValue = alias.value ? alias.value.toString().toLowerCase() : '';
+                  return aliasValue.includes(searchTerm);
+                });
+            // String not found in any associated object
+            }
+            return false;
+          } else if (typeof (this.columnFilters[key]) === 'number') {
             const searchTerm = this.columnFilters[key];
             const value = doc[key]
             return value === searchTerm;
@@ -772,7 +948,7 @@ export default {
       const payload = {
         title: this.addDocumentForm.title,
         author: this.addDocumentForm.author,
-        doc_code: this.addDocumentForm.doc_code,
+        number: this.addDocumentForm.number,
         entry_type: this.addDocumentForm.entry_type,
         change_controlled: this.addDocumentForm.change_controlled,
         compiled_url: this.addDocumentForm.compiled_url,
@@ -796,7 +972,7 @@ export default {
       const payload = {
         title: this.editDocumentForm.title,
         author: this.editDocumentForm.author,
-        doc_code: this.editDocumentForm.doc_code,
+        number: this.editDocumentForm.number,
         entry_type: this.editDocumentForm.entry_type,
         change_controlled: this.editDocumentForm.change_controlled,
         compiled_url: this.editDocumentForm.compiled_url,
@@ -809,7 +985,7 @@ export default {
     initForm() {
       this.addDocumentForm.title = '';
       this.addDocumentForm.author = '';
-      this.addDocumentForm.doc_code = '';
+      this.addDocumentForm.number = '';
       this.addDocumentForm.entry_type = this.entryTypeDefault;
       this.addDocumentForm.change_controlled = this.changeControlledDefault;
       this.addDocumentForm.compiled_url = '';
@@ -820,7 +996,7 @@ export default {
       this.editDocumentForm.title = '';
       this.editDocumentForm.author = '';
       this.editDocumentForm.doc_identifier = '';
-      this.editDocumentForm.doc_code = '';
+      this.editDocumentForm.number = '';
       this.editDocumentForm.entry_type = '';
       this.editDocumentForm.change_controlled = '';
       this.editDocumentForm.compiled_url = '';
@@ -854,25 +1030,34 @@ export default {
         console.log(error)
       });
     },
-    handleCodeComplete(code) {
-      this.addDocumentForm.doc_code = code;
+    handleAddCodeComplete(code) {
+      this.addDocumentForm.number = code;
+      this.builderComplete = true;
     },
-    handlePartialCodeUpdate(partialCode) {
-        this.addDocumentForm.doc_code = partialCode;
+    handleAddPartialCodeUpdate(partialCode) {
+        this.addDocumentForm.number = partialCode;
     },
-    handleCodeReset() {
+    handleAddCodeReset() {
       // Reset document code on builder reset
-      this.addDocumentForm.doc_code = "";
+      this.addDocumentForm.number = "";
+      this.builderComplete = false;
     },
-    resetDocumentCodeBuilder() {
-      // Set the steps based on the value of addDocumentEntryType
-      if (this.addDocumentEntryType === 'document') {
-        this.documentCodeSteps = this.documentCodeStepsAll['document'];
-      } else if (this.addDocumentEntryType === 'diagram') {
-        this.documentCodeSteps = this.documentCodeStepsAll['diagram'];
-      }
-      this.addDocumentForm.doc_code = "";
-      // Change the key to force a re-render of DocumentCodeBuilder
+    handleEditCodeComplete(code) {
+      this.editDocumentForm.number = code;
+      this.builderComplete = true;
+    },
+    handleEditPartialCodeUpdate(partialCode) {
+        this.editDocumentForm.number = partialCode;
+    },
+    handleEditCodeReset() {
+      // Reset document code on builder reset
+      this.editDocumentForm.number = "";
+      this.builderComplete = false;
+    },
+    resetDrawingCodeBuilder() {
+      this.addDocumentForm.number = "";
+      this.builderComplete = false;
+      // Change the key to force a re-render of DrawingCodeBuilder
       this.builderKey++;
     },
     toggleAddDocumentModal() {
@@ -890,6 +1075,7 @@ export default {
         this.editDocumentForm = { ...doc };
         this.editDocumentForm.entry_type = doc.entry_type;
         this.editDocumentForm.change_controlled = doc.change_controlled;
+        this.editDocumentForm.number = (doc.number && doc.number.value);
       }
       const body = document.querySelector('body');
       this.activeEditDocumentModal = !this.activeEditDocumentModal;
@@ -1043,7 +1229,7 @@ Please update the entry at your earliest convenience.\n\nRegards,\nteledocs`);
         { title: 'Title', key: 'title'},
         { author: 'Author', key: 'author'},
         { doc_identifier: 'Doc Identifier', key: 'doc_identifier'},
-        { doc_code: 'Doc #', key: 'doc_code'},
+        { number: 'Doc #', key: 'number'},
         { entry_type: 'Type', key: 'entry_type'},
         { change_controlled: 'Change Controlled', key: 'change_controlled'},
         { compiled_url: 'URL', key: 'compiled_url'},        
@@ -1056,7 +1242,7 @@ Please update the entry at your earliest convenience.\n\nRegards,\nteledocs`);
         title: 'Title',
         author: 'Author',
         doc_identifier: 'Doc Identifier',
-        doc_code: 'Doc #',
+        number: 'Doc #',
         entry_type: 'Type',
         change_controlled: 'Change Controlled',
         compiled_url: 'URL',        
@@ -1070,7 +1256,7 @@ Please update the entry at your earliest convenience.\n\nRegards,\nteledocs`);
           title: doc.title,
           author: doc.author,
           doc_identifier: doc.doc_identifier,
-          doc_code: doc.doc_code,
+          number: doc.number.value,
           entry_type: doc.entry_type,
           change_controlled: doc.change_controlled,
           compiled_url: doc.compiled_url,
@@ -1158,7 +1344,7 @@ Please update the entry at your earliest convenience.\n\nRegards,\nteledocs`);
   },
   mounted() {
     // Initialize steps for the current value of addDocumentEntryType
-    this.resetDocumentCodeBuilder();
+    this.resetDrawingCodeBuilder();
   }
 };
 </script>
