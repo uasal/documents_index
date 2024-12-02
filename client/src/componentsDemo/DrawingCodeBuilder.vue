@@ -24,7 +24,7 @@
                 <button v-if="!branchEnd && (currentStep < steps.length - 1)" type="button" class="btn btn-primary btn-sm" @click="nextStep" :disabled="!selectedOptions[currentStep] || isComplete">
                 Next
                 </button>
-                <button v-if="branchEnd || (currentStep === steps.length - 1)" type="button" class="btn btn-success btn-sm" @click="submitCode">
+                <button v-if="branchEnd || (currentStep === steps.length - 1)" type="button" class="btn btn-success btn-sm" @click="submitCode" :disabled="!selectedOptions[currentStep]">
                 Complete
                 </button>
             </div>

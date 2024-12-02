@@ -159,10 +159,10 @@
             <tr v-for="(doc, index) in filteredDocuments" :key="index" :style="changeControlledStyleMap[doc.change_controlled]">
               <td data-toggle="tooltip" data-placement="bottom" :title="doc.title" style="cursor: default"
                 v-if="doc.title.length > 30">
-                <a :href="'docs/' + doc.doc_identifier" target="_blank">{{
+                <a :href="'demo/docs/' + doc.doc_identifier" target="_blank">{{
                   truncate(doc.title, 30) }}</a>
               </td>
-              <td v-else><a :href="'docs/' + doc.doc_identifier" target="_blank">{{ doc.title }}</a></td>
+              <td v-else><a :href="'demo/docs/' + doc.doc_identifier" target="_blank">{{ doc.title }}</a></td>
 
               <td data-toggle="tooltip" data-placement="bottom" :title="doc.author" style="cursor: default"
                 v-if="doc.author.length > 30">{{ truncate(doc.author, 30) }}</td>
@@ -170,21 +170,21 @@
 
               <td data-toggle="tooltip" data-placement="bottom" :title="doc.doc_identifier" style="cursor: default"
                 v-if="doc.doc_identifier.length > 30">
-                <a :href="'docs/' + doc.doc_identifier" target="_blank">{{
+                <a :href="'demo/docs/' + doc.doc_identifier" target="_blank">{{
                   truncate(doc.doc_identifier, 30) }}</a>
               </td>
-              <td v-else><a :href="'docs/' + doc.doc_identifier" target="_blank">{{ doc.doc_identifier }}</a></td>
+              <td v-else><a :href="'demo/docs/' + doc.doc_identifier" target="_blank">{{ doc.doc_identifier }}</a></td>
 
               <td v-if="doc.number" data-toggle="tooltip" data-placement="bottom" :title="doc.number" style="cursor: default">
                 <ul>
                   <li>
-                    <a v-if="(doc.number.value.length > 30)" :href="'docs/' + doc.number.value" target="_blank" class="d-block">{{ truncate(doc.number.value, 30) }}</a>
-                    <a v-else :href="'docs/' + doc.number.value" target="_blank" class="d-block">{{ doc.number.value }}</a>
+                    <a v-if="(doc.number.value.length > 30)" :href="'demo/docs/' + doc.number.value" target="_blank" class="d-block">{{ truncate(doc.number.value, 30) }}</a>
+                    <a v-else :href="'demo/docs/' + doc.number.value" target="_blank" class="d-block">{{ doc.number.value }}</a>
                   </li>
                   
                   <!-- No truncation for aliases, pretty awkward to solve. Will revisit if it becomes a problem -->
                   <li v-if="doc.aliases.length > 0">
-                    <a v-for="(alias, index) in doc.aliases" :key="index" :href="'docs/' + alias.value" target="_blank" class="d-block">{{ alias.value }}</a>
+                    <a v-for="(alias, index) in doc.aliases" :key="index" :href="'demo/docs/' + alias.value" target="_blank" class="d-block">{{ alias.value }}</a>
                   </li>
                 </ul>
               </td>
@@ -192,7 +192,7 @@
                 <ul>
                   <!-- No truncation for aliases, pretty awkward to solve. Will revisit if it becomes a problem -->
                   <li v-if="doc.aliases.length > 0">
-                    <a v-for="(alias, index) in doc.aliases" :key="index" :href="'docs/' + alias.value" target="_blank" class="d-block">{{ alias.value }}</a>
+                    <a v-for="(alias, index) in doc.aliases" :key="index" :href="'demo/docs/' + alias.value" target="_blank" class="d-block">{{ alias.value }}</a>
                   </li>
                 </ul>
               </td>
@@ -249,7 +249,7 @@
         <h3>Sorry, you are not authorized to view this page.</h3>
         <p>If you think you should have access, please contact your project PI to request access.</p>
       </div>    
-      <!-- <div v-if="hideContent">Sorry, this page is not available or you are not authorized to view it.</div> -->
+      <div v-if="hideContent">Sorry, this page is not available or you are not authorized to view it.</div>
     </div>
 
     <!-- add new document modal -->
@@ -276,7 +276,7 @@
                   placeholder="Enter author">
               </div>
               <div class="mb-3">
-                <label for="addDocumentEntryType" class="form-label">Type:</label>
+                <label for="addDocumentEntryType" class="form-label"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="TypeInfo"/>Type:</label>
                 <select class="form-control" id="addEntryType" v-model="addDocumentForm.entry_type">
                   <option v-for="option in entryTypeOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
                 </select>
@@ -407,7 +407,7 @@
                   v-model="editDocumentForm.author" placeholder="Enter author">
               </div>
               <div class="mb-3">
-                <label for="editDocumentEntryType" class="form-label">Type:</label>
+                <label for="editDocumentEntryType" class="form-label"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="TypeInfo"/>Type:</label>
                 <select class="form-control" id="editDocumentEntryType" v-model="editDocumentForm.entry_type"
                   v-if="!editDocumentForm.number || superuser">
                   <option v-for="option in entryTypeOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
@@ -418,14 +418,39 @@
                 </select>
               </div>
               <div class="mb-3">
-                <label for="editDocumentChangeControlled" class="form-label">Change Controlled:</label>
-                <select class="form-control" id="editDocumentChangeControlled" v-model="editDocumentForm.change_controlled">
+                <label for="editDocumentChangeControlled" class="form-label"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="CCInfo"/>Change Controlled:</label>
+                <select class="form-control" id="editDocumentChangeControlled" v-model="editDocumentForm.change_controlled"
+                  v-if="!editDocumentForm.number || superuser">
+                  <option v-for="option in changeControlledOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
+                </select>
+                <select class="form-control" id="editDocumentChangeControlled" v-model="editDocumentForm.change_controlled"
+                v-else disabled>
                   <option v-for="option in changeControlledOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
                 </select>
               </div>
-              <div class="mb-3" v-if="(editDocumentForm.change_controlled === 10) && (editDocumentForm.entry_type === 'drawing')">
+              <div v-if="docModal && docModal.number" class="mb-3">
+                <label for="editDocumentDocCode" class="form-label">Number:</label>
+
+                <!-- This should only be shown if user made the entry change controlled of type "drawing" and 
+                  either no number is already linked or, if it is, it's a document-type number-->
+                  <!-- Adding key ensures full re-render on reset -->
+                <DrawingCodeBuilder
+                  v-if="(editDocumentForm.change_controlled === 10) && (editDocumentForm.entry_type === 'drawing') && docModal.number.entry_type === 'document'"
+                  :initialSteps="codeStepsDrawing"
+                  @codeComplete="handleEditCodeComplete"
+                  @resetCode="handleEditCodeReset"
+                  @partialCodeUpdate="handleEditPartialCodeUpdate"
+                  :key="builderKey"
+                />
+
+                <input type="text" class="form-control mt-2" id="editDocumentDocCode" v-model="editDocumentForm.number" readonly />
+              </div>
+              <div v-else-if="(editDocumentForm.change_controlled === 10) && (editDocumentForm.entry_type === 'drawing')" class="mb-3">
                 <label for="editDocumentDocCode" class="form-label">New Number:</label>
-                <!-- Adding key ensures full re-render on reset -->
+
+                <!-- This should only be shown if user made the entry change controlled of type "drawing" and 
+                  either no number is already linked or, if it is, it's a document-type number-->
+                  <!-- Adding key ensures full re-render on reset -->
                 <DrawingCodeBuilder
                   :initialSteps="codeStepsDrawing"
                   @codeComplete="handleEditCodeComplete"
@@ -433,8 +458,10 @@
                   @partialCodeUpdate="handleEditPartialCodeUpdate"
                   :key="builderKey"
                 />
+
                 <input type="text" class="form-control mt-2" id="editDocumentDocCode" v-model="editDocumentForm.number" readonly />
               </div>
+              
               <div class="mb-3">
                 <label for="editDocumentUrl" class="form-label"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="URLInfo"/>URL:</label>
                 <input type="text" class="form-control" maxlength="500" id="editUrl"
@@ -701,6 +728,9 @@ export default {
         creator_email: '',
         abstract: '',
       },
+      docModal: null,
+      TypeInfo: 'If no Number already assigned, choosing Type "drawing" and Change Controlled "yes" will give the option to generate a new Drawing Number.',
+      CCInfo: 'If no Number already assigned, choosing Type "drawing" and Change Controlled "yes" will give the option to generate a new Drawing Number.',
       URLInfo: 'The URL of the file described by the metadata in this entry.',
       sourceURLInfo: '(optional) The URL of the source components (Git repository, Power Point presentation etc.) used to compile / build the file described by the metadata in this entry.',
       gitLabInfo: 'This URL requires the ANT VPN to be activated.',
@@ -708,7 +738,7 @@ export default {
       message: '',
       showMessage: false,
       isAuthorized: false,
-      // hideContent: false,
+      hideContent: false,
       superuser: false,
       file: null,
       sortBy: "doc_identifier",
@@ -745,14 +775,16 @@ export default {
       this.resetDrawingCodeBuilder();
     },
     'editDocumentForm.change_controlled'(newVal) {
+      // Reset only if type drawing, otherwise we don't really care
       if (newVal === 0) {
-        this.addDocumentForm.number = "";
+        this.editDocumentForm.number = this.resetEditNumber();
       };
+
       if (newVal === 10) {
         this.resetDrawingCodeBuilder();
       };
     },
-    'editDocumentForm.entry_type'(newVal) {
+    'editDocumentForm.entry_type'(newVal, oldVal) {
       this.resetDrawingCodeBuilder();
     },
   },
@@ -913,13 +945,13 @@ export default {
             console.error(error);
             this.superuser = false;
             this.isAuthorized = error.response.data.isAuthorized;
-            // this.hideContent = !this.isAuthorized;
+            this.hideContent = !this.isAuthorized;
           });
       }).catch(function (error) {
         console.log(error)
         this.superuser = false;
         this.isAuthorized = false;
-        // this.hideContent = true;
+        this.hideContent = true;
       });
     },
     getAdmins() {
@@ -1003,6 +1035,7 @@ export default {
       this.editDocumentForm.source_url = '';
       this.editDocumentForm.creator_email = '';      
       this.editDocumentForm.abstract = '';
+      this.docModal = null;
     },
     removeDocument(docID) {
       const path = `${API_URL}/documents/${docID}`;
@@ -1051,14 +1084,28 @@ export default {
     },
     handleEditCodeReset() {
       // Reset document code on builder reset
-      this.editDocumentForm.number = "";
+      this.editDocumentForm.number = this.resetEditNumber();
       this.builderComplete = false;
     },
     resetDrawingCodeBuilder() {
+      // We want to reset the field for both forms here
+      // (Don't see any risk in doing so)
       this.addDocumentForm.number = "";
+      this.editDocumentForm.number = this.resetEditNumber();
       this.builderComplete = false;
       // Change the key to force a re-render of DrawingCodeBuilder
       this.builderKey++;
+    },
+    resetEditNumber() {
+      if (this.docModal) {
+        if ( this.editDocumentForm.entry_type === this.docModal.entry_type ) {
+          return this.docModal.number && this.docModal.number.value || "";
+        } else {
+          return "";
+        }
+      } else {
+        return "";
+      }
     },
     toggleAddDocumentModal() {
       const body = document.querySelector('body');
@@ -1075,7 +1122,8 @@ export default {
         this.editDocumentForm = { ...doc };
         this.editDocumentForm.entry_type = doc.entry_type;
         this.editDocumentForm.change_controlled = doc.change_controlled;
-        this.editDocumentForm.number = (doc.number && doc.number.value);
+        this.editDocumentForm.number = doc.number && doc.number.value;
+        this.docModal = doc;
       }
       const body = document.querySelector('body');
       this.activeEditDocumentModal = !this.activeEditDocumentModal;

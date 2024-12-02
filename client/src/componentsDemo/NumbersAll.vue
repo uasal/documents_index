@@ -115,11 +115,11 @@
               <td v-if="entry.document" :style="changeControlledStyleMap[entry.document.change_controlled]">
                 <ul>
                   <li>
-                    <a :href="'docs/' + entry.value" target="_blank" class="d-block">{{ entry.value }}</a>
+                    <a :href="'/demo/docs/' + entry.value" target="_blank" class="d-block">{{ entry.value }}</a>
                   </li>
                   
                   <li v-if="entry.document.aliases.length > 0" v-for="(alias, index) in entry.document.aliases" :key="index">
-                    <a :href="'docs/' + alias.value" target="_blank" class="d-block">{{ alias.value }}</a>
+                    <a :href="'/demo/docs/' + alias.value" target="_blank" class="d-block">{{ alias.value }}</a>
                   </li>
                 </ul>
               </td>
@@ -127,21 +127,21 @@
 
               <!-- <td data-toggle="tooltip" data-placement="bottom" :title="entry.document.doc_identifier" style="cursor: default"
                 v-if="entry.document.doc_identifier.length > 30">
-                <a :href="'docs/' + entry.document.doc_identifier" target="_blank">{{
+                <a :href="'/demo/docs/' + entry.document.doc_identifier" target="_blank">{{
                   truncate(entry.document.doc_identifier, 30) }}</a>
               </td>
-              <td v-else><a :href="'docs/' + entry.document.doc_identifier" target="_blank">{{ entry.document.doc_identifier }}</a></td> -->
+              <td v-else><a :href="'/demo/docs/' + entry.document.doc_identifier" target="_blank">{{ entry.document.doc_identifier }}</a></td> -->
 
               <td v-if="entry.document" data-toggle="tooltip" data-placement="bottom" :title="entry.document.doc_identifier" style="cursor: default">
-                <a v-if="entry.document.doc_identifier.length > 30" :href="'docs/' + entry.document.doc_identifier" target="_blank" class="d-block">{{ truncate(entry.document.doc_identifier, 30) }}</a>
-                <a v-else :href="'docs/' + entry.document.doc_identifier" target="_blank" class="d-block">{{ entry.document.doc_identifier }}</a>
+                <a v-if="entry.document.doc_identifier.length > 30" :href="'/demo/docs/' + entry.document.doc_identifier" target="_blank" class="d-block">{{ truncate(entry.document.doc_identifier, 30) }}</a>
+                <a v-else :href="'/demo/docs/' + entry.document.doc_identifier" target="_blank" class="d-block">{{ entry.document.doc_identifier }}</a>
               </td>
               <td v-else>-</td>
 
               <td v-if="entry.document" data-toggle="tooltip" data-placement="bottom" :title="entry.document.title" style="cursor: default">
-                <a v-if="entry.document.title.length > 30" :href="'docs/' + entry.document.doc_identifier" target="_blank">{{
+                <a v-if="entry.document.title.length > 30" :href="'/demo/docs/' + entry.document.doc_identifier" target="_blank">{{
                   truncate(entry.document.title, 30) }}</a>
-                <a v-else :href="'docs/' + entry.document.doc_identifier" target="_blank">{{ entry.document.title }}</a>
+                <a v-else :href="'/demo/docs/' + entry.document.doc_identifier" target="_blank">{{ entry.document.title }}</a>
               </td>
               <td v-else>-</td>
 
@@ -168,7 +168,7 @@
         <h3>Sorry, you are not authorized to view this page.</h3>
         <p>If you think you should have access, please contact your project PI to request access.</p>
       </div>    
-      <!-- <div v-if="hideContent">Sorry, this page is not available or you are not authorized to view it.</div> -->
+      <div v-if="hideContent">Sorry, this page is not available or you are not authorized to view it.</div>
     </div>
   </div>
 </template>
@@ -193,9 +193,7 @@
 import axios from 'axios';
 import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import { auth } from '../firebaseConfig';
-import ExcelJS from 'exceljs';
 import AlertMessage from './AlertMessage.vue';
-import DocumentCodeBuilder from './DrawingCodeBuilder.vue';
 
 const API_URL = '/api/demo';
 // const API_URL = 'http://localhost:5001/api/demo';
@@ -215,23 +213,13 @@ export default {
       },
       filter: '',
       numbers: [],
-      //   { doc_code: 'PRL-TEL-FOA-DOC-00001', assembly: 'FOA', doc_identifier: 'stp202310_0001', title: 'Test doc updated', author: 'Me Me', creator_email: 'istefan@arizona.edu' },
-      //   { doc_code: 'PRL-TEL-FOA-DOC-00002', assembly: 'FOA', doc_identifier: 'stp202310_0003', title: "Some test with an extremely long name that I can't imagine would be possible but I should test since", author: 'Me Me', creator_email: 'istefan@arizona.edu' },
-      //   { doc_code: 'PRL-TEL-AOA-DOC-00001', assembly: 'AOA', doc_identifier: 'stp202310_0006', title: 'An interesting title', author: 'Me Me', creator_email: 'istefan@arizona.edu' },
-      //   { doc_code: 'PRL-TEL-AOA-DOC-00002', assembly: 'AOA', doc_identifier: 'stp202310_0007', title: 'A test', author: 'Another author', creator_email: 'author@arizona.edu' },
-      //   { doc_code: 'PRL-TEL-FOA-ASY-0001', assembly: 'FOA', doc_identifier: 'stp202310_0004', title: 'My test', author: 'Me Me', creator_email: 'istefan@arizona.edu' },
-      //   { doc_code: 'PRL-TEL-FOA-GSE-1101', assembly: 'FOA', doc_identifier: 'stp202411_0001', title: 'Drawing1', author: 'Diagram Author', creator_email: 'istefan@arizona.edu' },
-      //   { doc_code: 'PRL-TEL-FOA-PMS-0001', assembly: 'FOA', doc_identifier: 'stp202411_0002', title: 'FOA Drawing', author: 'Another Author', creator_email: 'istefan@arizona.edu' },
-      //   { doc_code: 'PRL-TEL-AOA-ESC-0001', assembly: 'AOA', doc_identifier: 'stp202411_0003', title: 'AOA Drawing', author: 'Drawing Author', creator_email: 'istefan@arizona.edu' },
-      //   { doc_code: 'PRL-TEL-AOA-OPT-2001', assembly: 'AOA', doc_identifier: 'stp202411_0004', title: 'Drawing2', author: 'Author Author', creator_email: 'istefan@arizona.edu' },
-      // ],
-      // admins: [],
+      admins: [],
       show_table: true,
       showDrawingsOnly: true,
       message: '',
       showMessage: false,
       isAuthorized: true,
-      // hideContent: false,
+      hideContent: false,
       superuser: false,
       sortBy: null,
       sortOrder: -1,
@@ -387,13 +375,13 @@ export default {
             console.error(error);
             this.superuser = false;
             this.isAuthorized = error.response.data.isAuthorized;
-            // this.hideContent = !this.isAuthorized;
+            this.hideContent = !this.isAuthorized;
           });
       }).catch(function (error) {
         console.log(error)
         this.superuser = false;
         this.isAuthorized = false;
-        // this.hideContent = true;
+        this.hideContent = true;
       });
     },
     getAdmins() {

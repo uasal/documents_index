@@ -104,6 +104,10 @@ class DemoDocument(db.Model, Serializer):
 
     @staticmethod
     def _check_http(val):
+        # Guard against null value
+        if val is None:
+            val = ""
+
         val = val.strip()
         if val.startswith("http"):
             return val
@@ -366,7 +370,7 @@ class DemoDocument(db.Model, Serializer):
             return False
 
     @classmethod
-    def get_by_doc_identifier(cls, doc_identifier):
+    def get_by_doc_identifier(cls, doc_identifier, raise_not_found=False):
         """
         Class method that retrieves entry for a given doc_identifier and logs errors.
 
@@ -375,6 +379,9 @@ class DemoDocument(db.Model, Serializer):
         ----------
         doc_identifier : str
             doc_identifier of entry to be found
+        raise_not_found : bool
+            False if we want to log and silence or True if we want to actually raise an 
+            error if document with given doc_identifier is not found. Defaults to False.
 
         Returns
         -------
@@ -389,11 +396,14 @@ class DemoDocument(db.Model, Serializer):
             ).one()
             return document
         except NoResultFound as e:
-            logger.error(
-                f"Document: Error: {e}:\n Document with doc_identifier "
-                f"{doc_identifier} not found."
-            )
-            return None
+            if raise_not_found:
+                raise e
+            else:
+                logger.error(
+                    f"Document: Error: {e}:\n Document with doc_identifier "
+                    f"{doc_identifier} not found."
+                )
+                return None
         except MultipleResultsFound as e:
             logger.error(
                 f"Document: Error: {e}:\n More than one document found "
@@ -424,9 +434,15 @@ class DemoDocument(db.Model, Serializer):
             otherwise None is returned if no results found or more than one result
             found.
         """
-        document =  cls.get_by_doc_identifier(doc_string)
-        if document is not None:
-            return document
+        try:
+            document =  cls.get_by_doc_identifier(doc_string, raise_not_found=True)
+        except NoResultFound:
+            # Not an issue if not found, it's probably a number or an alias
+            pass
+        else:
+            # Only happens if try was successful and we have a document variable
+            if document is not None:
+                return document
 
         number =  DemoNumber.get_by_value(doc_string)
         if number is not None:
@@ -978,7 +994,7 @@ class DemoNumber(db.Model, Serializer):
             # Is the last component is a modifier or sufix, 
             # remove it and process it separately
             ending = components.pop()
-            drawing_value_str = components.join("-")
+            drawing_value_str = "-".join(components)
 
             # Is ending an integer?
             if ending.isdigit():
