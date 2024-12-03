@@ -326,7 +326,7 @@ export default {
                 abstract: '',
             },
             docModal: null,
-            DisabledInfo: 'Field can only be edited from the main Documents & Drawing page',
+            DisabledInfo: 'Field can only be edited from the main Documents & Drawings page',
             URLInfo: 'The URL of the file described by the metadata in this entry.',
             sourceURLInfo: '(optional) The URL of the source components (Git repository, Power Point presentation etc.) used to compile / build the file described by the metadata in this entry.',            
             gitLabInfo: 'This URL requires the ANT VPN to be activated.',

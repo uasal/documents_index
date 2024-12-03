@@ -282,7 +282,7 @@
                 </select>
               </div>
               <div class="mb-3">
-                <label for="addDocumentChangeControlled" class="form-label">Change Controlled:</label>
+                <label for="addDocumentChangeControlled" class="form-label"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="CCInfo"/>Change Controlled:</label>
                 <select class="form-control" id="addDocumentChangeControlled" v-model="addDocumentForm.change_controlled">
                   <option v-for="option in changeControlledOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
                 </select>
@@ -729,8 +729,8 @@ export default {
         abstract: '',
       },
       docModal: null,
-      TypeInfo: 'If no Number already assigned, choosing Type "drawing" and Change Controlled "yes" will give the option to generate a new Drawing Number.',
-      CCInfo: 'If no Number already assigned, choosing Type "drawing" and Change Controlled "yes" will give the option to generate a new Drawing Number.',
+      TypeInfo: 'Choosing Type "drawing" and Change Controlled "yes" will give the option to generate a new Drawing Number (unless one already assigned).',
+      CCInfo: 'Choosing Type "drawing" and Change Controlled "yes" will give the option to generate a new Drawing Number (unless one already assigned).',
       URLInfo: 'The URL of the file described by the metadata in this entry.',
       sourceURLInfo: '(optional) The URL of the source components (Git repository, Power Point presentation etc.) used to compile / build the file described by the metadata in this entry.',
       gitLabInfo: 'This URL requires the ANT VPN to be activated.',
