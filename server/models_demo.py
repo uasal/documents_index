@@ -256,9 +256,10 @@ class DemoDocument(db.Model, Serializer):
                 doc_identifier = f"{doc_identifier_dt}{incremented:04d}"
 
                 # Sanity check that it doesn't exist
-                found = db.session.scalars(
-                    select(exists().where(DemoDocument.doc_identifier==doc_identifier))
-                ).first()
+                # found = db.session.scalars(
+                #     select(exists().where(DemoDocument.doc_identifier==doc_identifier))
+                # ).first()
+                found = db.session.scalars(select(DemoDocument).where(DemoDocument.doc_identifier == doc_identifier).limit(1)).first()
                 if found:
                     raise ValueError(
                         "DemoDocuments: Generating doc_identifier for new "
@@ -907,7 +908,8 @@ class DemoNumber(db.Model, Serializer):
                 doc_value = f"{doc_value_str}{incremented:05d}"
 
                 # Sanity check that it doesn't exist
-                found = db.session.scalars(select(exists().where(DemoNumber.value == doc_value))).first()
+                # found = db.session.scalars(select(exists().where(DemoNumber.value == doc_value))).first()
+                found = db.session.scalars(select(DemoNumber).where(DemoNumber.value == doc_value).limit(1)).first()
                 if found:
                     raise ValueError(
                         "DemoNumber: Generating number value for new "
@@ -1015,7 +1017,8 @@ class DemoNumber(db.Model, Serializer):
             drawing_value = f"{user_value}-{incremented:04d}"
 
         # Sanity check that it doesn't exist
-        found = db.session.scalars(select(exists().where(DemoNumber.value == drawing_value))).first()
+        # found = db.session.scalars(select(exists().where(DemoNumber.value == drawing_value))).first()
+        found = db.session.scalars(select(DemoNumber).where(DemoNumber.value == drawing_value).limit(1)).first()
         if found:
             raise ValueError(
                 "DemoNumber: Generating number value for new "
