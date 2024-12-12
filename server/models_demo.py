@@ -39,7 +39,7 @@ def _combine_and_pad(num1, num2, total_length):
 
 class DemoDocument(db.Model, Serializer):
     """
-    Document model class to act as interface between the Flask logic and the
+    DemoDocument model class to act as interface between the Flask logic and the
     sql table.
     """
     __bind_key__ = "sqlite_db"
@@ -68,14 +68,14 @@ class DemoDocument(db.Model, Serializer):
 
     def __repr__(self):
         """
-        Magic method that returns the string representation of the Document model.
+        Magic method that returns the string representation of the DemoDocument model.
 
         Returns
         -------
         str
-            String representation of the Document model.
+            String representation of the DemoDocument model.
         """
-        return "<Document %r>" % self.title
+        return "<DemoDocument %r>" % self.title
 
     def _get_editable_columns(self):
         """
@@ -142,31 +142,31 @@ class DemoDocument(db.Model, Serializer):
                                 kwargs.get("number"))
             db.session.add(self)
             db.session.commit()
-            logger.info("Documents: Updating Document object.")
+            logger.info("DemoDocuments: Updating DemoDocument object.")
         except Exception as e:
-            logger.error(f"Documents: Updating Document object. Error: {e}")
+            logger.error(f"DemoDocuments: Updating DemoDocument object. Error: {e}")
             return False
         return True
 
     def _update_number(self, change_controlled, entry_type, user_value):
         """
         Class method to check if entry to be updated already has a linked
-        Number (in which case, validate that it matches the criteria) or not
+        DemoNumber (in which case, validate that it matches the criteria) or not
         (in which case, trigger generation method).
 
         Parameters
         ----------
         change_controlled :
-            value of Document object's change_controlled field
+            value of DemoDocument object's change_controlled field
         entry_type :
-            value of Document object's entry_type field
+            value of DemoDocument object's entry_type field
         user_value :
             user provided value; can be empty string
 
         Returns
         -------
-        Bool or Number object
-            If criteria for creating Number object are met, object is created and 
+        Bool or DemoNumber object
+            If criteria for creating DemoNumber object are met, object is created and 
             returned, otherwise returns bool.
 
         Raises
@@ -228,17 +228,17 @@ class DemoDocument(db.Model, Serializer):
         # Build the datetime stub of the doc identifier
         doc_identifier_dt = f'{start_str}{now.strftime("%Y%m")}_'
 
-        # Find the latest Document entry with this doc_identifier stub
+        # Find the latest DemoDocument entry with this doc_identifier stub
         try:
             document = db.session.scalars(
-                select(cls)
-                .where(cls.doc_identifier.like(f"{doc_identifier_dt}%")) 
-                .order_by(cls.time_created.desc())
+                select(DemoDocument)
+                .where(DemoDocument.doc_identifier.like(f"{doc_identifier_dt}%")) 
+                .order_by(DemoDocument.time_created.desc())
                 .limit(1)
             ).first()
         except Exception as e:
             logging.error(
-                f"Documents: Generating doc_identifier for new doc. " f"Error: {e}"
+                f"DemoDocuments: Generating doc_identifier for new doc. " f"Error: {e}"
             )
             raise e
 
@@ -250,7 +250,7 @@ class DemoDocument(db.Model, Serializer):
             highest_number = pattern_match.groupdict().get("number")
 
             if highest_number:
-                # Documents have already been added this month.
+                # DemoDocuments have already been added this month.
                 # Build the next doc_identifier.
                 incremented = int(highest_number) + 1
                 doc_identifier = f"{doc_identifier_dt}{incremented:04d}"
@@ -261,15 +261,15 @@ class DemoDocument(db.Model, Serializer):
                 ).first()
                 if found:
                     raise ValueError(
-                        "Documents: Generating doc_identifier for new "
-                        "doc. Document already exists with generated "
+                        "DemoDocuments: Generating doc_identifier for new "
+                        "doc. DemoDocument already exists with generated "
                         f"doc_identifier {doc_identifier}. HELP"
                     )
             else:
                 # We're in uncharted waters, pattern should have found a match
                 raise ValueError(
-                    "Documents: Generating doc_identifier for new doc. "
-                    "Document matching stub found, but no highest_number "
+                    "DemoDocuments: Generating doc_identifier for new doc. "
+                    "DemoDocument matching stub found, but no highest_number "
                     f"found. Match: {pattern_match.groupdict()}. HELP"
                 )
         else:
@@ -289,7 +289,7 @@ class DemoDocument(db.Model, Serializer):
         Returns
         -------
         dict
-            dictionary of field names and values ready to create a new Document
+            dictionary of field names and values ready to create a new DemoDocument
             object
         """
         kwargs["doc_identifier"] = cls._generate_doc_identifier()
@@ -325,13 +325,13 @@ class DemoDocument(db.Model, Serializer):
         """
         if kwargs.get(field_name):
             duplicate = db.session.scalars(
-                select(cls).filter(getattr(cls, field_name)==kwargs[field_name]).limit(1)
+                select(DemoDocument).filter(getattr(DemoDocument, field_name)==kwargs[field_name]).limit(1)
             ).first()
             if duplicate:
                 return True
             return False
 
-        raise ValueError("Documents: Searching for duplicate on non-existing field.")
+        raise ValueError("DemoDocuments: Searching for duplicate on non-existing field.")
 
     @classmethod
     def create(cls, **kwargs):
@@ -341,17 +341,17 @@ class DemoDocument(db.Model, Serializer):
 
         Returns
         -------
-        bool or Document object
+        bool or DemoDocument object
             If table successfully updated and object succesfully created,
             object is returned, otherwise returns False.
         """
         try:
             kwargs = cls.prepare_fields(**kwargs)
             if cls.duplicate_exists("title", **kwargs):
-                raise ValueError("Documents: An entry with this title already exists")
+                raise ValueError("DemoDocuments: An entry with this title already exists")
 
             number = kwargs.pop("number")
-            obj = cls(**kwargs)
+            obj = DemoDocument(**kwargs)
 
             # Make new associated number (for change controlled drawings and all docs)
             number = DemoNumber._generate_number(kwargs.get("change_controlled"), 
@@ -363,10 +363,10 @@ class DemoDocument(db.Model, Serializer):
 
             db.session.add(obj)
             db.session.commit()
-            logger.info("Documents: Creating Document object.")
+            logger.info("DemoDocuments: Creating DemoDocument object.")
             return obj
         except Exception as e:
-            logger.error(f"Documents: Creating Document object. Error: {e}")
+            logger.error(f"DemoDocuments: Creating DemoDocument object. Error: {e}")
             return False
 
     @classmethod
@@ -385,14 +385,14 @@ class DemoDocument(db.Model, Serializer):
 
         Returns
         -------
-        Document object or None
-            Document object with given doc_identifier is returned if query succesful,
+        DemoDocument object or None
+            DemoDocument object with given doc_identifier is returned if query succesful,
             otherwise None is returned if no results found or more than one result
             found.
         """
         try:
             document = db.session.scalars(
-                select(cls).filter_by(doc_identifier=doc_identifier)
+                select(DemoDocument).filter_by(doc_identifier=doc_identifier)
             ).one()
             return document
         except NoResultFound as e:
@@ -400,13 +400,13 @@ class DemoDocument(db.Model, Serializer):
                 raise e
             else:
                 logger.error(
-                    f"Document: Error: {e}:\n Document with doc_identifier "
+                    f"DemoDocument: Error: {e}:\n DemoDocument with doc_identifier "
                     f"{doc_identifier} not found."
                 )
                 return None
         except MultipleResultsFound as e:
             logger.error(
-                f"Document: Error: {e}:\n More than one document found "
+                f"DemoDocument: Error: {e}:\n More than one document found "
                 f"with doc_identifier {doc_identifier}"
             )
             return None
@@ -416,9 +416,9 @@ class DemoDocument(db.Model, Serializer):
         """
         Class method that searches entry for a given doc_string.
         The method tries to match the doc_string first with doc_identifiers,
-        then, if a Number is associated with the object, with the Number value,
-        and, finally, if any Aliases are associated with the object, with the
-        Alias values.
+        then, if a DemoNumber is associated with the object, with the DemoNumber value,
+        and, finally, if any DemoAliases are associated with the object, with the
+        DemoAlias values.
         If at any point a match is found, the search is concluded and the match
         is returned.
 
@@ -429,8 +429,8 @@ class DemoDocument(db.Model, Serializer):
 
         Returns
         -------
-        Document object or None
-            Document object with given doc_identifier is returned if query succesful,
+        DemoDocument object or None
+            DemoDocument object with given doc_identifier is returned if query succesful,
             otherwise None is returned if no results found or more than one result
             found.
         """
@@ -468,10 +468,10 @@ class DemoDocument(db.Model, Serializer):
             self._release_number()
             db.session.delete(self)
             db.session.commit()
-            logger.info("Documents: Deleting Document object.")
+            logger.info("DemoDocuments: Deleting DemoDocument object.")
             return True
         except Exception as e:
-            logger.error(f"Documents: Deleting Document object. Error: {e}")
+            logger.error(f"DemoDocuments: Deleting DemoDocument object. Error: {e}")
             return False
 
     def _release_number(self):
@@ -481,7 +481,7 @@ class DemoDocument(db.Model, Serializer):
             number.comment = f"{number.comment};{self.pk}"
             db.session.add(self)
             db.session.add(number)
-            logger.info("Document: Number found on Document object. Releasing number.")
+            logger.info("DemoDocument: DemoNumber found on DemoDocument object. Releasing DemoNumber.")
             db.session.commit()
 
 
@@ -551,7 +551,7 @@ class DemoUser(db.Model, Serializer):
             data = {"email": kwargs["email"]}
             if kwargs["superuser"]:
                 data["superuser"] = kwargs["superuser"]
-            obj = cls(**data)
+            obj = DemoUser(**data)
             db.session.add(obj)
             db.session.commit()
             logger.info("Users: Creating User object.")
@@ -579,7 +579,7 @@ class DemoUser(db.Model, Serializer):
             found.
         """
         try:
-            user = db.session.scalars(select(cls).where(cls.email==email)).one()
+            user = db.session.scalars(select(DemoUser).where(DemoUser.email==email)).one()
             return user
         except NoResultFound as e:
             logger.error(f"User: Error: {e}:\n User with email " f"{email} not found.")
@@ -602,7 +602,7 @@ class DemoUser(db.Model, Serializer):
             otherwise None is returned if no results found.
         """
         try:
-            user = db.session.scalars(select(cls).where(cls.pk==int(pk))).one()
+            user = db.session.scalars(select(DemoUser).where(DemoUser.pk==int(pk))).one()
             return user
         except NoResultFound as e:
             logger.error(f"User: Error: {e}:\n User with pk " f"{pk} not found.")
@@ -687,7 +687,7 @@ class DemoDomain(db.Model, Serializer):
         """
         try:
             data = {"email_domain": kwargs["email_domain"]}
-            obj = cls(**data)
+            obj = DemoDomain(**data)
             db.session.add(obj)
             db.session.commit()
             logger.info("Domains: Creating Domain object.")
@@ -715,7 +715,7 @@ class DemoDomain(db.Model, Serializer):
         """
         try:
             domain = db.session.scalars(
-                select(cls).where(cls.email_domain==email_domain)
+                select(DemoDomain).where(DemoDomain.email_domain==email_domain)
             ).one()
             return domain
         except NoResultFound as e:
@@ -762,7 +762,7 @@ class DemoDomain(db.Model, Serializer):
             otherwise None is returned if no results found.
         """
         try:
-            domain = db.session.scalars(select(cls).where(cls.pk==int(pk))).one()
+            domain = db.session.scalars(select(DemoDomain).where(DemoDomain.pk==int(pk))).one()
             return domain
         except NoResultFound as e:
             logger.error(f"Domain: Error: {e}:\n Domain with pk " f"{pk} not found.")
@@ -789,7 +789,7 @@ class DemoDomain(db.Model, Serializer):
 
 class DemoNumber(db.Model, Serializer):
     """
-    Number model class to act as interface between the Flask logic and the
+    DemoNumber model class to act as interface between the Flask logic and the
     sql table.
     """
     __bind_key__ = "sqlite_db"
@@ -808,14 +808,14 @@ class DemoNumber(db.Model, Serializer):
 
     def __repr__(self):
         """
-        Magic method that returns the string representation of the Number model.
+        Magic method that returns the string representation of the DemoNumber model.
 
         Returns
         -------
         str
-            String representation of the Number model.
+            String representation of the DemoNumber model.
         """
-        return "<Number %r>" % self.value
+        return "<DemoNumber %r>" % self.value
 
     def _get_all_columns(self):
         """
@@ -840,24 +840,24 @@ class DemoNumber(db.Model, Serializer):
 
         Returns
         -------
-        Number object or None
-            Number object with given value is returned if query succesful,
+        DemoNumber object or None
+            DemoNumber object with given value is returned if query succesful,
             otherwise None is returned if no results found or more than one result
             found.
         """
         try:
             number = db.session.scalars(
-                select(cls).where(cls.value==value)
+                select(DemoNumber).where(DemoNumber.value==value)
             ).one()
             return number
         except NoResultFound as e:
             logger.error(
-                f"Number: Error: {e}:\n Number with value {value} not found."
+                f"DemoNumber: Error: {e}:\n DemoNumber with value {value} not found."
             )
             return None
         except MultipleResultsFound as e:
             logger.error(
-                f"Number: Error: {e}:\n More than one number found "
+                f"DemoNumber: Error: {e}:\n More than one number found "
                 f"with value {value}"
             )
             return None
@@ -866,7 +866,7 @@ class DemoNumber(db.Model, Serializer):
     def _generate_doc_value(cls):
         """
         Class method to generate a new, unique value for a new number linked
-        to a Document of type "document".
+        to a DemoDocument of type "document".
         The doc_value follows the pattern: 'PRL-DOC-#####', where #=digit (0-9).
 
         Returns
@@ -877,20 +877,20 @@ class DemoNumber(db.Model, Serializer):
         Raises
         ------
         ValueError
-            Exception raised if Number already exists in the db with the newly
+            Exception raised if DemoNumber already exists in the db with the newly
             generated, unique value.
         ValueError
-            Exception raised if Number exists with starting stub, 
+            Exception raised if DemoNumber exists with starting stub, 
             but the rest doesn't follow the expected pattern.
         """
         # Build the string stub of the doc value
         doc_value_str = 'PRL-DOC-'
 
-        # Find the latest Number entry with this value stub
+        # Find the latest DemoNumber entry with this value stub
         number = db.session.scalars(
-            select(cls)
-            .where(cls.value.like(f"{doc_value_str}%"))
-            .order_by(cls.value.desc())
+            select(DemoNumber)
+            .where(DemoNumber.value.like(f"{doc_value_str}%"))
+            .order_by(DemoNumber.value.desc())
             .limit(1)
         ).first()
 
@@ -910,29 +910,29 @@ class DemoNumber(db.Model, Serializer):
                 found = db.session.scalars(select(exists().where(DemoNumber.value == doc_value))).first()
                 if found:
                     raise ValueError(
-                        "Number: Generating number value for new "
-                        "doc entry. Number already exists with generated "
+                        "DemoNumber: Generating number value for new "
+                        "doc entry. DemoNumber already exists with generated "
                         f"doc_value {doc_value}. HELP"
                     )
             else:
                 # We're in uncharted waters, pattern should have found a match
                 raise ValueError(
-                    "Number: Generating number value for new doc entry. "
-                    "Number matching stub found, but no highest_number "
+                    "DemoNumber: Generating number value for new doc entry. "
+                    "DemoNumber matching stub found, but no highest_number "
                     f"found. Match: {pattern_match.groupdict()}. HELP"
                 )
         else:
             # No number found with given stub. No doc numbers added yet.
             doc_value = f"{doc_value_str}00001"
 
-        logger.info(f"Number: Generating new doc value {doc_value}.")
+        logger.info(f"DemoNumber: Generating new doc value {doc_value}.")
         return doc_value
 
     @classmethod
     def _generate_drawing_value(cls, user_value):
         """
         Class method to generate a new, unique value for a new number linked
-        to a Document of type "drawing".
+        to a DemoDocument of type "drawing".
         The value starts from the string pattern provided by the user (following
         the drawing trees).
 
@@ -944,23 +944,23 @@ class DemoNumber(db.Model, Serializer):
         Raises
         ------
         ValueError
-            Exception raised if Number already exists in the db with the newly
+            Exception raised if DemoNumber already exists in the db with the newly
             generated, unique value.
         ValueError
             Exception raised if user provided stub string doesn't 
             follow the expected pattern.
         ValueError
-            Exception raised if Number exists with the stub, 
+            Exception raised if DemoNumber exists with the stub, 
             but the rest doesn't follow the expected pattern.
         """
         counter_len = 4
         user_value = user_value.rstrip("-")
 
-        # Find the latest Number entry with the user provided value stub
+        # Find the latest DemoNumber entry with the user provided value stub
         number = db.session.scalars(
-            select(cls)
-            .where(cls.value.like(f"{user_value}%"))
-            .order_by(cls.value.desc())
+            select(DemoNumber)
+            .where(DemoNumber.value.like(f"{user_value}%"))
+            .order_by(DemoNumber.value.desc())
             .limit(1)
         ).first()
 
@@ -977,8 +977,8 @@ class DemoNumber(db.Model, Serializer):
             else:
                 # We're in uncharted waters, pattern should have found a match
                 raise ValueError(
-                    "Number: Generating number value for new drawing entry. "
-                    "Number matching stub found, but no highest_number "
+                    "DemoNumber: Generating number value for new drawing entry. "
+                    "DemoNumber matching stub found, but no highest_number "
                     f"found. Match: {pattern_match.groupdict()}. HELP"
                 )
         else:
@@ -1005,7 +1005,7 @@ class DemoNumber(db.Model, Serializer):
                 drawing_value = f"{drawing_value_str}-{ending}{counter}"
             else:
                 raise ValueError(
-                    "Number: Generating number value for new "
+                    "DemoNumber: Generating number value for new "
                     f"drawing entry. User provided stub {user_value} doesn't "
                     "match expected format. HELP"
                 )
@@ -1018,33 +1018,33 @@ class DemoNumber(db.Model, Serializer):
         found = db.session.scalars(select(exists().where(DemoNumber.value == drawing_value))).first()
         if found:
             raise ValueError(
-                "Number: Generating number value for new "
-                "drawing entry. Number already exists with generated "
+                "DemoNumber: Generating number value for new "
+                "drawing entry. DemoNumber already exists with generated "
                 f"drawing_value {drawing_value}. HELP"
             )
 
-        logger.info(f"Number: Generating new drawing value {drawing_value}.")
+        logger.info(f"DemoNumber: Generating new drawing value {drawing_value}.")
         return drawing_value
 
     @classmethod
     def _generate_number(cls, change_controlled, entry_type, user_value):
         """
         Class method to generate a new, unique value for a new number linked
-        to a Document and to make a Number object with it. 
+        to a DemoDocument and to make a DemoNumber object with it. 
 
         Parameters
         ----------
         change_controlled :
-            value of Document object's change_controlled field
+            value of DemoDocument object's change_controlled field
         entry_type :
-            value of Document object's entry_type field
+            value of DemoDocument object's entry_type field
         user_value :
             user provided value; can be empty string
 
         Returns
         -------
-        None or Number object
-            If criteria for creating Number object are met, object is created and 
+        None or DemoNumber object
+            If criteria for creating DemoNumber object are met, object is created and 
             returned, otherwise returns None.
 
         Raises
@@ -1061,14 +1061,14 @@ class DemoNumber(db.Model, Serializer):
             if change_controlled == ChangeControlledEnum.yes.value:
                 if not user_value:
                     raise ValueError(
-                        "Number: No number provided by user for change controlled "
+                        "DemoNumber: No number provided by user for change controlled "
                         "drawing."
                     )
                 
                 value = cls._generate_drawing_value(user_value)
                 return cls._make_number(value, TypeEnum.drawing)
 
-        logger.info("Number: Criteria for creating Number not met.")
+        logger.info("DemoNumber: Criteria for creating DemoNumber not met.")
         return None
         
 
@@ -1086,23 +1086,23 @@ class DemoNumber(db.Model, Serializer):
 
         Returns
         -------
-        bool or Number object
-            If Number object succesfully created, object is returned, 
+        bool or DemoNumber object
+            If DemoNumber object succesfully created, object is returned, 
             otherwise returns False.
         """
         try:
-            obj = cls(value=value, entry_type=entry_type)
-            logger.info(f"Number: Creating Number object of type {entry_type.value} "
+            obj = DemoNumber(value=value, entry_type=entry_type)
+            logger.info(f"DemoNumber: Creating DemoNumber object of type {entry_type.value} "
                         f"and value {value}.")
             return obj
         except Exception as e:
-            logger.error(f"Number: Creating Number object. Error: {e}")
+            logger.error(f"DemoNumber: Creating DemoNumber object. Error: {e}")
             return False
 
 
 class DemoAlias(db.Model, Serializer):
     """
-    Alias model class to act as interface between the Flask logic and the
+    DemoAlias model class to act as interface between the Flask logic and the
     sql table.
     """
     __bind_key__ = "sqlite_db"
@@ -1128,24 +1128,24 @@ class DemoAlias(db.Model, Serializer):
 
         Returns
         -------
-        Alias object or None
-            Alias object with given value is returned if query succesful,
+        DemoAlias object or None
+            DemoAlias object with given value is returned if query succesful,
             otherwise None is returned if no results found or more than one result
             found.
         """
         try:
             alias = db.session.scalars(
-                select(cls).where(cls.value==value)
+                select(DemoAlias).where(DemoAlias.value==value)
             ).one()
             return alias
         except NoResultFound as e:
             logger.error(
-                f"Alias: Error: {e}:\n Alias with value {value} not found."
+                f"DemoAlias: Error: {e}:\n DemoAlias with value {value} not found."
             )
             return None
         except MultipleResultsFound as e:
             logger.error(
-                f"Alias: Error: {e}:\n More than one alias found "
+                f"DemoAlias: Error: {e}:\n More than one DemoAlias found "
                 f"with value {value}"
             )
             return None
