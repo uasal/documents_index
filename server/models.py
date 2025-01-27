@@ -458,7 +458,7 @@ class User(db.Model, Serializer):
     def validate_email(self, key, email):
         if not email:
             raise AssertionError("No email provided")
-        if not re.match("[^@]+@[^@]+\.[^@]+", email):
+        if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
             raise AssertionError("Provided email is not an email address")
         return email
 
@@ -599,7 +599,7 @@ class Domain(db.Model, Serializer):
     def validate_email_domain(self, key, email_domain):
         if not email_domain:
             raise AssertionError("No email_domain provided")
-        if not re.match("[^@]+\.[^@]+", email_domain):
+        if not re.match(r"[^@]+\.[^@]+", email_domain):
             raise AssertionError("Provided email_domain is not valid")
         return email_domain
 
