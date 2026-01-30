@@ -61,9 +61,15 @@
                     </button>
                 </div>
                 <div class="modal-body">
-                    <form>
+                        <div v-if="showEditFormError" class="alert alert-danger">
+                            <p class="mb-1">Please fix the following before submitting:</p>
+                            <ul class="mb-0">
+                                <li v-for="(err, idx) in editFormErrorList" :key="idx">{{ err }}</li>
+                            </ul>
+                        </div>
+                        <form>
                     <div class="mb-3">
-                        <label for="editDocumentTitle" class="form-label">Title:</label>
+                        <label for="editDocumentTitle" class="form-label">Title / Name:</label>
                         <input type="text" class="form-control" maxlength="500" id="editDocumentTitle"
                         v-model="editDocumentForm.title" placeholder="Enter title">
                     </div>
@@ -146,169 +152,66 @@ export default {
             document: {},
             admins: [],
             codeStepsDrawing: [
-                {
-                label: 'Category:',
-                options: [
-                    { label: 'Telescope', value: 'TEL' },
-                    { label: 'Analyses', value: 'A' },
-                    { label: 'Spacecraft Bus', value: 'BUS' },
-                    { label: 'Interface Control Drawing', value: 'ICD' },
-                    ]
-                },
-                {
-                label: 'Assembly:',
-                options: {
-                    PRL_TEL: [
-                    { label: 'Aft Optics Aseembly', value: 'AOA' },
-                    { label: 'Fore Optics Assembly', value: 'FOA' },
-                    { label: 'Interface Control Drawing', value: 'ICD' },
-                    ], 
-                }
-                },
-                {
-                label: 'Main Element:',
-                options: {
-                    PRL_TEL_ICD: [
-                    { label: 'Interface Control Drawing', value: '00' },
-                    { label: 'Telescope-BUS ICD', value: '01' },
-                    { label: 'Telescope Optical Definition', value: '02' },
-                    ],
-                    PRL_TEL_FOA: [
-                    { label: 'Top Level Assembly', value: 'ASY' },
-                    { label: 'COTS Parts', value: 'COT' },
-                    { label: 'Electrical (not in IBS, M1S, etc.)', value: 'ELE' },
-                    { label: 'Ground Support Equipment', value: 'GSE' },
-                    { label: 'Inner Baffle System', value: 'IBS' },
-                    { label: 'Interface Control Drawing', value: 'ICD' },
-                    { label: 'Primary Mirror System', value: 'M1S' },
-                    { label: 'Secondary Mirror System', value: 'M2S' },
-                    ],
-                    PRL_TEL_AOA: [
-                    { label: 'Piece Parts', value: '9' },
-                    { label: 'Coronagraph', value: 'ESC' },
-                    { label: 'Interface Control Drawing', value: 'ICD' },
-                    { label: 'IR Spectograph', value: 'IFS' },
-                    { label: 'Optics', value: 'OPT' },
-                    { label: 'Scrappy', value: 'SCR' },
-                    { label: 'Structure', value: 'STC' },
-                    { label: 'Shack-Hartmann Wavefront Sensor', value: 'SWS' },
-                    { label: 'UV Spectograph', value: 'UVS' },
-                    { label: 'Context Camera Assembly', value: 'WCC' },
-                    ],
-                }
-                },
-                {
-                label: 'Sub Element:',
-                options: {
-                    // PRL_TEL_FOA_ASY: [
-                    //   { label: 'ASY Subasssembly', value: '00' },
-                    //   ],
-                    PRL_TEL_FOA_COT: [
-                    { label: 'COT Subasssembly', value: '00' },
-                    { label: 'COT Electrical - Subasssembly', value: '10' },
-                    { label: 'COT Electrical - Part', value: '11' },
-                    { label: 'COT Mechanical - Subasssembly', value: '30' },
-                    { label: 'COT Mechanical - Part', value: '31' },
-                    ],
-                    PRL_TEL_FOA_ELE: [
-                    { label: 'ELE Subassembly', value: '00' },
-                    { label: 'ELE Thermal Control - Subassembly', value: '10' },
-                    { label: 'ELE Thermal Control - Part', value: '11' },
-                    { label: 'ELE Hardware & Cabling - Subassembly', value: '20' },
-                    { label: 'ELE Hardware & Cabling - Part', value: '21' },
-                    { label: 'ELE Other - Subassembly', value: '30' },
-                    { label: 'ELE Other - Part', value: '31' },
-                    ],
-                    PRL_TEL_FOA_GSE: [
-                    { label: 'GSE Subassembly', value: '10' },
-                    { label: 'GSE Part', value: '11' },
-                    ],
-                    PRL_TEL_FOA_IBS: [
-                    { label: 'IBS Subassembly', value: '00' },
-                    { label: 'IBS Thermal Control - Subassembly', value: '10' },
-                    { label: 'IBS Thermal Control - Part', value: '11' },
-                    { label: 'IBS Hardware & Cabling - Subassembly', value: '20' },
-                    { label: 'IBS Hardware & Cabling - Part', value: '21' },
-                    { label: 'IBS Inner Baffle - Subassembly', value: '30' },
-                    { label: 'IBS Inner Baffle - Part', value: '31' },
-                    ],
-                    // PRL_FOA_ICD: [
-                    //   { label: 'Interface Control Drawing', value: '00' },
-                    // ],
-                    PRL_TEL_FOA_M1S: [
-                    { label: 'M1S Subassembly', value: '00' },
-                    { label: 'M1S Thermal Control - Subassembly', value: '10' },
-                    { label: 'M1S Thermal Control - Part', value: '11' },
-                    { label: 'M1S Hardware & Cabling - Subassembly', value: '20' },
-                    { label: 'M1S Hardware & Cabling - Part', value: '21' },
-                    { label: 'M1S Mirror - Subassembly', value: '30' },
-                    { label: 'M1S Mirror - Part', value: '31' },
-                    ],
-                    PRL_TEL_FOA_M2S: [
-                    { label: 'M2S Subassembly', value: '00' },
-                    { label: 'M2S Thermal Control - Subassembly', value: '10' },
-                    { label: 'M2S Thermal Control - Part', value: '11' },
-                    { label: 'M2S Hardware & Cabling - Subassembly', value: '20' },
-                    { label: 'M2S Hardware & Cabling - Part', value: '21' },
-                    { label: 'M2S Mirror - Subassembly', value: '30' },
-                    { label: 'M2S Mirror - Part', value: '31' },
-                    { label: 'M2S Hub - Subassembly', value: '40' },
-                    { label: 'M2S Hub - Part', value: '41' },
-                    { label: 'M2S Tripod - Subassembly', value: '50' },
-                    { label: 'M2S Tripod - Part', value: '51' },
-                    ],
-                    PRL_TEL_FOA_PMS: [
-                    { label: 'PMS Subassembly', value: '00' },
-                    { label: 'PMS Thermal Control - Subassembly', value: '10' },
-                    { label: 'PMS Thermal Control - Part', value: '11' },
-                    { label: 'PMS Hardware & Cabling - Subassembly', value: '20' },
-                    { label: 'PMS Hardware & Cabling - Part', value: '21' },
-                    { label: 'PMS PMSS - Subassembly', value: '30' },
-                    { label: 'PMS PMSS - Part', value: '31' },
-                    { label: 'PMS Hardpoint - Subassembly', value: '40' },
-                    { label: 'PMS Hardpoint - Part', value: '41' },
-                    { label: 'PMS Actuator - Subassembly', value: '50' },
-                    { label: 'PMS Actuator - Part', value: '51' },
-                    ],
-                    // PRL_TEL_AOA_9: [
-                    //   { label: 'Piece Parts', value: '00' },
-                    // ],
-                    // PRL_TEL_AOA_ESC: [
-                    //   { label: 'Coronagraph', value: '00' },
-                    // ],
-                    PRL_TEL_AOA_ICD: [
-                    { label: 'Mechanical ICD', value: '10' },
-                    { label: 'UV Spectograph ICD', value: '31' },
-                    { label: 'Mechanical ICD', value: '32' },
-                    ],
-                    // PRL_TEL_AOA_IFS: [
-                    //   { label: 'IR Spectograph', value: '00' },
-                    // ],
-                    PRL_TEL_AOA_OPT: [
-                    { label: 'M4 Tripod Assembly', value: '1' },
-                    { label: 'M3 Assembly', value: '2' },
-                    ],
-                    PRL_TEL_AOA_SCR: [
-                    { label: 'Scrappy', value: '1' },
-                    ],
-                    PRL_TEL_AOA_STC: [
-                    { label: 'Piece Parts', value: '9' },
-                    { label: 'AOA Horizontal Handling Fixture', value: 'G1' },
-                    { label: 'AOA Breakover Fixture', value: 'G11' },
-                    { label: 'AOA Primary Structure Analysis', value: 'A1' },
-                    ],
-                    // PRL_TEL_AOA_SWS: [
-                    //   { label: 'Shack-Hartmann Wavefront Sensor', value: '00' },
-                    // ],
-                    // PRL_TEL_AOA_UVS: [
-                    //   { label: 'UV Spectograph', value: '00' },
-                    // ],
-                    PRL_TEL_AOA_WCC: [
-                    { label: 'Context Camera Assembly', value: '1' },
-                    { label: 'Context Camera Deployable Cover Assembly', value: '2' },
-                    ],
-                },
-                },
+            {
+            label: 'Category:',
+            options: [
+                { label: 'Extra-Solar Coronograph', value: 'ESC' },
+                { label: 'Widefield Context Camera', value: 'WCC' },
+                ],
+            connectorAfter: '-'
+            },
+            {
+            label: 'Development Category:',
+            options: {
+                ESC: [
+                { label: 'Flight', value: 'F' },
+                { label: 'GSE', value: 'G' },
+                { label: 'Test Development Unit / Prototype', value: 'T' },
+                ], 
+                WCC: [
+                { label: 'Flight', value: 'F' },
+                { label: 'GSE', value: 'G' },
+                { label: 'Test Development Unit / Prototype', value: 'T' },
+                ], 
+            },
+            connectorAfter: ''
+            },
+            {
+            label: 'Engineering Subset:',
+            options: {
+                ESC_F: [
+                { label: 'Assembly', value: 'A' },
+                { label: 'Part', value: 'P' },
+                { label: 'Interface Control Drawing', value: 'X' },
+                ], 
+                ESC_G: [
+                { label: 'Assembly', value: 'A' },
+                { label: 'Part', value: 'P' },
+                { label: 'Interface Control Drawing', value: 'X' },
+                ], 
+                ESC_T: [
+                { label: 'Assembly', value: 'A' },
+                { label: 'Part', value: 'P' },
+                { label: 'Interface Control Drawing', value: 'X' },
+                ], 
+                WCC_F: [
+                { label: 'Assembly', value: 'A' },
+                { label: 'Part', value: 'P' },
+                { label: 'Interface Control Drawing', value: 'X' },
+                ], 
+                WCC_G: [
+                { label: 'Assembly', value: 'A' },
+                { label: 'Part', value: 'P' },
+                { label: 'Interface Control Drawing', value: 'X' },
+                ], 
+                WCC_T: [
+                { label: 'Assembly', value: 'A' },
+                { label: 'Part', value: 'P' },
+                { label: 'Interface Control Drawing', value: 'X' },
+                ], 
+            },
+            connectorAfter: '-'
+            },
             ],
             builderComplete: false,
             builderKey: 0,
@@ -325,6 +228,9 @@ export default {
                 creator_email: '',                
                 abstract: '',
             },
+            // Edit-form error display
+            editFormErrorList: [],
+            showEditFormError: false,
             docModal: null,
             DisabledInfo: 'Field can only be edited from the main Documents & Drawings page',
             URLInfo: 'The URL of the file described by the metadata in this entry.',
@@ -456,7 +362,20 @@ export default {
             this.getDocument(); // initForm sets values of doc to empty, so repopulate them
         },
         handleEditSubmit() {
-            this.toggleEditDocumentModal(null);
+            // Validate required fields and show inline errors without closing the modal
+            const missing = [];
+            if (!this.editDocumentForm.title || this.editDocumentForm.title.trim() === '') missing.push('Title is required');
+            if (!this.editDocumentForm.entry_type || this.editDocumentForm.entry_type === '') missing.push('Type is required');
+            if (this.editDocumentForm.change_controlled === '' || this.editDocumentForm.change_controlled === null || this.editDocumentForm.change_controlled === undefined) missing.push('Change Controlled is required');
+            if (this.editDocumentForm.entry_type === 'drawing' && Number(this.editDocumentForm.change_controlled) === 10 && !this.builderComplete) missing.push('Drawing code must be completed to generate a number');
+            if (missing.length > 0) {
+                this.editFormErrorList = missing;
+                this.showEditFormError = true;
+                return;
+            }
+            this.showEditFormError = false;
+            this.editFormErrorList = [];
+
             const payload = {
                 title: this.editDocumentForm.title,
                 author: this.editDocumentForm.author,
@@ -465,9 +384,11 @@ export default {
                 change_controlled: this.editDocumentForm.change_controlled,
                 compiled_url: this.editDocumentForm.compiled_url,
                 source_url: this.editDocumentForm.source_url,
-                creator_email: this.editDocumentForm.creator_email || this.email,                  
+                creator_email: this.editDocumentForm.creator_email || this.email,
                 abstract: this.editDocumentForm.abstract,
             };
+            // Close modal after validation passes
+            this.toggleEditDocumentModal(null);
             this.updateDocument(payload, this.editDocumentForm.doc_identifier);
         },
         initForm() {
@@ -483,6 +404,8 @@ export default {
             this.editDocumentForm.creator_email = '';            
             this.editDocumentForm.abstract = '';
             this.docModal = null;
+            this.showEditFormError = false;
+            this.editFormErrorList = [];
         },
         handleEditCodeComplete(code) {
             this.editDocumentForm.number = code;
@@ -559,7 +482,7 @@ export default {
             const emailSubject = encodeURIComponent(`Teledocs Alert: Document '${doc.title}' is out of date`);
             const emailBody = encodeURIComponent(`Hi,\n\n
 This is to inform you that the document '${doc.title}' was reported as being out of date. The data currently associated with it is:\n
-Title: ${doc.title}\n
+Title / Name: ${doc.title}\n
 Author: ${doc.author}\n
 URL: ${doc.compiled_url}\n
 Source URL: ${doc.source_url}\n

@@ -46,7 +46,7 @@
             <div class="row row-cols-auto">
               <div class="col mb-3">
                 <!-- <label for="columnFiltersTitle" class="form-label">Title:</label> -->
-                <input type="text" class="form-control" id="columnFiltersTitle" v-model="columnFilters.title" placeholder="Filter by Title">           
+                <input type="text" class="form-control" id="columnFiltersTitle" v-model="columnFilters.title" placeholder="Filter by Title / Name">           
               </div>          
               <div class="col mb-3">
                 <!-- <label for="columnFiltersAuthor" class="form-label">Author:</label> -->
@@ -96,7 +96,7 @@
                 <font-awesome-icon icon="fa-solid fa-sort-up" style="vertical-align: bottom" v-if="this.sortBy=='doc_identifier' && this.sortOrder==1"/>
                 <font-awesome-icon icon="fa-solid fa-sort-down" style="vertical-align: top" v-if="this.sortBy=='doc_identifier' && this.sortOrder==-1"/>
               </th>
-              <th @click='sortColumn("title")' style="min-width: 10%;" scope="col">Title
+              <th @click='sortColumn("title")' style="min-width: 10%;" scope="col">Title / Name
                 <font-awesome-icon icon="fa-solid fa-sort-up" style="vertical-align: bottom" v-if="this.sortBy=='title' && this.sortOrder==1"/>
                 <font-awesome-icon icon="fa-solid fa-sort-down" style="vertical-align: top" v-if="this.sortBy=='title' && this.sortOrder==-1"/>
               </th>
