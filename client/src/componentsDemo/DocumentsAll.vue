@@ -17,7 +17,7 @@
         <div class="row">
           <p>Hello, {{ username }}, you are logged in with the account {{ email }}</p>
           <p>Add a new document using the button below. You can edit or delete documents you have added.</p>
-          <p>To see all details related to a document click on its Title or its Doc Identifier,
+          <p>To see all details related to a document click on its Title / Name or its Doc Identifier,
             or, for a given Doc Identifier, add "/docs/&lt;doc_identifier&gt;" to the current URL.</p>
           <p>If you encounter a problem, please contact one of teledoc's admins at:
             <span v-for="(admin, index) in admins" :key="index">
@@ -34,9 +34,9 @@
           <button type="button" class="btn btn-primary btn-sm" @click="toggleAddDocumentModal">
             Add Document
           </button>
-          <button type="button" class="btn btn-primary btn-sm ms-4" @click="toggleUploadFileModal">
+          <!-- <button type="button" class="btn btn-primary btn-sm ms-4" @click="toggleUploadFileModal">
             Upload File
-          </button>
+          </button> -->
 
           <!-- Filter toggle button -->
           <button v-if="show_table" type="button" class="btn btn-primary btn-sm ms-4" :title="filterButtonText" @click="toggleAdvancedFilter">
@@ -60,7 +60,7 @@
             <div class="row row-cols-auto">
               <div class="col mb-3">
                 <!-- <label for="columnFiltersTitle" class="form-label">Title:</label> -->
-                <input type="text" class="form-control" id="columnFiltersTitle" v-model="columnFilters.title" placeholder="Filter by Title">           
+                <input type="text" class="form-control" id="columnFiltersTitle" v-model="columnFilters.title" placeholder="Filter by Title / Name">           
               </div>          
               <div class="col mb-3">
                 <!-- <label for="columnFiltersAuthor" class="form-label">Author:</label> -->
@@ -116,7 +116,7 @@
         <table class="table table-hover" v-if="show_table">
           <thead>
             <tr>
-              <th @click='sortColumn("title")' style="min-width: 10%;" scope="col">Title
+              <th @click='sortColumn("title")' style="min-width: 10%;" scope="col">Title / Name
                 <font-awesome-icon icon="fa-solid fa-sort-up" style="vertical-align: bottom" v-if="this.sortBy=='title' && this.sortOrder==1"/>
                 <font-awesome-icon icon="fa-solid fa-sort-down" style="vertical-align: top" v-if="this.sortBy=='title' && this.sortOrder==-1"/>
               </th>
@@ -264,11 +264,18 @@
             </button>
           </div>
           <div class="modal-body">
+            <div v-if="showAddFormError" class="alert alert-danger">
+              <p class="mb-1">Please fix the following errors before submitting:</p>
+              <ul class="mb-0">
+                <li v-for="(err, idx) in addFormErrorList" :key="idx">{{ err }}</li>
+              </ul>
+            </div>
             <form>
               <div class="mb-3">
-                <label for="addDocumentTitle" class="form-label">Title:</label>
-                <input type="text" class="form-control" id="addDocumentTitle" v-model="addDocumentForm.title"
+                <label for="addDocumentTitle" class="form-label">Title / Name: <span class="text-danger">*</span></label>
+                <input type="text" :class="['form-control', { 'is-invalid': addFormTitleMissing }]" id="addDocumentTitle" v-model="addDocumentForm.title"
                   placeholder="Enter title">
+                <div v-if="addFormTitleMissing" class="form-text text-danger">This field is required.</div>
               </div>
               <div class="mb-3">
                 <label for="addDocumentAuthor" class="form-label">Author:</label>
@@ -276,16 +283,18 @@
                   placeholder="Enter author">
               </div>
               <div class="mb-3">
-                <label for="addDocumentEntryType" class="form-label"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="TypeInfo"/>Type:</label>
-                <select class="form-control" id="addEntryType" v-model="addDocumentForm.entry_type">
+                <label for="addDocumentEntryType" class="form-label"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="TypeInfo"/>Type: <span class="text-danger">*</span></label>
+                <select :class="['form-control', { 'is-invalid': addFormEntryTypeMissing }]" id="addEntryType" v-model="addDocumentForm.entry_type">
                   <option v-for="option in entryTypeOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
                 </select>
+                <div v-if="addFormEntryTypeMissing" class="form-text text-danger">This field is required.</div>
               </div>
               <div class="mb-3">
-                <label for="addDocumentChangeControlled" class="form-label"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="CCInfo"/>Change Controlled:</label>
-                <select class="form-control" id="addDocumentChangeControlled" v-model="addDocumentForm.change_controlled">
+                <label for="addDocumentChangeControlled" class="form-label"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="CCInfo"/>Change Controlled: <span class="text-danger">*</span></label>
+                <select :class="['form-control', { 'is-invalid': addFormChangeControlledMissing }]" id="addDocumentChangeControlled" v-model="addDocumentForm.change_controlled">
                   <option v-for="option in changeControlledOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
                 </select>
+                <div v-if="addFormChangeControlledMissing" class="form-text text-danger">This field is required.</div>
               </div>
               <div class="mb-3" v-if="(addDocumentForm.change_controlled === 10) && (addDocumentForm.entry_type === 'drawing')">
                 <label for="addDocumentDocCode" class="form-label">New Number:</label>
@@ -297,6 +306,10 @@
                   @partialCodeUpdate="handleAddPartialCodeUpdate"
                   :key="builderKey"
                 />
+                <div class="mt-2 ps-5" style="width: 90%" v-if="builderComplete && activeAddDocumentModal">
+                  <label class="form-label">Optional 3-digit number of an existing entry (will increment config):</label>
+                  <input type="text" class="form-control" v-model="addDocumentForm.provided_number" maxlength="3" placeholder="e.g. 001" />
+                </div>
                 <input type="text" class="form-control mt-2" id="addDocumentDocCode" v-model="addDocumentForm.number" readonly />
               </div>
               <div class="mb-3">
@@ -336,7 +349,7 @@
     <div v-if="activeAddDocumentModal" class="modal-backdrop fade show"></div>
 
     <!-- add documents via file upload modal -->
-    <div ref="uploadFileModal" class="modal fade"
+    <!-- <div ref="uploadFileModal" class="modal fade"
       :class="{ show: activeUploadFileModal, 'd-block': activeUploadFileModal }" tabindex="-1" role="dialog">
       <div class="modal-dialog modal-lg" role="document">
         <div class="modal-content">
@@ -381,7 +394,7 @@
         </div>
       </div>
     </div>
-    <div v-if="activeUploadFileModal" class="modal-backdrop fade show"></div>
+    <div v-if="activeUploadFileModal" class="modal-backdrop fade show"></div> -->
 
     <!-- edit document modal -->
     <div ref="editDocumentModal" class="modal fade"
@@ -395,9 +408,15 @@
             </button>
           </div>
           <div class="modal-body">
+            <div v-if="showEditFormError" class="alert alert-danger">
+              <p class="mb-1">Please fix the following errors before submitting:</p>
+              <ul class="mb-0">
+                <li v-for="(err, idx) in editFormErrorList" :key="idx">{{ err }}</li>
+              </ul>
+            </div>
             <form>
               <div class="mb-3">
-                <label for="editDocumentTitle" class="form-label">Title:</label>
+                <label for="editDocumentTitle" class="form-label">Title / Name:</label>
                 <input type="text" class="form-control" maxlength="500" id="editDocumentTitle"
                   v-model="editDocumentForm.title" placeholder="Enter title">
               </div>
@@ -443,6 +462,10 @@
                   :key="builderKey"
                 />
 
+                <div class="mt-2 ps-3" v-if="builderComplete && activeEditDocumentModal">
+                  <label class="form-label">Optional 3-digit number of an existing entry (will increment config):</label>
+                  <input type="text" class="form-control" v-model="editDocumentForm.provided_number" maxlength="3" placeholder="e.g. 001" />
+                </div>
                 <input type="text" class="form-control mt-2" id="editDocumentDocCode" v-model="editDocumentForm.number" readonly />
               </div>
               <div v-else-if="(editDocumentForm.change_controlled === 10) && (editDocumentForm.entry_type === 'drawing')" class="mb-3">
@@ -498,6 +521,26 @@
     </div>
     <div v-if="activeEditDocumentModal" class="modal-backdrop fade show"></div>
   </div>
+  <!-- Confirmation Modal -->
+  <div v-if="confirmModalActive" class="modal fade show d-block" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Confirm Number</h5>
+          <button type="button" class="btn-close" aria-label="Close" @click="confirmModalCancel"></button>
+        </div>
+        <div class="modal-body">
+          <div v-html="confirmModalMessageHtml"></div>
+          <p><strong>Suggested:</strong> {{ confirmModalSuggested }}</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" @click="confirmModalCancel">Cancel</button>
+          <button type="button" class="btn btn-primary" @click="confirmModalAccept">Accept suggested</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div v-if="confirmModalActive" class="modal-backdrop fade show"></div>
 </template>
 
 <script>
@@ -537,6 +580,8 @@ export default {
         title: '',
         author: '',
         number: '',
+        _stub: '',
+        provided_number: '',
         entry_type: '',
         change_controlled: '',
         compiled_url: '',
@@ -544,169 +589,72 @@ export default {
         creator_email: this.email,
         abstract: '',
       },
+      // Add-form error display
+      addFormErrorList: [],
+      showAddFormError: false,
+      // Edit-form error display
+      editFormErrorList: [],
+      showEditFormError: false,
       codeStepsDrawing: [
         {
           label: 'Category:',
           options: [
-              { label: 'Telescope', value: 'TEL' },
-              { label: 'Analyses', value: 'A' },
-              { label: 'Spacecraft Bus', value: 'BUS' },
-              { label: 'Interface Control Drawing', value: 'ICD' },
-            ]
+              { label: 'Extra-Solar Coronograph', value: 'ESC' },
+              { label: 'Widefield Context Camera', value: 'WCC' },
+            ],
+          connectorAfter: '-'
         },
         {
-          label: 'Assembly:',
+          label: 'Development Category:',
           options: {
-            PRL_TEL: [
-            { label: 'Aft Optics Aseembly', value: 'AOA' },
-            { label: 'Fore Optics Assembly', value: 'FOA' },
-            { label: 'Interface Control Drawing', value: 'ICD' },
+            ESC: [
+            { label: 'Flight', value: 'F' },
+            { label: 'GSE', value: 'G' },
+            { label: 'Test Development Unit / Prototype', value: 'T' },
             ], 
-          }
-        },
-        {
-          label: 'Main Element:',
-          options: {
-            PRL_TEL_ICD: [
-              { label: 'Interface Control Drawing', value: '00' },
-              { label: 'Telescope-BUS ICD', value: '01' },
-              { label: 'Telescope Optical Definition', value: '02' },
-            ],
-            PRL_TEL_FOA: [
-              { label: 'Top Level Assembly', value: 'ASY' },
-              { label: 'COTS Parts', value: 'COT' },
-              { label: 'Electrical (not in IBS, M1S, etc.)', value: 'ELE' },
-              { label: 'Ground Support Equipment', value: 'GSE' },
-              { label: 'Inner Baffle System', value: 'IBS' },
-              { label: 'Interface Control Drawing', value: 'ICD' },
-              { label: 'Primary Mirror System', value: 'M1S' },
-              { label: 'Secondary Mirror System', value: 'M2S' },
-            ],
-            PRL_TEL_AOA: [
-              { label: 'Piece Parts', value: '9' },
-              { label: 'Coronagraph', value: 'ESC' },
-              { label: 'Interface Control Drawing', value: 'ICD' },
-              { label: 'IR Spectograph', value: 'IFS' },
-              { label: 'Optics', value: 'OPT' },
-              { label: 'Scrappy', value: 'SCR' },
-              { label: 'Structure', value: 'STC' },
-              { label: 'Shack-Hartmann Wavefront Sensor', value: 'SWS' },
-              { label: 'UV Spectograph', value: 'UVS' },
-              { label: 'Context Camera Assembly', value: 'WCC' },
-            ],
-          }
-        },
-        {
-          label: 'Sub Element:',
-          options: {
-            // PRL_TEL_FOA_ASY: [
-            //   { label: 'ASY Subasssembly', value: '00' },
-            //   ],
-            PRL_TEL_FOA_COT: [
-              { label: 'COT Subasssembly', value: '00' },
-              { label: 'COT Electrical - Subasssembly', value: '10' },
-              { label: 'COT Electrical - Part', value: '11' },
-              { label: 'COT Mechanical - Subasssembly', value: '30' },
-              { label: 'COT Mechanical - Part', value: '31' },
-            ],
-            PRL_TEL_FOA_ELE: [
-              { label: 'ELE Subassembly', value: '00' },
-              { label: 'ELE Thermal Control - Subassembly', value: '10' },
-              { label: 'ELE Thermal Control - Part', value: '11' },
-              { label: 'ELE Hardware & Cabling - Subassembly', value: '20' },
-              { label: 'ELE Hardware & Cabling - Part', value: '21' },
-              { label: 'ELE Other - Subassembly', value: '30' },
-              { label: 'ELE Other - Part', value: '31' },
-            ],
-            PRL_TEL_FOA_GSE: [
-              { label: 'GSE Subassembly', value: '10' },
-              { label: 'GSE Part', value: '11' },
-            ],
-            PRL_TEL_FOA_IBS: [
-              { label: 'IBS Subassembly', value: '00' },
-              { label: 'IBS Thermal Control - Subassembly', value: '10' },
-              { label: 'IBS Thermal Control - Part', value: '11' },
-              { label: 'IBS Hardware & Cabling - Subassembly', value: '20' },
-              { label: 'IBS Hardware & Cabling - Part', value: '21' },
-              { label: 'IBS Inner Baffle - Subassembly', value: '30' },
-              { label: 'IBS Inner Baffle - Part', value: '31' },
-            ],
-            // PRL_FOA_ICD: [
-            //   { label: 'Interface Control Drawing', value: '00' },
-            // ],
-            PRL_TEL_FOA_M1S: [
-              { label: 'M1S Subassembly', value: '00' },
-              { label: 'M1S Thermal Control - Subassembly', value: '10' },
-              { label: 'M1S Thermal Control - Part', value: '11' },
-              { label: 'M1S Hardware & Cabling - Subassembly', value: '20' },
-              { label: 'M1S Hardware & Cabling - Part', value: '21' },
-              { label: 'M1S Mirror - Subassembly', value: '30' },
-              { label: 'M1S Mirror - Part', value: '31' },
-            ],
-            PRL_TEL_FOA_M2S: [
-              { label: 'M2S Subassembly', value: '00' },
-              { label: 'M2S Thermal Control - Subassembly', value: '10' },
-              { label: 'M2S Thermal Control - Part', value: '11' },
-              { label: 'M2S Hardware & Cabling - Subassembly', value: '20' },
-              { label: 'M2S Hardware & Cabling - Part', value: '21' },
-              { label: 'M2S Mirror - Subassembly', value: '30' },
-              { label: 'M2S Mirror - Part', value: '31' },
-              { label: 'M2S Hub - Subassembly', value: '40' },
-              { label: 'M2S Hub - Part', value: '41' },
-              { label: 'M2S Tripod - Subassembly', value: '50' },
-              { label: 'M2S Tripod - Part', value: '51' },
-            ],
-            PRL_TEL_FOA_PMS: [
-              { label: 'PMS Subassembly', value: '00' },
-              { label: 'PMS Thermal Control - Subassembly', value: '10' },
-              { label: 'PMS Thermal Control - Part', value: '11' },
-              { label: 'PMS Hardware & Cabling - Subassembly', value: '20' },
-              { label: 'PMS Hardware & Cabling - Part', value: '21' },
-              { label: 'PMS PMSS - Subassembly', value: '30' },
-              { label: 'PMS PMSS - Part', value: '31' },
-              { label: 'PMS Hardpoint - Subassembly', value: '40' },
-              { label: 'PMS Hardpoint - Part', value: '41' },
-              { label: 'PMS Actuator - Subassembly', value: '50' },
-              { label: 'PMS Actuator - Part', value: '51' },
-            ],
-            // PRL_TEL_AOA_9: [
-            //   { label: 'Piece Parts', value: '00' },
-            // ],
-            // PRL_TEL_AOA_ESC: [
-            //   { label: 'Coronagraph', value: '00' },
-            // ],
-            PRL_TEL_AOA_ICD: [
-              { label: 'Mechanical ICD', value: '10' },
-              { label: 'UV Spectograph ICD', value: '31' },
-              { label: 'Mechanical ICD', value: '32' },
-            ],
-            // PRL_TEL_AOA_IFS: [
-            //   { label: 'IR Spectograph', value: '00' },
-            // ],
-            PRL_TEL_AOA_OPT: [
-              { label: 'M4 Tripod Assembly', value: '1' },
-              { label: 'M3 Assembly', value: '2' },
-            ],
-            PRL_TEL_AOA_SCR: [
-              { label: 'Scrappy', value: '1' },
-            ],
-            PRL_TEL_AOA_STC: [
-              { label: 'Piece Parts', value: '9' },
-              { label: 'AOA Horizontal Handling Fixture', value: 'G1' },
-              { label: 'AOA Breakover Fixture', value: 'G11' },
-              { label: 'AOA Primary Structure Analysis', value: 'A1' },
-            ],
-            // PRL_TEL_AOA_SWS: [
-            //   { label: 'Shack-Hartmann Wavefront Sensor', value: '00' },
-            // ],
-            // PRL_TEL_AOA_UVS: [
-            //   { label: 'UV Spectograph', value: '00' },
-            // ],
-            PRL_TEL_AOA_WCC: [
-              { label: 'Context Camera Assembly', value: '1' },
-              { label: 'Context Camera Deployable Cover Assembly', value: '2' },
-            ],
+            WCC: [
+            { label: 'Flight', value: 'F' },
+            { label: 'GSE', value: 'G' },
+            { label: 'Test Development Unit / Prototype', value: 'T' },
+            ], 
           },
+          connectorAfter: ''
+        },
+        {
+          label: 'Engineering Subset:',
+          options: {
+            ESC_F: [
+            { label: 'Assembly', value: 'A' },
+            { label: 'Part', value: 'P' },
+            { label: 'Interface Control Drawing', value: 'X' },
+            ], 
+            ESC_G: [
+            { label: 'Assembly', value: 'A' },
+            { label: 'Part', value: 'P' },
+            { label: 'Interface Control Drawing', value: 'X' },
+            ], 
+            ESC_T: [
+            { label: 'Assembly', value: 'A' },
+            { label: 'Part', value: 'P' },
+            { label: 'Interface Control Drawing', value: 'X' },
+            ], 
+            WCC_F: [
+            { label: 'Assembly', value: 'A' },
+            { label: 'Part', value: 'P' },
+            { label: 'Interface Control Drawing', value: 'X' },
+            ], 
+            WCC_G: [
+            { label: 'Assembly', value: 'A' },
+            { label: 'Part', value: 'P' },
+            { label: 'Interface Control Drawing', value: 'X' },
+            ], 
+            WCC_T: [
+            { label: 'Assembly', value: 'A' },
+            { label: 'Part', value: 'P' },
+            { label: 'Interface Control Drawing', value: 'X' },
+            ], 
+          },
+          connectorAfter: '-'
         },
       ],
       builderComplete: false,
@@ -721,6 +669,8 @@ export default {
         author: '',
         doc_identifier: '',
         number: '',
+        _stub: '',
+        provided_number: '',
         entry_type: '',
         change_controlled: '',
         compiled_url: '',
@@ -749,6 +699,13 @@ export default {
       changeControlledOptions: [],
       changeControlledStyleMap: {},
       changeControlledDefault: null,
+      // Confirmation modal state
+      confirmModalActive: false,
+      confirmModalMessage: '',
+      confirmModalSuggested: '',
+      confirmModalType: '',
+      confirmPendingPayload: null,
+      confirmPendingDocID: null,
     };
   },
   components: {
@@ -774,6 +731,16 @@ export default {
     'addDocumentForm.entry_type'(newVal) {
       this.resetDrawingCodeBuilder();
     },
+    'addDocumentForm.provided_number'(newVal) {
+      // keep only digits, max 3
+      if (newVal === undefined) return;
+      const digits = newVal.replace(/\D/g, '').slice(0,3);
+      if (digits !== newVal) this.addDocumentForm.provided_number = digits;
+      const stub = this.addDocumentForm._stub || '';
+      if (stub) {
+        this.addDocumentForm.number = digits ? `${stub}${digits.padStart(3,'0')}` : stub;
+      }
+    },
     'editDocumentForm.change_controlled'(newVal) {
       // Reset only if type drawing, otherwise we don't really care
       if (newVal === 0) {
@@ -786,6 +753,15 @@ export default {
     },
     'editDocumentForm.entry_type'(newVal, oldVal) {
       this.resetDrawingCodeBuilder();
+    },
+    'editDocumentForm.provided_number'(newVal) {
+      if (newVal === undefined) return;
+      const digits = newVal.replace(/\D/g, '').slice(0,3);
+      if (digits !== newVal) this.editDocumentForm.provided_number = digits;
+      const stub = this.editDocumentForm._stub || '';
+      if (stub) {
+        this.editDocumentForm.number = digits ? `${stub}${digits.padStart(3,'0')}` : stub;
+      }
     },
   },
   computed: {
@@ -881,6 +857,59 @@ export default {
         return '';
       }
     },
+    confirmModalMessageHtml() {
+      const msg = this.confirmModalMessage || '';
+      const escape = (s) => {
+        return s.replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+      };
+
+      const lines = msg.split('\n');
+      let html = '';
+      let inList = false;
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        if (line.startsWith('- ')) {
+          if (!inList) { html += '<ul>'; inList = true; }
+          html += '<li>' + escape(line.slice(2)) + '</li>';
+        } else {
+          if (inList) { html += '</ul>'; inList = false; }
+          if (line.trim() === '') {
+            html += '<br/>';
+          } else {
+            html += '<p>' + escape(line) + '</p>';
+          }
+        }
+      }
+      if (inList) html += '</ul>';
+      return html;
+    },
+    // Validation for add document form
+    addFormTitleMissing() {
+      if (!this.showAddFormError) return false;
+      return !this.addDocumentForm.title || this.addDocumentForm.title.trim() === '';
+    },
+    addFormEntryTypeMissing() {
+      if (!this.showAddFormError) return false;
+      return !this.addDocumentForm.entry_type || this.addDocumentForm.entry_type === '';
+    },
+    addFormChangeControlledMissing() {
+      if (!this.showAddFormError) return false;
+      return this.addDocumentForm.change_controlled === '' || this.addDocumentForm.change_controlled === null || this.addDocumentForm.change_controlled === undefined;
+    },
+    isAddFormValid() {
+      if (this.addFormTitleMissing) return false;
+      if (this.addFormEntryTypeMissing) return false;
+      if (this.addFormChangeControlledMissing) return false;
+      // If drawing and change controlled == 10, require builderComplete
+      if (this.addDocumentForm.entry_type === 'drawing' && Number(this.addDocumentForm.change_controlled) === 10) {
+        if (!this.builderComplete) return false;
+      }
+      return true;
+    },
   },
   methods: {
     logInUser() {
@@ -911,6 +940,17 @@ export default {
 
         axios.post(path, payload, config)
           .then((res) => {
+            // Handle server signals for number confirmation or out-of-order by showing modal
+            if (res.data.status === 'confirm' || res.data.status === 'out_of_order') {
+              this.confirmModalActive = true;
+              this.confirmModalType = res.data.status;
+              this.confirmModalMessage = res.data.message;
+              this.confirmModalSuggested = res.data.suggested_value || res.data.suggested_next || '';
+              this.confirmPendingPayload = payload; // store for later resubmission
+              this.confirmPendingDocID = null;
+              return;
+            }
+
             this.getDocuments();
             if (res.data.status == 'success') {
               this.message = 'Document added!';
@@ -976,11 +1016,30 @@ export default {
       this.initForm();
     },
     handleAddSubmit() {
-      this.toggleAddDocumentModal();
+      // Validate required fields on submit and show inline errors without closing the modal
+      const missing = [];
+      if (!this.addDocumentForm.title || this.addDocumentForm.title.trim() === '') missing.push('Title is required');
+      if (!this.addDocumentForm.entry_type || this.addDocumentForm.entry_type === '') missing.push('Type is required');
+      if (this.addDocumentForm.change_controlled === '' || this.addDocumentForm.change_controlled === null || this.addDocumentForm.change_controlled === undefined) missing.push('Change Controlled is required');
+      if (this.addDocumentForm.entry_type === 'drawing' && Number(this.addDocumentForm.change_controlled) === 10 && !this.builderComplete) missing.push('Drawing code must be completed to generate a number');
+      if (missing.length > 0) {
+        this.addFormErrorList = missing;
+        this.showAddFormError = true;
+        return;
+      }
+      // All good: clear any previous errors and proceed to submit
+      this.showAddFormError = false;
+      this.addFormErrorList = [];
+      // Combine sanitized stub and optional provided 3-digit number (prefer stub if available)
+      const stub = this.addDocumentForm._stub ? this.addDocumentForm._stub.replace(/^-+|-+$/g,'') : '';
+      const providedRaw = this.addDocumentForm.provided_number ? this.addDocumentForm.provided_number.replace(/\D/g,'') : '';
+      const provided = providedRaw ? providedRaw.padStart(3,'0') : '';
+      const combinedNumber = stub ? (provided ? `${stub}${provided}` : stub) : (this.addDocumentForm.number || '');
+
       const payload = {
         title: this.addDocumentForm.title,
         author: this.addDocumentForm.author,
-        number: this.addDocumentForm.number,
+        number: combinedNumber,
         entry_type: this.addDocumentForm.entry_type,
         change_controlled: this.addDocumentForm.change_controlled,
         compiled_url: this.addDocumentForm.compiled_url,
@@ -988,6 +1047,7 @@ export default {
         creator_email: this.addDocumentForm.creator_email || this.email,        
         abstract: this.addDocumentForm.abstract,
       };
+      this.toggleAddDocumentModal();
       this.addDocument(payload);
       this.initForm();
     },
@@ -1000,41 +1060,69 @@ export default {
       this.getDocuments(); // initForm sets values of doc open in modal to empty, so repopulate them
     },
     handleEditSubmit() {
-      this.toggleEditDocumentModal(null);
+      // Validate required fields and show inline errors without closing the modal
+      const missing = [];
+      if (!this.editDocumentForm.title || this.editDocumentForm.title.trim() === '') missing.push('Title is required');
+      if (!this.editDocumentForm.entry_type || this.editDocumentForm.entry_type === '') missing.push('Type is required');
+      if (this.editDocumentForm.change_controlled === '' || this.editDocumentForm.change_controlled === null || this.editDocumentForm.change_controlled === undefined) missing.push('Change Controlled is required');
+      if (this.editDocumentForm.entry_type === 'drawing' && Number(this.editDocumentForm.change_controlled) === 10 && !this.builderComplete) missing.push('Drawing code must be completed to generate a number');
+      if (missing.length > 0) {
+        this.editFormErrorList = missing;
+        this.showEditFormError = true;
+        return;
+      }
+      this.showEditFormError = false;
+      this.editFormErrorList = [];
+
+      const stub = this.editDocumentForm._stub ? this.editDocumentForm._stub.replace(/^-+|-+$/g,'') : '';
+      const providedRaw = this.editDocumentForm.provided_number ? this.editDocumentForm.provided_number.replace(/\D/g,'') : '';
+      const provided = providedRaw ? providedRaw.padStart(3,'0') : '';
+      const combinedNumber = stub ? (provided ? `${stub}${provided}` : stub) : (this.editDocumentForm.number || '');
+
       const payload = {
         title: this.editDocumentForm.title,
         author: this.editDocumentForm.author,
-        number: this.editDocumentForm.number,
+        number: combinedNumber,
         entry_type: this.editDocumentForm.entry_type,
         change_controlled: this.editDocumentForm.change_controlled,
         compiled_url: this.editDocumentForm.compiled_url,
         source_url: this.editDocumentForm.source_url,
-        creator_email: this.editDocumentForm.creator_email || this.email,            
+        creator_email: this.editDocumentForm.creator_email || this.email,
         abstract: this.editDocumentForm.abstract,
       };
+      // Close modal only after successful client validation
+      this.toggleEditDocumentModal(null);
       this.updateDocument(payload, this.editDocumentForm.doc_identifier);
     },
     initForm() {
       this.addDocumentForm.title = '';
       this.addDocumentForm.author = '';
       this.addDocumentForm.number = '';
+      this.addDocumentForm._stub = '';
+      this.addDocumentForm.provided_number = '';
       this.addDocumentForm.entry_type = this.entryTypeDefault;
       this.addDocumentForm.change_controlled = this.changeControlledDefault;
       this.addDocumentForm.compiled_url = '';
       this.addDocumentForm.source_url = '';
       this.addDocumentForm.creator_email = this.email;
       this.addDocumentForm.abstract = '';
+      this.showAddFormError = false;
+      this.addFormErrorList = [];
       this.editDocumentForm.pk = '';
       this.editDocumentForm.title = '';
       this.editDocumentForm.author = '';
       this.editDocumentForm.doc_identifier = '';
       this.editDocumentForm.number = '';
+      this.editDocumentForm._stub = '';
+      this.editDocumentForm.provided_number = '';
       this.editDocumentForm.entry_type = '';
       this.editDocumentForm.change_controlled = '';
       this.editDocumentForm.compiled_url = '';
       this.editDocumentForm.source_url = '';
       this.editDocumentForm.creator_email = '';      
       this.editDocumentForm.abstract = '';
+      this.showEditFormError = false;
+      this.editFormErrorList = [];
       this.docModal = null;
     },
     removeDocument(docID) {
@@ -1064,7 +1152,11 @@ export default {
       });
     },
     handleAddCodeComplete(code) {
-      this.addDocumentForm.number = code;
+      const stub = code ? code.replace(/^-+|-+$/g,'') : '';
+      this.addDocumentForm._stub = stub;
+      // if user already entered a provided_number, compose final preview
+      const provided = this.addDocumentForm.provided_number ? this.addDocumentForm.provided_number.replace(/\D/g,'').padStart(3,'0') : '';
+      this.addDocumentForm.number = provided ? `${stub}${provided}` : stub;
       this.builderComplete = true;
     },
     handleAddPartialCodeUpdate(partialCode) {
@@ -1076,7 +1168,10 @@ export default {
       this.builderComplete = false;
     },
     handleEditCodeComplete(code) {
-      this.editDocumentForm.number = code;
+      const stub = code ? code.replace(/^-+|-+$/g,'') : '';
+      this.editDocumentForm._stub = stub;
+      const provided = this.editDocumentForm.provided_number ? this.editDocumentForm.provided_number.replace(/\D/g,'').padStart(3,'0') : '';
+      this.editDocumentForm.number = provided ? `${stub}${provided}` : stub;
       this.builderComplete = true;
     },
     handleEditPartialCodeUpdate(partialCode) {
@@ -1091,7 +1186,11 @@ export default {
       // We want to reset the field for both forms here
       // (Don't see any risk in doing so)
       this.addDocumentForm.number = "";
+      this.addDocumentForm.provided_number = "";
+      this.addDocumentForm._stub = "";
       this.editDocumentForm.number = this.resetEditNumber();
+      this.editDocumentForm.provided_number = "";
+      this.editDocumentForm._stub = "";
       this.builderComplete = false;
       // Change the key to force a re-render of DrawingCodeBuilder
       this.builderKey++;
@@ -1152,6 +1251,17 @@ export default {
 
         axios.put(path, payload, config)
           .then((res) => {
+            // Handle server signals for number confirmation or out-of-order by showing modal
+            if (res.data.status === 'confirm' || res.data.status === 'out_of_order') {
+              this.confirmModalActive = true;
+              this.confirmModalType = res.data.status;
+              this.confirmModalMessage = res.data.message;
+              this.confirmModalSuggested = res.data.suggested_value || res.data.suggested_next || '';
+              this.confirmPendingPayload = payload; // store for later resubmission
+              this.confirmPendingDocID = docID;
+              return;
+            }
+
             this.getDocuments();
             if (res.data.status == 'success') {
               this.message = 'Document updated!';
@@ -1167,6 +1277,36 @@ export default {
       }).catch(function (error) {
         console.log(error)
       });
+    },
+    confirmModalAccept() {
+      if (!this.confirmPendingPayload) return;
+      // attach suggested confirmed number and resubmit
+      this.confirmPendingPayload.confirmed_number = this.confirmModalSuggested;
+      const payload = this.confirmPendingPayload;
+      const docID = this.confirmPendingDocID;
+
+      // clear modal state
+      this.confirmModalActive = false;
+      this.confirmModalMessage = '';
+      this.confirmModalSuggested = '';
+      this.confirmPendingPayload = null;
+      this.confirmPendingDocID = null;
+
+      if (docID) {
+        this.updateDocument(payload, docID);
+      } else {
+        this.addDocument(payload);
+      }
+    },
+    confirmModalCancel() {
+      this.confirmModalActive = false;
+      this.confirmModalMessage = '';
+      this.confirmModalSuggested = '';
+      this.confirmPendingPayload = null;
+      this.confirmPendingDocID = null;
+      this.message = 'Action cancelled by user.';
+      this.showMessage = true;
+      this.getDocuments();
     },
     truncate(value, length) {
       if (value.length > length) {
@@ -1250,7 +1390,7 @@ export default {
       const emailSubject = encodeURIComponent(`Teledocs Alert: Document '${doc.title}' is out of date`);
       const emailBody = encodeURIComponent(`Hi,\n\n
 This is to inform you that the document '${doc.title}' was reported as being out of date. The data currently associated with it is:\n
-Title: ${doc.title}\n
+Title / Name: ${doc.title}\n
 Author: ${doc.author}\n
 URL: ${doc.compiled_url}\n
 Source URL: ${doc.source_url}\n
@@ -1274,7 +1414,7 @@ Please update the entry at your earliest convenience.\n\nRegards,\nteledocs`);
       const worksheet = workbook.addWorksheet('Documents');
 
       worksheet.columns = [
-        { title: 'Title', key: 'title'},
+        { title: 'Title / Name', key: 'title'},
         { author: 'Author', key: 'author'},
         { doc_identifier: 'Doc Identifier', key: 'doc_identifier'},
         { number: 'Doc #', key: 'number'},
@@ -1287,7 +1427,7 @@ Please update the entry at your earliest convenience.\n\nRegards,\nteledocs`);
       ];
 
       worksheet.addRow({
-        title: 'Title',
+        title: 'Title / Name',
         author: 'Author',
         doc_identifier: 'Doc Identifier',
         number: 'Doc #',

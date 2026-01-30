@@ -6,7 +6,15 @@ from flask.views import MethodView
 from sqlalchemy import select
 from sqlalchemy.orm import joinedload
 from models import is_superuser, TypeEnum, ChangeControlledEnum
-from models_demo import db, DemoDocument, DemoUser, DemoDomain, DemoNumber
+from models_demo import (
+    db,
+    DemoDocument,
+    DemoUser,
+    DemoDomain,
+    DemoNumber,
+    NumberConfirmationRequired,
+    OutOfOrderNumber,
+)
 
 from views import token_required, superuser
 
@@ -41,7 +49,15 @@ class DemoAllDocuments(MethodView):
         
         # TODO need to check if this isn't a duplicate
         # TODO should validate fields
-        success = DemoDocument.create(**post_data)
+        try:
+            success = DemoDocument.create(**post_data)
+        except NumberConfirmationRequired as e:
+            return jsonify(status="confirm", suggested_value=e.suggested_value,
+                           message=str(e))
+        except OutOfOrderNumber as e:
+            return jsonify(status="out_of_order", suggested_next=e.suggested_next,
+                           message=str(e))
+
         if not success:
             response_object["status"] = "fail"
         response_object["message"] = "Document added!"
@@ -314,7 +330,15 @@ class DemoSingleDocument(MethodView):
             if not is_superuser(entity):
                 post_data.pop("creator_email", None)
             
-            success = document.update(**post_data)
+            try:
+                success = document.update(**post_data)
+            except NumberConfirmationRequired as e:
+                return jsonify(status="confirm", suggested_value=e.suggested_value,
+                               message=str(e))
+            except OutOfOrderNumber as e:
+                return jsonify(status="out_of_order", suggested_next=e.suggested_next,
+                               message=str(e))
+
             if not success:
                 response_object['status'] = 'fail'
             response_object["message"] = "Document updated!"

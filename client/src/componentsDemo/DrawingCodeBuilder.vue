@@ -71,11 +71,12 @@ export default {
     data() {
         return {
             steps: JSON.parse(JSON.stringify(this.initialSteps)), // deep clone, otherwise can't revert to initialSteps
-            root: "PRL",
+            // root: "PRL",
             selectedOptions: Array(this.initialSteps.length+1).fill(""),
             currentStep: 0,
             isComplete: false,
-            branchEnd: false 
+            branchEnd: false ,
+            defaultConnector: '-' 
         };
     },
     watch: {
@@ -134,7 +135,7 @@ export default {
         },
         submitCode() {
             this.isComplete = true;
-            const drawingCode = this.buildCode("-");;
+            const drawingCode = this.buildCode();
             this.$emit("codeComplete", drawingCode);
         },
         resetBuilder() {
@@ -146,13 +147,46 @@ export default {
             this.$emit("resetCode");
         },
         emitPartialCode() {
-            const partialCode = this.buildCode("-");
+            const partialCode = this.buildCode();
             this.$emit("partialCodeUpdate", partialCode);
         },
-        buildCode(connector) {
-            return this.root + connector + this.selectedOptions
-                .filter(option => option)
-                .join(connector);
+        buildCode(connectorOverride) {
+            // connectorOverride: undefined | string | array
+            const opts = this.selectedOptions;
+
+            const hasSelectedAfter = (i) => {
+                for (let j = i + 1; j < opts.length; j++) {
+                    if (opts[j]) return true;
+                }
+                return false;
+            };
+
+            const resolveConnector = (i) => {
+                if (connectorOverride === undefined || connectorOverride === null) {
+                    // prefer step-level connector, fall back to defaultConnector
+                    const step = (this.initialSteps && this.initialSteps[i]) || (this.steps && this.steps[i]);
+                    if (step && step.connectorAfter !== undefined) return step.connectorAfter;
+                    return this.defaultConnector || '';
+                }
+
+                if (typeof connectorOverride === 'string') return connectorOverride;
+                if (Array.isArray(connectorOverride)) return connectorOverride[i] || '';
+                return '';
+            };
+
+            const parts = [];
+            for (let i = 0; i < opts.length; i++) {
+                const val = opts[i];
+                if (val) {
+                    parts.push(val);
+                    if (hasSelectedAfter(i)) {
+                        const conn = resolveConnector(i);
+                        if (conn) parts.push(conn);
+                    }
+                }
+            }
+
+            return parts.join('');
         }
     },
 };

@@ -16,6 +16,28 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("logger")
 
 
+class NumberConfirmationRequired(Exception):
+    """Raised when a user-specified drawing number exists and confirmation is required.
+
+    Attributes:
+        suggested_value: a full suggested value including incremented config (e.g. 'ABC-DE001-01')
+    """
+    def __init__(self, suggested_value, message=None):
+        super().__init__(message or "Number confirmation required")
+        self.suggested_value = suggested_value
+
+
+class OutOfOrderNumber(Exception):
+    """Raised when a user-specified drawing number is out of sequence.
+
+    Attributes:
+        suggested_next: a suggested next-in-sequence value (e.g. 'ABC-DE002-00')
+    """
+    def __init__(self, suggested_next, message=None):
+        super().__init__(message or "Out of order number")
+        self.suggested_next = suggested_next
+
+
 def _combine_and_pad(num1, num2, total_length):
     # Convert the numbers to strings
     num1_str = str(num1)
@@ -139,16 +161,20 @@ class DemoDocument(db.Model, Serializer):
                     setattr(self, column, new_val)
             self._update_number(kwargs.get("change_controlled"), 
                                 kwargs.get("entry_type"), 
-                                kwargs.get("number"))
+                                kwargs.get("number"),
+                                kwargs.get("confirmed_number"))
             db.session.add(self)
             db.session.commit()
             logger.info("DemoDocuments: Updating DemoDocument object.")
+        except (NumberConfirmationRequired, OutOfOrderNumber):
+            # Let caller (views) handle confirmation / out-of-order flows
+            raise
         except Exception as e:
             logger.error(f"DemoDocuments: Updating DemoDocument object. Error: {e}")
             return False
         return True
 
-    def _update_number(self, change_controlled, entry_type, user_value):
+    def _update_number(self, change_controlled, entry_type, user_value, confirmed_number=None):
         """
         Class method to check if entry to be updated already has a linked
         DemoNumber (in which case, validate that it matches the criteria) or not
@@ -185,8 +211,21 @@ class DemoDocument(db.Model, Serializer):
                 # Release existing number and store this doc's pk in the comment field
                 self._release_number()
         
+        if confirmed_number:
+            # Frontend confirmed a specific final value to create
+            if entry_type == TypeEnum.drawing.value:
+                num_obj = DemoNumber._make_number(confirmed_number, TypeEnum.drawing)
+            else:
+                # num_obj = DemoNumber._make_number(confirmed_number, TypeEnum.document)
+                num_obj = None
+
+            if num_obj:
+                db.session.add(num_obj)
+                self.number = num_obj
+            return
+
         # If we're here, either didn't have a Number in the first place, or was released
-        # Make new associated number (for change controlled drawings and all docs)
+        # Make new associated number change controlled drawings only
         number = DemoNumber._generate_number(change_controlled, entry_type, user_value)
         if number:
             db.session.add(number)
@@ -352,20 +391,34 @@ class DemoDocument(db.Model, Serializer):
                 raise ValueError("DemoDocuments: An entry with this title already exists")
 
             number = kwargs.pop("number")
+            confirmed_number = kwargs.pop("confirmed_number", None)
             obj = DemoDocument(**kwargs)
 
             # Make new associated number (for change controlled drawings and all docs)
-            number = DemoNumber._generate_number(kwargs.get("change_controlled"), 
-                                            kwargs.get("entry_type"), 
-                                            number)
-            if number:
-                db.session.add(number)
-                obj.number = number
+            if confirmed_number:
+                # Create exact number object when frontend confirmed suggested value
+                if kwargs.get("entry_type") == TypeEnum.drawing.value:
+                    num_obj = DemoNumber._make_number(confirmed_number, TypeEnum.drawing)
+                else:
+                    num_obj = DemoNumber._make_number(confirmed_number, TypeEnum.document)
+                if num_obj:
+                    db.session.add(num_obj)
+                    obj.number = num_obj
+            else:
+                number = DemoNumber._generate_number(kwargs.get("change_controlled"), 
+                                                kwargs.get("entry_type"), 
+                                                number)
+                if number:
+                    db.session.add(number)
+                    obj.number = number
 
             db.session.add(obj)
             db.session.commit()
             logger.info("DemoDocuments: Creating DemoDocument object.")
             return obj
+        except (NumberConfirmationRequired, OutOfOrderNumber):
+            # Let caller (views) handle confirmation / out-of-order flows
+            raise
         except Exception as e:
             logger.error(f"DemoDocuments: Creating DemoDocument object. Error: {e}")
             return False
@@ -955,10 +1008,94 @@ class DemoNumber(db.Model, Serializer):
             Exception raised if DemoNumber exists with the stub, 
             but the rest doesn't follow the expected pattern.
         """
-        counter_len = 4
+        if not user_value:
+            raise ValueError("DemoNumber: No drawing stub provided by user.")
+
         user_value = user_value.rstrip("-")
 
-        # Find the latest DemoNumber entry with the user provided value stub
+        # If the user provided a numberat the end of the stub (with or without a hyphen),
+        # validate that it is exactly three digits. If it's not, raise an error.
+        m_len = re.match(r'^(?P<stub>.*?)-?(?P<num>\d+)$', user_value)
+        if m_len:
+            num_str = m_len.group("num")
+            if len(num_str) != 3:
+                raise ValueError(
+                    f"DemoNumber: Provided numeric suffix '{num_str}' must be exactly 3 digits (e.g. '001')."
+                )
+
+        # If the user provided a 3-digit number at the end of the stub (with or without a hyphen): 
+        # either require confirmation (if entries with that exact 3-digit
+        # prefix already exist), or warn about out-of-order numbers.
+        m = re.match(r'^(?P<stub>.*?)-?(?P<num>\d{3})$', user_value)
+        if m:
+            stub = m.group("stub").rstrip("-")
+            provided = int(m.group("num"))
+
+            prefix = f"{stub}{provided:03d}"
+
+            # Check whether entries with this exact 3-digit exist (any config)
+            existing = db.session.scalars(
+                select(DemoNumber)
+                .where(DemoNumber.value.like(f"{prefix}-%"))
+                .order_by(DemoNumber.value.desc())
+            ).all()
+
+            if existing:
+                logger.info('Before search for existing')
+                values = [entry.value for entry in existing]
+                # db search is sorted in descending value order, so use the first (highest) entry
+                first_val = values[0]
+                prefix_match = re.match(rf"{re.escape(prefix)}-(\d{{2}})$", first_val)
+                highest_config = int(prefix_match.group(1)) if prefix_match else 0
+                suggested = f"{prefix}-{highest_config+1:02d}"
+
+                # Ask user for confirmation to create entry with incremented config
+                msg_lines = [f"The following entries exist for {prefix}:"]
+                msg_lines.extend([f"- {v}" for v in values])
+                msg_lines.append(f"Do you confirm creating {suggested}?")
+                message = "\n".join(msg_lines)
+                raise NumberConfirmationRequired(suggested, message)
+
+            # No entries with this exact 3-digit number exist. Check sequence for this stub.
+            last_for_stub = db.session.scalars(
+                select(DemoNumber)
+                .where(DemoNumber.value.like(f"{stub}%"))
+                .order_by(DemoNumber.value.desc())
+                .limit(1)
+            ).first()
+
+            if last_for_stub:
+                stub_match = re.match(rf"{re.escape(stub)}(\d{{3}})-(\d{{2}})", last_for_stub.value)
+                highest_number = int(stub_match.group(1)) if stub_match else None
+                next_num = (highest_number + 1) if highest_number is not None else 1
+
+                if provided != next_num:
+                    suggested_next = f"{stub}{next_num:03d}-00"
+                    # Signal that provided number is out of sequence and suggest next
+                    raise OutOfOrderNumber(suggested_next,
+                        f"DemoNumber: Provided number {provided:03d} is out-of-order. Suggest {suggested_next}.")
+
+            else:
+                # No prior entries for this stub. Only 001 is acceptable as the first number.
+                if provided != 1:
+                    suggested_next = f"{stub}001-00"
+                    raise OutOfOrderNumber(suggested_next,
+                        f"DemoNumber: Provided number {provided:03d} is out-of-order. Suggest {suggested_next}.")
+
+            # Provided number equals next in sequence or there were no prior entries
+            drawing_value = f"{prefix}-00"
+            found = db.session.scalars(select(DemoNumber).where(DemoNumber.value == drawing_value).limit(1)).first()
+            if found:
+                raise ValueError(
+                    "DemoNumber: Generating number value for new "
+                    "drawing entry. DemoNumber already exists with generated "
+                    f"drawing_value {drawing_value}. HELP"
+                )
+
+            logger.info(f"DemoNumber: Generating new drawing value {drawing_value}.")
+            return drawing_value
+
+        # No explicit 3-digit provided by user: original behaviour (auto-increment last ###)
         number = db.session.scalars(
             select(DemoNumber)
             .where(DemoNumber.value.like(f"{user_value}%"))
@@ -967,14 +1104,11 @@ class DemoNumber(db.Model, Serializer):
         ).first()
 
         if number:
-            # If number with given stub exists, get its numerical part
-            pattern_match = re.match(
-                rf"{user_value}(?P<code>\d{{2,4}})", number.value
-            )
-            highest_number = pattern_match.groupdict().get("code")
+            # Match against pattern: {user_value}###-##
+            pattern_match = re.match(rf"{re.escape(user_value)}(\d{{3}})-(\d{{2}})", number.value)
+            highest_number = pattern_match.group(1) if pattern_match else None
 
             if highest_number:
-                # Build the next doc_identifier.
                 incremented = int(highest_number) + 1
             else:
                 # We're in uncharted waters, pattern should have found a match
@@ -984,40 +1118,10 @@ class DemoNumber(db.Model, Serializer):
                     f"found. Match: {pattern_match.groupdict()}. HELP"
                 )
         else:
-            # No number found with given stub. No doc numbers added yet.
             incremented = 1
 
-        # Attach incremented integer to user-provided stub
-        # This is more complicated, since user-provided stub can be of
-        # several formats: 
-        # ABC-DEF-#### or ABC-DEF-10## or ABC-DEF-A####
-        components = user_value.split("-")
-        if len(components[-1]) < 3:
-            # Is the last component is a modifier or sufix, 
-            # remove it and process it separately
-            ending = components.pop()
-            drawing_value_str = "-".join(components)
+        drawing_value = f"{user_value}{incremented:03d}-00"
 
-            # Is ending an integer?
-            if ending.isdigit():
-                counter = _combine_and_pad(ending, incremented, counter_len)
-                drawing_value = f"{drawing_value_str}-{counter}"
-            elif ending.isalpha():
-                counter = str(incremented).zfill(4)
-                drawing_value = f"{drawing_value_str}-{ending}{counter}"
-            else:
-                raise ValueError(
-                    "DemoNumber: Generating number value for new "
-                    f"drawing entry. User provided stub {user_value} doesn't "
-                    "match expected format. HELP"
-                )
-        else:
-            # No special processing needed, just take the user value and add
-            # the incremented number
-            drawing_value = f"{user_value}-{incremented:04d}"
-
-        # Sanity check that it doesn't exist
-        # found = db.session.scalars(select(exists().where(DemoNumber.value == drawing_value))).first()
         found = db.session.scalars(select(DemoNumber).where(DemoNumber.value == drawing_value).limit(1)).first()
         if found:
             raise ValueError(
@@ -1034,6 +1138,7 @@ class DemoNumber(db.Model, Serializer):
         """
         Class method to generate a new, unique value for a new number linked
         to a DemoDocument and to make a DemoNumber object with it. 
+        Only creates DemoNumber objects for change controlled drawings.
 
         Parameters
         ----------
@@ -1056,11 +1161,12 @@ class DemoNumber(db.Model, Serializer):
             Exception raised if document already exists in the db with the newly
             generated, unique doc_value.
         """
-        if entry_type == TypeEnum.document.value:
-            value = cls._generate_doc_value()
-            return cls._make_number(value, TypeEnum.document)
+        # if entry_type == TypeEnum.document.value:
+        #     value = cls._generate_doc_value()
+        #     return cls._make_number(value, TypeEnum.document)
 
-        elif entry_type == TypeEnum.drawing.value:
+        # elif entry_type == TypeEnum.drawing.value:
+        if entry_type == TypeEnum.drawing.value:
             if change_controlled == ChangeControlledEnum.yes.value:
                 if not user_value:
                     raise ValueError(
