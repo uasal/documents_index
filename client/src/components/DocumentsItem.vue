@@ -23,7 +23,12 @@
                 <div class="col-6">
                     <p><b>Author: </b>{{ document.author }}</p>
                     <p><b>Identifier: </b>{{ document.doc_identifier }}</p>
-                    <p><b>Number: </b>{{ document.doc_code }}</p>
+                    <p><b>Number: </b>
+                        <a v-if="document.number" :href="'/docs/' + document.number.value" target="_blank" class="d-block">{{ document.number.value }}</a>
+                    </p>
+                    <p v-if="document.aliases"><b>Other handles: </b>
+                        <a v-for="(alias, index) in document.aliases" :key="index" :href="'/docs/' + alias.value" target="_blank" class="d-block">{{ alias.value }}</a>
+                    </p>
                     <p><b>Type: </b><font-awesome-icon v-if="entryTypeIconMap[document.entry_type]" :icon="entryTypeIconMap[document.entry_type]" data-toggle="tooltip" data-placement="bottom" :title="document.entry_type" class="text-secondary" /></p>
                     <p><b>Change controlled: </b> {{ changeControlledValueMap[document.change_controlled] }}</p>
                     <p><b><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="URLInfo"/>URL: </b><font-awesome-icon v-if="document.compiled_url && document.compiled_url.toLowerCase().includes(gitLabANT)" icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="gitLabInfo"/><a :href=document.compiled_url target="_blank">{{ document.compiled_url }}</a></p>
@@ -42,87 +47,85 @@
             <p>If you think you should have access, please contact your project PI to request access.</p>
         </div>     
         
-        <!-- <div v-if="hideContent">Sorry, this page is not available or you are not authorized to view it.</div> -->
+        <div v-if="hideContent">Sorry, this page is not available or you are not authorized to view it.</div>
 
         <!-- edit document modal -->
         <div ref="editDocumentModal" class="modal fade"
             :class="{ show: activeEditDocumentModal, 'd-block': activeEditDocumentModal }" tabindex="-1" role="dialog">
             <div class="modal-dialog" role="document">
                 <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title">Update</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"
-                            @click="toggleEditDocumentModal">
+                <div class="modal-header">
+                    <h5 class="modal-title">Update</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"
+                    @click="toggleEditDocumentModal">
+                    </button>
+                </div>
+                <div class="modal-body">
+                        <div v-if="showEditFormError" class="alert alert-danger">
+                            <p class="mb-1">Please fix the following before submitting:</p>
+                            <ul class="mb-0">
+                                <li v-for="(err, idx) in editFormErrorList" :key="idx">{{ err }}</li>
+                            </ul>
+                        </div>
+                        <form>
+                    <div class="mb-3">
+                        <label for="editDocumentTitle" class="form-label">Title / Name:</label>
+                        <input type="text" class="form-control" maxlength="500" id="editDocumentTitle"
+                        v-model="editDocumentForm.title" placeholder="Enter title">
+                    </div>
+                    <div class="mb-3">
+                        <label for="editDocumentAuthor" class="form-label">Author:</label>
+                        <input type="text" class="form-control" maxlength="500" id="editDocumentAuthor"
+                        v-model="editDocumentForm.author" placeholder="Enter author">
+                    </div>
+                    <div class="mb-3">
+                        <label for="editDocumentEntryType" class="form-label"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="DisabledInfo"/>Type:</label>
+                        <select class="form-control" id="editDocumentEntryType" v-model="editDocumentForm.entry_type" disabled>
+                            <option v-for="option in entryTypeOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editDocumentChangeControlled" class="form-label"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="DisabledInfo"></font-awesome-icon>Change Controlled:</label>
+                        <select class="form-control" id="editDocumentChangeControlled" v-model="editDocumentForm.change_controlled" disabled>
+                            <option v-for="option in changeControlledOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
+                        </select>
+                    </div>
+                    <div v-if="docModal && docModal.number" class="mb-3">
+                        <label for="editDocumentDocCode" class="form-label"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="DisabledInfo"></font-awesome-icon>Number:</label>
+                        <input type="text" class="form-control mt-2" id="editDocumentDocCode" v-model="editDocumentForm.number" readonly />
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="editDocumentUrl" class="form-label"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="URLInfo"/>URL:</label>
+                        <input type="text" class="form-control" maxlength="500" id="editUrl"
+                        v-model="editDocumentForm.compiled_url" placeholder="Enter URL">
+                    </div>
+                    <div class="mb-3">
+                        <label for="editDocumentSourceUrl" class="form-label"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="sourceURLInfo"/>Source URL:</label>
+                        <input type="text" class="form-control" maxlength="500" id="editSourceUrl"
+                        v-model="editDocumentForm.source_url" placeholder="Enter source URL">
+                    </div>
+                    <div class="mb-3" v-if="superuser">
+                        <label for="editDocumentCreatedBy" class="form-label">Maintained By (superuser field):</label>
+                        <input type="text" class="form-control" id="editCreatedBy" v-model="editDocumentForm.creator_email"
+                        placeholder="Enter Maintainer Email">
+                    </div>                   
+                    <div class="mb-3">
+                        <label for="editDocumentAbstract" class="form-label">Abstract:</label>
+                        <textarea class="form-control" id="editAbstract" rows="3" v-model="editDocumentForm.abstract"
+                        placeholder="Enter abstract"></textarea>
+                    </div>
+                    <div class="btn-group" role="group">
+                        <button type="button" class="btn btn-primary btn-sm" @click="handleEditSubmit"
+                            :disabled="!builderComplete && (editDocumentForm.change_controlled === 10) && (editDocumentForm.entry_type === 'drawing')">
+                        Submit
+                        </button>
+                        <button type="button" class="btn btn-danger btn-sm" @click="handleEditCancel">
+                        Cancel
                         </button>
                     </div>
-                    <div class="modal-body">
-                        <form>
-                            <div class="mb-3">
-                                <label for="editDocumentTitle" class="form-label">Title:</label>
-                                <input type="text" class="form-control" maxlength="500" id="editDocumentTitle"
-                                    v-model="editDocumentForm.title" placeholder="Enter title">
-                            </div>
-                            <div class="mb-3">
-                                <label for="editDocumentAuthor" class="form-label">Author:</label>
-                                <input type="text" class="form-control" maxlength="500" id="editDocumentAuthor"
-                                    v-model="editDocumentForm.author" placeholder="Enter author">
-                            </div>
-                            <div class="mb-3">
-                                <label for="editDocumentDocCode" class="form-label">Doc # (optional):</label>
-                                <input type="text" class="form-control" maxlength="30" id="editDocCode"
-                                v-if="!editDocumentForm.doc_code || superuser"
-                                v-model="editDocumentForm.doc_code" placeholder="Enter document number">
-                                <input type="text" class="form-control-plaintext" maxlength="30" id="editDocCode"
-                                v-else readonly 
-                                v-model="editDocumentForm.doc_code">
-                            </div>
-                            <div class="mb-3">
-                                <label for="editDocumentEntryType" class="form-label">Type:</label>
-                                <select class="form-control" id="editDocumentEntryType" v-model="editDocumentForm.entry_type"
-                                    v-if="!editDocumentForm.doc_code || superuser">
-                                    <option v-for="option in entryTypeOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
-                                </select>
-                                <select class="form-control" id="editDocumentEntryType" v-model="editDocumentForm.entry_type"
-                                    v-else disabled>
-                                    <option v-for="option in entryTypeOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
-                                </select>
-                            </div>
-                            <div class="mb-3">
-                                <label for="editDocumentChangeControlled" class="form-label">Change Controlled:</label>
-                                <select class="form-control" id="editDocumentChangeControlled" v-model="editDocumentForm.change_controlled">
-                                <option v-for="option in changeControlledOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
-                                </select>
-                            </div>
-                            <div class="mb-3">
-                                <label for="editDocumentUrl" class="form-label"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="URLInfo"/>URL:</label>
-                                <input type="text" class="form-control" maxlength="500" id="editUrl"
-                                    v-model="editDocumentForm.compiled_url" placeholder="Enter URL">
-                            </div>
-                            <div class="mb-3">
-                                <label for="editDocumentSourceUrl" class="form-label"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="sourceURLInfo"/>Source URL:</label>
-                                <input type="text" class="form-control" maxlength="500" id="editSourceUrl"
-                                    v-model="editDocumentForm.source_url" placeholder="Enter source URL">
-                            </div>
-                            <div class="mb-3" v-if="superuser">
-                                <label for="editDocumentCreatedBy" class="form-label">Maintained By (superuser field):</label>
-                                <input type="text" class="form-control" id="editCreatedBy" v-model="editDocumentForm.creator_email"
-                                placeholder="Enter Maintainer Email">
-                            </div>                              
-                            <div class="mb-3">
-                                <label for="editDocumentAbstract" class="form-label">Abstract:</label>
-                                <textarea class="form-control" id="editAbstract" rows="3"
-                                    v-model="editDocumentForm.abstract" placeholder="Enter abstract"></textarea>
-                            </div>
-                            <div class="btn-group" role="group">
-                                <button type="button" class="btn btn-primary btn-sm" @click="handleEditSubmit">
-                                    Submit
-                                </button>
-                                <button type="button" class="btn btn-danger btn-sm" @click="handleEditCancel">
-                                    Cancel
-                                </button>
-                            </div>
-                        </form>
-                    </div>
+                    </form>
+                </div>
                 </div>
             </div>
         </div>
@@ -136,6 +139,7 @@ import axios from 'axios';
 import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import { auth } from '../firebaseConfig';
 import AlertMessage from './AlertMessage.vue';
+import DrawingCodeBuilder from './DrawingCodeBuilder.vue';
 
 const API_URL = '/api';
 // const API_URL = 'http://localhost:5001/api';
@@ -146,13 +150,77 @@ export default {
         return {
             activeEditDocumentModal: false,
             document: {},
-            admins: [],            
+            admins: [],
+            codeStepsDrawing: [
+            {
+            label: 'Category:',
+            options: [
+                { label: 'Extra-Solar Coronograph', value: 'ESC' },
+                { label: 'Widefield Context Camera', value: 'WCC' },
+                ],
+            connectorAfter: '-'
+            },
+            {
+            label: 'Development Category:',
+            options: {
+                ESC: [
+                { label: 'Flight', value: 'F' },
+                { label: 'GSE', value: 'G' },
+                { label: 'Test Development Unit / Prototype', value: 'T' },
+                ], 
+                WCC: [
+                { label: 'Flight', value: 'F' },
+                { label: 'GSE', value: 'G' },
+                { label: 'Test Development Unit / Prototype', value: 'T' },
+                ], 
+            },
+            connectorAfter: ''
+            },
+            {
+            label: 'Engineering Subset:',
+            options: {
+                ESC_F: [
+                { label: 'Assembly', value: 'A' },
+                { label: 'Part', value: 'P' },
+                { label: 'Interface Control Drawing', value: 'X' },
+                ], 
+                ESC_G: [
+                { label: 'Assembly', value: 'A' },
+                { label: 'Part', value: 'P' },
+                { label: 'Interface Control Drawing', value: 'X' },
+                ], 
+                ESC_T: [
+                { label: 'Assembly', value: 'A' },
+                { label: 'Part', value: 'P' },
+                { label: 'Interface Control Drawing', value: 'X' },
+                ], 
+                WCC_F: [
+                { label: 'Assembly', value: 'A' },
+                { label: 'Part', value: 'P' },
+                { label: 'Interface Control Drawing', value: 'X' },
+                ], 
+                WCC_G: [
+                { label: 'Assembly', value: 'A' },
+                { label: 'Part', value: 'P' },
+                { label: 'Interface Control Drawing', value: 'X' },
+                ], 
+                WCC_T: [
+                { label: 'Assembly', value: 'A' },
+                { label: 'Part', value: 'P' },
+                { label: 'Interface Control Drawing', value: 'X' },
+                ], 
+            },
+            connectorAfter: '-'
+            },
+            ],
+            builderComplete: false,
+            builderKey: 0,
             editDocumentForm: {
                 pk: '',
                 title: '',
                 author: '',
                 doc_identifier: '',
-                doc_code: '',
+                number: '',
                 entry_type: '',
                 change_controlled: '',
                 compiled_url: '',
@@ -160,6 +228,11 @@ export default {
                 creator_email: '',                
                 abstract: '',
             },
+            // Edit-form error display
+            editFormErrorList: [],
+            showEditFormError: false,
+            docModal: null,
+            DisabledInfo: 'Field can only be edited from the main Documents & Drawings page',
             URLInfo: 'The URL of the file described by the metadata in this entry.',
             sourceURLInfo: '(optional) The URL of the source components (Git repository, Power Point presentation etc.) used to compile / build the file described by the metadata in this entry.',            
             gitLabInfo: 'This URL requires the ANT VPN to be activated.',
@@ -167,7 +240,7 @@ export default {
             message: '',
             showMessage: false,
             isAuthorized: false,
-            // hideContent: false,
+            hideContent: false,
             superuser: false,
             entryTypeOptions: [],
             entryTypeIconMap: {},
@@ -177,6 +250,22 @@ export default {
     },
     components: {
         alert: AlertMessage,
+        DrawingCodeBuilder: DrawingCodeBuilder,
+    },
+    watch: {
+        'editDocumentForm.change_controlled'(newVal) {
+            // Reset only if type drawing, otherwise we don't really care
+            if (newVal === 0) {
+                this.editDocumentForm.number = this.resetEditNumber();
+            };
+
+            if (newVal === 10) {
+                this.resetDrawingCodeBuilder();
+            };
+        },
+        'editDocumentForm.entry_type'(newVal, oldVal) {
+            this.resetDrawingCodeBuilder();
+        },
     },
     computed: {
         isLoggedIn() {
@@ -240,13 +329,13 @@ export default {
                         console.error(error);
                         this.superuser = false;
                         this.isAuthorized = error.response.data.isAuthorized;
-                        // this.hideContent = !this.isAuthorized;
+                        this.hideContent = !this.isAuthorized;
                     });
             }).catch(function (error) {
                 console.log(error)
                 this.superuser = false;
                 this.isAuthorized = false;
-                // this.hideContent = true;
+                this.hideContent = true;
             });
         },
         getAdmins() {
@@ -273,18 +362,33 @@ export default {
             this.getDocument(); // initForm sets values of doc to empty, so repopulate them
         },
         handleEditSubmit() {
-            this.toggleEditDocumentModal(null);
+            // Validate required fields and show inline errors without closing the modal
+            const missing = [];
+            if (!this.editDocumentForm.title || this.editDocumentForm.title.trim() === '') missing.push('Title is required');
+            if (!this.editDocumentForm.entry_type || this.editDocumentForm.entry_type === '') missing.push('Type is required');
+            if (this.editDocumentForm.change_controlled === '' || this.editDocumentForm.change_controlled === null || this.editDocumentForm.change_controlled === undefined) missing.push('Change Controlled is required');
+            if (this.editDocumentForm.entry_type === 'drawing' && Number(this.editDocumentForm.change_controlled) === 10 && !this.builderComplete) missing.push('Drawing code must be completed to generate a number');
+            if (missing.length > 0) {
+                this.editFormErrorList = missing;
+                this.showEditFormError = true;
+                return;
+            }
+            this.showEditFormError = false;
+            this.editFormErrorList = [];
+
             const payload = {
                 title: this.editDocumentForm.title,
                 author: this.editDocumentForm.author,
-                doc_code: this.editDocumentForm.doc_code,
+                number: this.editDocumentForm.number,
                 entry_type: this.editDocumentForm.entry_type,
                 change_controlled: this.editDocumentForm.change_controlled,
                 compiled_url: this.editDocumentForm.compiled_url,
                 source_url: this.editDocumentForm.source_url,
-                creator_email: this.editDocumentForm.creator_email || this.email,                  
+                creator_email: this.editDocumentForm.creator_email || this.email,
                 abstract: this.editDocumentForm.abstract,
             };
+            // Close modal after validation passes
+            this.toggleEditDocumentModal(null);
             this.updateDocument(payload, this.editDocumentForm.doc_identifier);
         },
         initForm() {
@@ -292,19 +396,53 @@ export default {
             this.editDocumentForm.title = '';
             this.editDocumentForm.author = '';
             this.editDocumentForm.doc_identifier = '';
-            this.editDocumentForm.doc_code = '';
+            this.editDocumentForm.number = '';
             this.editDocumentForm.entry_type = '';
             this.editDocumentForm.change_controlled = '';
             this.editDocumentForm.compiled_url = '';
             this.editDocumentForm.source_url = '';
             this.editDocumentForm.creator_email = '';            
             this.editDocumentForm.abstract = '';
+            this.docModal = null;
+            this.showEditFormError = false;
+            this.editFormErrorList = [];
+        },
+        handleEditCodeComplete(code) {
+            this.editDocumentForm.number = code;
+            this.builderComplete = true;
+        },
+        handleEditPartialCodeUpdate(partialCode) {
+            this.editDocumentForm.number = partialCode;
+        },
+        handleEditCodeReset() {
+            // Reset document code on builder reset
+            this.editDocumentForm.number = this.resetEditNumber();
+            this.builderComplete = false;
+        },
+        resetDrawingCodeBuilder() {
+            this.editDocumentForm.number = this.resetEditNumber();
+            this.builderComplete = false;
+            // Change the key to force a re-render of DrawingCodeBuilder
+            this.builderKey++;
+        },
+        resetEditNumber() {
+            if (this.docModal) {
+                if ( this.editDocumentForm.entry_type === this.docModal.entry_type ) {
+                    return this.docModal.number && this.docModal.number.value || "";
+                } else {
+                    return "";
+                }
+            } else {
+                return "";
+            }
         },
         toggleEditDocumentModal(doc) {
             if (doc) {
                 this.editDocumentForm = { ...doc };
                 this.editDocumentForm.entry_type = doc.entry_type;
                 this.editDocumentForm.change_controlled = doc.change_controlled;
+                this.editDocumentForm.number = (doc.number && doc.number.value);
+                this.docModal = doc;
             }
             const body = document.querySelector('body');
             this.activeEditDocumentModal = !this.activeEditDocumentModal;
@@ -344,7 +482,7 @@ export default {
             const emailSubject = encodeURIComponent(`Teledocs Alert: Document '${doc.title}' is out of date`);
             const emailBody = encodeURIComponent(`Hi,\n\n
 This is to inform you that the document '${doc.title}' was reported as being out of date. The data currently associated with it is:\n
-Title: ${doc.title}\n
+Title / Name: ${doc.title}\n
 Author: ${doc.author}\n
 URL: ${doc.compiled_url}\n
 Source URL: ${doc.source_url}\n
@@ -364,7 +502,7 @@ Please update the entry at your earliest convenience.\n\nRegards,\nteledocs`);
             document.body.removeChild(hiddenLink);
         },
         getEntryTypeOptions() {
-            const path = `${API_URL}/entry_types`;
+            const path = `${API_URL}/../entry_types`;
             auth.currentUser.getIdToken(true).then(idToken => {
             const config = {
                 headers: { Authorization: `${idToken}` }
@@ -390,7 +528,7 @@ Please update the entry at your earliest convenience.\n\nRegards,\nteledocs`);
             });
         },
         getChangeControlledOptions() {
-            const path = `${API_URL}/change_controlled_types`;
+            const path = `${API_URL}/../change_controlled_types`;
             auth.currentUser.getIdToken(true).then(idToken => {
             const config = {
                 headers: { Authorization: `${idToken}` }

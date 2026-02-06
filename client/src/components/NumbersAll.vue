@@ -8,7 +8,7 @@
               <h1>Assigned Numbers</h1>
             </div>
             <div class="d-inline-flex float-end">
-              <a role="button" class="btn btn-primary me-4" href="/demo/" target="_blank">View Documents and Drawings</a>
+              <a role="button" class="btn btn-primary me-4" href="/" target="_blank">View Documents and Drawings</a>
             </div>
           </div>
         </div>
@@ -115,11 +115,11 @@
               <td v-if="entry.document" :style="changeControlledStyleMap[entry.document.change_controlled]">
                 <ul>
                   <li>
-                    <a :href="'/demo/docs/' + entry.value" target="_blank" class="d-block">{{ entry.value }}</a>
+                    <a :href="'/docs/' + entry.value" target="_blank" class="d-block">{{ entry.value }}</a>
                   </li>
                   
                   <li v-if="entry.document.aliases.length > 0" v-for="(alias, index) in entry.document.aliases" :key="index">
-                    <a :href="'/demo/docs/' + alias.value" target="_blank" class="d-block">{{ alias.value }}</a>
+                    <a :href="'/docs/' + alias.value" target="_blank" class="d-block">{{ alias.value }}</a>
                   </li>
                 </ul>
               </td>
@@ -127,21 +127,21 @@
 
               <!-- <td data-toggle="tooltip" data-placement="bottom" :title="entry.document.doc_identifier" style="cursor: default"
                 v-if="entry.document.doc_identifier.length > 30">
-                <a :href="'/demo/docs/' + entry.document.doc_identifier" target="_blank">{{
+                <a :href="'/docs/' + entry.document.doc_identifier" target="_blank">{{
                   truncate(entry.document.doc_identifier, 30) }}</a>
               </td>
-              <td v-else><a :href="'/demo/docs/' + entry.document.doc_identifier" target="_blank">{{ entry.document.doc_identifier }}</a></td> -->
+              <td v-else><a :href="'/docs/' + entry.document.doc_identifier" target="_blank">{{ entry.document.doc_identifier }}</a></td> -->
 
               <td v-if="entry.document" data-toggle="tooltip" data-placement="bottom" :title="entry.document.doc_identifier" style="cursor: default">
-                <a v-if="entry.document.doc_identifier.length > 30" :href="'/demo/docs/' + entry.document.doc_identifier" target="_blank" class="d-block">{{ truncate(entry.document.doc_identifier, 30) }}</a>
-                <a v-else :href="'/demo/docs/' + entry.document.doc_identifier" target="_blank" class="d-block">{{ entry.document.doc_identifier }}</a>
+                <a v-if="entry.document.doc_identifier.length > 30" :href="'/docs/' + entry.document.doc_identifier" target="_blank" class="d-block">{{ truncate(entry.document.doc_identifier, 30) }}</a>
+                <a v-else :href="'/docs/' + entry.document.doc_identifier" target="_blank" class="d-block">{{ entry.document.doc_identifier }}</a>
               </td>
               <td v-else>-</td>
 
               <td v-if="entry.document" data-toggle="tooltip" data-placement="bottom" :title="entry.document.title" style="cursor: default">
-                <a v-if="entry.document.title.length > 30" :href="'/demo/docs/' + entry.document.doc_identifier" target="_blank">{{
+                <a v-if="entry.document.title.length > 30" :href="'/docs/' + entry.document.doc_identifier" target="_blank">{{
                   truncate(entry.document.title, 30) }}</a>
-                <a v-else :href="'/demo/docs/' + entry.document.doc_identifier" target="_blank">{{ entry.document.title }}</a>
+                <a v-else :href="'/docs/' + entry.document.doc_identifier" target="_blank">{{ entry.document.title }}</a>
               </td>
               <td v-else>-</td>
 
@@ -195,8 +195,8 @@ import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import { auth } from '../firebaseConfig';
 import AlertMessage from './AlertMessage.vue';
 
-const API_URL = '/api/demo';
-// const API_URL = 'http://localhost:5001/api/demo';
+const API_URL = '/api';
+// const API_URL = 'http://localhost:5001/api';
 
 export default {
   name: 'NumbersAll',
@@ -447,7 +447,7 @@ export default {
       });
     },
     getChangeControlledOptions() {
-      const path = `${API_URL}/../change_controlled_types`;
+      const path = `${API_URL}/change_controlled_types`;
       auth.currentUser.getIdToken(true).then(idToken => {
       const config = {
         headers: { Authorization: `${idToken}` }

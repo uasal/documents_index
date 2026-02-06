@@ -3,10 +3,24 @@ import logging
 
 from flask import jsonify, request
 from flask.views import MethodView
+from sqlalchemy import select
+from sqlalchemy.orm import joinedload
 import firebase_admin
 from firebase_admin import auth
 
-from models import db, Document, TypeEnum, ChangeControlledEnum, User, Domain, get_entity, is_superuser
+from models import (
+    db,
+    Document,
+    User,
+    Domain,
+    Number,
+    TypeEnum,
+    ChangeControlledEnum,
+    NumberConfirmationRequired,
+    OutOfOrderNumber,
+    get_entity,
+    is_superuser
+)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("logger")
@@ -115,7 +129,15 @@ class AllDocuments(MethodView):
         
         # TODO need to check if this isn't a duplicate
         # TODO should validate fields
-        success = Document.create(**post_data)
+        try:
+            success = Document.create(**post_data)
+        except NumberConfirmationRequired as e:
+            return jsonify(status="confirm", suggested_value=e.suggested_value,
+                           message=str(e))
+        except OutOfOrderNumber as e:
+            return jsonify(status="out_of_order", suggested_next=e.suggested_next,
+                           message=str(e))
+
         if not success:
             response_object["status"] = "fail"
         response_object["message"] = "Document added!"
@@ -135,11 +157,72 @@ class AllDocuments(MethodView):
         entity = getattr(request, "entity")
         email = getattr(request, "email")
         logger.info(f"AllDocuments: User {email} is viewing all documents.")
-        documents = db.session.scalars(db.select(Document).order_by(Document.time_created.asc()))
+
+        documents = (
+            db.session.execute(
+                select(Document)
+                .options(
+                    # Here 'joinedload' can be replaced by "selectinload"
+                    # 'joinedload' is good if no duplicates (which should be out case), 
+                    # "selectinload" has better performance if duplicates
+                    joinedload(Document.number),
+                    joinedload(Document.aliases),
+                )
+                .order_by(Document.time_created.asc())
+            )
+            .unique()
+            .scalars()
+            .all()
+        )
 
         response_object = {
             "status": "success",
             "documents": Document.serialize_list(documents),
+            "superuser": is_superuser(entity),
+        }
+        return jsonify(response_object)
+
+
+class AllNumbers(MethodView):
+    """View class for the /documents route."""
+
+    decorators = [token_required]
+
+    def get(self):
+        """
+        Method with logic for get requests.
+        Get requests here return a list of all the Numbers in the db.
+
+        Returns
+        -------
+        json
+            Json response to get request. Contains 'status' and a
+            list of each document serialized.
+        """
+        entity = getattr(request, "entity")
+        email = getattr(request, "email")
+        logger.info(f"AllNumbers: User {email} is viewing all numbers.")
+
+        numbers = (
+            db.session.execute(
+                select(Number)
+                .options(
+                    # Here 'joinedload' can be replaced by "selectinload"
+                    # 'joinedload' is good if no duplicates (which should be out case), 
+                    # "selectinload" has better performance if duplicates
+                    joinedload(Number.document),
+                    joinedload(Number.document).joinedload(Document.aliases),
+                )
+                .order_by(Number.time_created.desc())
+            )
+            .unique()
+            .scalars()
+            .all()
+        )
+
+        response_object = {
+            "status": "success",
+            "numbers": Number.serialize_list(numbers, max_depth=4),
             "superuser": is_superuser(entity),
         }
         return jsonify(response_object)
@@ -261,7 +344,7 @@ class SingleDocument(MethodView):
 
     decorators = [token_required]
 
-    def get(self, doc_identifier):
+    def get(self, doc_string):
         """
         Method with logic for get requests.
         Get requests here returns details for document with given document id.
@@ -281,14 +364,14 @@ class SingleDocument(MethodView):
         email = getattr(request, "email")
         logger.info(f"AllDocuments: User {email} is viewing all documents.")
         response_object = {"status": "success", "superuser": is_superuser(entity)}
-        document = Document.get_by_doc_identifier(doc_identifier)
+        document = Document.get_by_doc_string(doc_string)
         if document:
             response_object["document"] = document.serialize()
         else:
             response_object["message"] = "No document found."
         return jsonify(response_object)
 
-    def put(self, doc_identifier):
+    def put(self, doc_string):
         """
         Method with logic for put requests.
         Put requests here update the column values for the document
@@ -296,7 +379,7 @@ class SingleDocument(MethodView):
 
         Parameters
         ----------
-        doc_identifier : str
+        doc_string : str
             doc_identifier of document entry to be updated.
 
         Returns
@@ -309,7 +392,7 @@ class SingleDocument(MethodView):
         response_object = {"status": "success"}
 
         post_data = request.get_json()        
-        document = Document.get_by_doc_identifier(doc_identifier)
+        document = Document.get_by_doc_string(doc_string)
         if document:
             if (document.creator_email != email) and (not entity.superuser):
                 response_object['status'] = 'fail'
@@ -327,7 +410,15 @@ class SingleDocument(MethodView):
             if not is_superuser(entity):
                 post_data.pop("creator_email", None)
             
-            success = document.update(**post_data)
+            try:
+                success = document.update(**post_data)
+            except NumberConfirmationRequired as e:
+                return jsonify(status="confirm", suggested_value=e.suggested_value,
+                               message=str(e))
+            except OutOfOrderNumber as e:
+                return jsonify(status="out_of_order", suggested_next=e.suggested_next,
+                               message=str(e))
+
             if not success:
                 response_object['status'] = 'fail'
             response_object["message"] = "Document updated!"
@@ -338,14 +429,14 @@ class SingleDocument(MethodView):
             response_object["message"] = "Document not found"
         return jsonify(response_object)
 
-    def delete(self, doc_identifier):
+    def delete(self, doc_string):
         """
         Method with logic for delete requests.
         Delete requests here delete document with given doc_identifier from the db.
 
         Parameters
         ----------
-        doc_identifier : str
+        doc_string : str
             doc_identifier of document entry to be deleted.
 
         Returns
@@ -357,7 +448,7 @@ class SingleDocument(MethodView):
         entity = getattr(request, "entity")
         response_object = {"status": "success"}
 
-        document = Document.get_by_doc_identifier(doc_identifier)
+        document = Document.get_by_doc_string(doc_string)
         if document:
             if (document.creator_email != email) and (not entity.superuser):
                 response_object['status'] = 'fail'
