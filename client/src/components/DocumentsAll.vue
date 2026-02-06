@@ -226,7 +226,7 @@
                   <button type="button" class="btn btn-warning btn-sm" @click="toggleEditDocumentModal(doc)">
                     Update
                   </button>
-                  <button v-if="!doc.number || superuser" type="button" class="btn btn-danger btn-sm" @click="handleDeleteDocument(doc)">
+                  <button type="button" class="btn btn-danger btn-sm" @click="handleDeleteDocument(doc)">
                     Delete
                   </button>
                 </div>
@@ -427,23 +427,13 @@
               </div>
               <div class="mb-3">
                 <label for="editDocumentEntryType" class="form-label"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="TypeInfo"/>Type:</label>
-                <select class="form-control" id="editDocumentEntryType" v-model="editDocumentForm.entry_type"
-                  v-if="!editDocumentForm.number || superuser">
-                  <option v-for="option in entryTypeOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
-                </select>
-                <select class="form-control" id="editDocumentEntryType" v-model="editDocumentForm.entry_type"
-                  v-else disabled>
+                <select class="form-control" id="editDocumentEntryType" v-model="editDocumentForm.entry_type" :disabled="editDocumentForm.number!=''">
                   <option v-for="option in entryTypeOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
                 </select>
               </div>
               <div class="mb-3">
                 <label for="editDocumentChangeControlled" class="form-label"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="CCInfo"/>Change Controlled:</label>
-                <select class="form-control" id="editDocumentChangeControlled" v-model="editDocumentForm.change_controlled"
-                  v-if="!editDocumentForm.number || superuser">
-                  <option v-for="option in changeControlledOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
-                </select>
-                <select class="form-control" id="editDocumentChangeControlled" v-model="editDocumentForm.change_controlled"
-                v-else disabled>
+                <select class="form-control" id="editDocumentChangeControlled" v-model="editDocumentForm.change_controlled" :disabled="editDocumentForm.number!=''">
                   <option v-for="option in changeControlledOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
                 </select>
               </div>
@@ -462,11 +452,7 @@
                   :key="builderKey"
                 />
 
-                <div class="mt-2 ps-3" v-if="builderComplete && activeEditDocumentModal">
-                  <label class="form-label">Optional 3-digit number of an existing entry (will increment config):</label>
-                  <input type="text" class="form-control" v-model="editDocumentForm.provided_number" maxlength="3" placeholder="e.g. 001" />
-                </div>
-                <input type="text" class="form-control mt-2" id="editDocumentDocCode" v-model="editDocumentForm.number" readonly />
+                <input type="text" class="form-control mt-2" id="editDocumentDocCode" v-model="editDocumentForm.number" readonly :disabled="(editDocumentForm.change_controlled === 10) && (editDocumentForm.entry_type === 'drawing')" />
               </div>
               <div v-else-if="(editDocumentForm.change_controlled === 10) && (editDocumentForm.entry_type === 'drawing')" class="mb-3">
                 <label for="editDocumentDocCode" class="form-label">New Number:</label>
@@ -482,6 +468,10 @@
                   :key="builderKey"
                 />
 
+                <div class="mt-2 ps-5" style="width: 90%" v-if="builderComplete && activeEditDocumentModal">
+                  <label class="form-label">Optional 3-digit number of an existing entry (will increment config):</label>
+                  <input type="text" class="form-control" v-model="editDocumentForm.provided_number" maxlength="3" placeholder="e.g. 001" />
+                </div>
                 <input type="text" class="form-control mt-2" id="editDocumentDocCode" v-model="editDocumentForm.number" readonly />
               </div>
               
@@ -507,7 +497,7 @@
               </div>
               <div class="btn-group" role="group">
                 <button type="button" class="btn btn-primary btn-sm" @click="handleEditSubmit"
-                      :disabled="!builderComplete && (editDocumentForm.change_controlled === 10) && (editDocumentForm.entry_type === 'drawing')">
+                      :disabled="(editDocumentForm.change_controlled === 10) && (editDocumentForm.entry_type === 'drawing') && !builderComplete && !editDocumentForm.number">
                   Submit
                 </button>
                 <button type="button" class="btn btn-danger btn-sm" @click="handleEditCancel">
@@ -541,6 +531,26 @@
     </div>
   </div>
   <div v-if="confirmModalActive" class="modal-backdrop fade show"></div>
+
+  <!-- Delete Confirmation Modal -->
+  <div v-if="activeDeleteDocumentModal" class="modal fade show d-block" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Confirm Delete</h5>
+          <button type="button" class="btn-close" aria-label="Close" @click="cancelDeleteDocument"></button>
+        </div>
+        <div class="modal-body">
+          <p>{{ deleteMessage }}</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" @click="cancelDeleteDocument">Cancel</button>
+          <button type="button" class="btn btn-danger" @click="confirmDeleteDocument">Delete</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div v-if="activeDeleteDocumentModal" class="modal-backdrop fade show"></div>
 </template>
 
 <script>
@@ -706,6 +716,10 @@ export default {
       confirmModalType: '',
       confirmPendingPayload: null,
       confirmPendingDocID: null,
+      // Delete-confirmation modal state
+      activeDeleteDocumentModal: false,
+      deleteTarget: null,
+      deleteMessage: '',
     };
   },
   components: {
@@ -1051,8 +1065,18 @@ export default {
       this.addDocument(payload);
       this.initForm();
     },
-    handleDeleteDocument(document) {
-      this.removeDocument(document.doc_identifier);
+    handleDeleteDocument(doc) {
+      // For change-controlled entries open a styled confirmation modal.
+      const isChangeControlled = Number(doc.change_controlled) === 10;
+      if (isChangeControlled) {
+        this.deleteTarget = doc.doc_identifier;
+        this.deleteMessage = 'WARNING: This entry is marked as change-controlled. Deleting it may affect linked numbers and audit trails. Are you sure you want to proceed?';
+        const body = window.document.querySelector('body');
+        this.activeDeleteDocumentModal = true;
+        body.classList.add('modal-open');
+        return;
+      }
+      this.removeDocument(doc.doc_identifier);
     },
     handleEditCancel() {
       this.toggleEditDocumentModal(null);
@@ -1065,7 +1089,7 @@ export default {
       if (!this.editDocumentForm.title || this.editDocumentForm.title.trim() === '') missing.push('Title is required');
       if (!this.editDocumentForm.entry_type || this.editDocumentForm.entry_type === '') missing.push('Type is required');
       if (this.editDocumentForm.change_controlled === '' || this.editDocumentForm.change_controlled === null || this.editDocumentForm.change_controlled === undefined) missing.push('Change Controlled is required');
-      if (this.editDocumentForm.entry_type === 'drawing' && Number(this.editDocumentForm.change_controlled) === 10 && !this.builderComplete) missing.push('Drawing code must be completed to generate a number');
+      if (this.editDocumentForm.entry_type === 'drawing' && Number(this.editDocumentForm.change_controlled) === 10 && !this.builderComplete && !this.editDocumentForm.number) missing.push('Drawing code must be completed to generate a number');
       if (missing.length > 0) {
         this.editFormErrorList = missing;
         this.showEditFormError = true;
@@ -1150,6 +1174,25 @@ export default {
       }).catch(function (error) {
         console.log(error)
       });
+    },
+
+    confirmDeleteDocument() {
+      // Called when user confirms deletion in modal
+      this.removeDocument(this.deleteTarget);
+      this.deleteTarget = null;
+      this.deleteMessage = '';
+      this.activeDeleteDocumentModal = false;
+      const body = document.querySelector('body');
+      body.classList.remove('modal-open');
+    },
+
+    cancelDeleteDocument() {
+      // Close modal without deleting
+      this.deleteTarget = null;
+      this.deleteMessage = '';
+      this.activeDeleteDocumentModal = false;
+      const body = document.querySelector('body');
+      body.classList.remove('modal-open');
     },
     handleAddCodeComplete(code) {
       const stub = code ? code.replace(/^-+|-+$/g,'') : '';
@@ -1470,7 +1513,7 @@ Please update the entry at your earliest convenience.\n\nRegards,\nteledocs`);
       });
     },
     getEntryTypeOptions() {
-      const path = `${API_URL}/../entry_types`;
+      const path = `${API_URL}/entry_types`;
       auth.currentUser.getIdToken(true).then(idToken => {
       const config = {
         headers: { Authorization: `${idToken}` }
@@ -1497,7 +1540,7 @@ Please update the entry at your earliest convenience.\n\nRegards,\nteledocs`);
       });
     },    
     getChangeControlledOptions() {
-      const path = `${API_URL}/../change_controlled_types`;
+      const path = `${API_URL}/change_controlled_types`;
       auth.currentUser.getIdToken(true).then(idToken => {
       const config = {
         headers: { Authorization: `${idToken}` }

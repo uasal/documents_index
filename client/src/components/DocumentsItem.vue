@@ -80,18 +80,52 @@
                     </div>
                     <div class="mb-3">
                         <label for="editDocumentEntryType" class="form-label"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="DisabledInfo"/>Type:</label>
-                        <select class="form-control" id="editDocumentEntryType" v-model="editDocumentForm.entry_type" disabled>
+                        <select class="form-control" id="editDocumentEntryType" v-model="editDocumentForm.entry_type" :disabled="editDocumentForm.number!=''">
                             <option v-for="option in entryTypeOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
                         </select>
                     </div>
                     <div class="mb-3">
                         <label for="editDocumentChangeControlled" class="form-label"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="DisabledInfo"></font-awesome-icon>Change Controlled:</label>
-                        <select class="form-control" id="editDocumentChangeControlled" v-model="editDocumentForm.change_controlled" disabled>
+                        <select class="form-control" id="editDocumentChangeControlled" v-model="editDocumentForm.change_controlled" :disabled="editDocumentForm.number!=''">
                             <option v-for="option in changeControlledOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
                         </select>
                     </div>
+                            
                     <div v-if="docModal && docModal.number" class="mb-3">
-                        <label for="editDocumentDocCode" class="form-label"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="DisabledInfo"></font-awesome-icon>Number:</label>
+                        <label for="editDocumentDocCode" class="form-label">Number:</label>
+
+                        <!-- This should only be shown if user made the entry change controlled of type "drawing" and 
+                        either no number is already linked or, if it is, it's a document-type number-->
+                        <!-- Adding key ensures full re-render on reset -->
+                        <DrawingCodeBuilder
+                        v-if="(editDocumentForm.change_controlled === 10) && (editDocumentForm.entry_type === 'drawing') && docModal.number.entry_type === 'document'"
+                        :initialSteps="codeStepsDrawing"
+                        @codeComplete="handleEditCodeComplete"
+                        @resetCode="handleEditCodeReset"
+                        @partialCodeUpdate="handleEditPartialCodeUpdate"
+                        :key="builderKey"
+                        />
+
+                        <input type="text" class="form-control mt-2" id="editDocumentDocCode" v-model="editDocumentForm.number" readonly :disabled="(editDocumentForm.change_controlled === 10) && (editDocumentForm.entry_type === 'drawing')" />
+                    </div>
+                    <div v-else-if="(editDocumentForm.change_controlled === 10) && (editDocumentForm.entry_type === 'drawing')" class="mb-3">
+                        <label for="editDocumentDocCode" class="form-label">New Number:</label>
+
+                        <!-- This should only be shown if user made the entry change controlled of type "drawing" and 
+                        either no number is already linked or, if it is, it's a document-type number-->
+                        <!-- Adding key ensures full re-render on reset -->
+                        <DrawingCodeBuilder
+                        :initialSteps="codeStepsDrawing"
+                        @codeComplete="handleEditCodeComplete"
+                        @resetCode="handleEditCodeReset"
+                        @partialCodeUpdate="handleEditPartialCodeUpdate"
+                        :key="builderKey"
+                        />
+
+                        <div class="mt-2 ps-5" style="width: 90%" v-if="builderComplete && activeEditDocumentModal">
+                            <label class="form-label">Optional 3-digit number of an existing entry (will increment config):</label>
+                            <input type="text" class="form-control" v-model="editDocumentForm.provided_number" maxlength="3" placeholder="e.g. 001" />
+                        </div>
                         <input type="text" class="form-control mt-2" id="editDocumentDocCode" v-model="editDocumentForm.number" readonly />
                     </div>
                     
@@ -117,7 +151,7 @@
                     </div>
                     <div class="btn-group" role="group">
                         <button type="button" class="btn btn-primary btn-sm" @click="handleEditSubmit"
-                            :disabled="!builderComplete && (editDocumentForm.change_controlled === 10) && (editDocumentForm.entry_type === 'drawing')">
+                            :disabled="(editDocumentForm.change_controlled === 10) && (editDocumentForm.entry_type === 'drawing') && !builderComplete && !editDocumentForm.number">
                         Submit
                         </button>
                         <button type="button" class="btn btn-danger btn-sm" @click="handleEditCancel">
@@ -367,7 +401,7 @@ export default {
             if (!this.editDocumentForm.title || this.editDocumentForm.title.trim() === '') missing.push('Title is required');
             if (!this.editDocumentForm.entry_type || this.editDocumentForm.entry_type === '') missing.push('Type is required');
             if (this.editDocumentForm.change_controlled === '' || this.editDocumentForm.change_controlled === null || this.editDocumentForm.change_controlled === undefined) missing.push('Change Controlled is required');
-            if (this.editDocumentForm.entry_type === 'drawing' && Number(this.editDocumentForm.change_controlled) === 10 && !this.builderComplete) missing.push('Drawing code must be completed to generate a number');
+            if (this.editDocumentForm.entry_type === 'drawing' && Number(this.editDocumentForm.change_controlled) === 10 && !this.builderComplete && !this.editDocumentForm.number) missing.push('Drawing code must be completed to generate a number');
             if (missing.length > 0) {
                 this.editFormErrorList = missing;
                 this.showEditFormError = true;
@@ -502,7 +536,7 @@ Please update the entry at your earliest convenience.\n\nRegards,\nteledocs`);
             document.body.removeChild(hiddenLink);
         },
         getEntryTypeOptions() {
-            const path = `${API_URL}/../entry_types`;
+            const path = `${API_URL}/entry_types`;
             auth.currentUser.getIdToken(true).then(idToken => {
             const config = {
                 headers: { Authorization: `${idToken}` }
@@ -528,7 +562,7 @@ Please update the entry at your earliest convenience.\n\nRegards,\nteledocs`);
             });
         },
         getChangeControlledOptions() {
-            const path = `${API_URL}/../change_controlled_types`;
+            const path = `${API_URL}/change_controlled_types`;
             auth.currentUser.getIdToken(true).then(idToken => {
             const config = {
                 headers: { Authorization: `${idToken}` }

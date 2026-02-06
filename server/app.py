@@ -20,7 +20,7 @@ def create_app():
     app.config.from_object(__name__)
 
     logger.info("Instantiating db with Flask app.")
-    # app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///docs_main.db"
+    # app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///docs.db"
 
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
     app.config["SQLALCHEMY_DATABASE_URI"] = DB_URI
