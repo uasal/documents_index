@@ -791,7 +791,7 @@ export default {
             const title = doc.title ? doc.title.toString().toLowerCase() : doc.title;
             const author = doc.author ? doc.author.toString().toLowerCase() : doc.author;
             const doc_identifier = doc.doc_identifier ? doc.doc_identifier.toString().toLowerCase() : doc.doc_identifier;
-            const number = (doc.number && doc.number.value) ? doc.number.value.toString().toLowerCase() : doc.number.value;
+            const number = (doc.number && doc.number.value) ? doc.number.value.toString().toLowerCase() : '';
             const entry_type = doc.entry_type ? doc.entry_type.toString().toLowerCase() : doc.entry_type;
             const compiled_url = doc.compiled_url ? doc.compiled_url.toString().toLowerCase() : doc.compiled_url;
             const source_url = doc.source_url ? doc.source_url.toString().toLowerCase() : doc.source_url;

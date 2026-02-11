@@ -258,11 +258,11 @@ export default {
           const searchTerm = this.filter.toLowerCase();
 
           filtered = filtered.filter(nb => {
-            const title = nb.document.title ? nb.document.title.toString().toLowerCase() : '';
-            const author = nb.document.author ? nb.document.author.toString().toLowerCase() : '';
-            const doc_identifier = nb.document.doc_identifier ? nb.document.doc_identifier.toString().toLowerCase() : '';
+            const title = nb.document && nb.document.title ? nb.document.title.toString().toLowerCase() : '';
+            const author = nb.document && nb.document.author ? nb.document.author.toString().toLowerCase() : '';
+            const doc_identifier = nb.document && nb.document.doc_identifier ? nb.document.doc_identifier.toString().toLowerCase() : '';
             const number = nb.value ? nb.value.toString().toLowerCase() : '';
-            const creator_email = nb.document.creator_email ? nb.document.creator_email.toString().toLowerCase() : '';
+            const creator_email = nb.document && nb.document.creator_email ? nb.document.creator_email.toString().toLowerCase() : '';
 
             // Check aliases
             const foundInAliases = nb.document && nb.document.aliases && nb.document.aliases.some(alias => {
@@ -290,7 +290,7 @@ export default {
               // Check if string in associated number
               if (value.includes(searchTerm)) {
                 return true;
-              } else if (nb.document.aliases && nb.document.aliases.length > 0) {
+              } else if (nb.document && nb.document.aliases && nb.document.aliases.length > 0) {
                 // Check aliases for the number
                 return nb.document.aliases.some(alias => {
                   const aliasValue = alias.value ? alias.value.toString().toLowerCase() : '';
