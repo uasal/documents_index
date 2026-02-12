@@ -7,8 +7,9 @@
             <div class="d-inline-flex float-start">
               <h1>Documents</h1>
             </div>
-            <div class="d-inline-flex float-end" v-if="superuser">
-              <a role="button" class="btn btn-primary" href="collaborators" target="_blank">Edit collaborators</a>
+            <div class="d-inline-flex float-end">
+              <a role="button" class="btn btn-primary" href="/numbers" target="_blank">View Assigned Numbers</a>
+              <a v-if="superuser" role="button" class="btn btn-primary ms-4" href="/collaborators" target="_blank">Edit collaborators</a>
             </div>
           </div>
         </div>
@@ -16,7 +17,7 @@
         <div class="row">
           <p>Hello, {{ username }}, you are logged in with the account {{ email }}</p>
           <p>Add a new document using the button below. You can edit or delete documents you have added.</p>
-          <p>To see all details related to a document click on its Title or its Doc Identifier,
+          <p>To see all details related to a document click on its Title / Name or its Doc Identifier,
             or, for a given Doc Identifier, add "/docs/&lt;doc_identifier&gt;" to the current URL.</p>
           <p>If you encounter a problem, please contact one of teledoc's admins at:
             <span v-for="(admin, index) in admins" :key="index">
@@ -33,9 +34,9 @@
           <button type="button" class="btn btn-primary btn-sm" @click="toggleAddDocumentModal">
             Add Document
           </button>
-          <button type="button" class="btn btn-primary btn-sm ms-4" @click="toggleUploadFileModal">
+          <!-- <button type="button" class="btn btn-primary btn-sm ms-4" @click="toggleUploadFileModal">
             Upload File
-          </button>
+          </button> -->
 
           <!-- Filter toggle button -->
           <button v-if="show_table" type="button" class="btn btn-primary btn-sm ms-4" :title="filterButtonText" @click="toggleAdvancedFilter">
@@ -59,7 +60,7 @@
             <div class="row row-cols-auto">
               <div class="col mb-3">
                 <!-- <label for="columnFiltersTitle" class="form-label">Title:</label> -->
-                <input type="text" class="form-control" id="columnFiltersTitle" v-model="columnFilters.title" placeholder="Filter by Title">           
+                <input type="text" class="form-control" id="columnFiltersTitle" v-model="columnFilters.title" placeholder="Filter by Title / Name">           
               </div>          
               <div class="col mb-3">
                 <!-- <label for="columnFiltersAuthor" class="form-label">Author:</label> -->
@@ -71,7 +72,7 @@
               </div>             
               <div class="col mb-3">
                 <!-- <label for="columnFiltersDocNb" class="form-label">Doc #:</label> -->
-                <input type="text" class="form-control" id="columnFiltersDocNb" v-model="columnFilters.doc_code" placeholder="Filter by #">
+                <input type="text" class="form-control" id="columnFiltersDocNb" v-model="columnFilters.number" placeholder="Filter by #">
               </div>             
               <div class="col mb-3">
                 <select class="form-control" id="columnFiltersEntryType" v-model="columnFilters.entry_type">
@@ -115,7 +116,7 @@
         <table class="table table-hover" v-if="show_table">
           <thead>
             <tr>
-              <th @click='sortColumn("title")' style="min-width: 10%;" scope="col">Title
+              <th @click='sortColumn("title")' style="min-width: 10%;" scope="col">Title / Name
                 <font-awesome-icon icon="fa-solid fa-sort-up" style="vertical-align: bottom" v-if="this.sortBy=='title' && this.sortOrder==1"/>
                 <font-awesome-icon icon="fa-solid fa-sort-down" style="vertical-align: top" v-if="this.sortBy=='title' && this.sortOrder==-1"/>
               </th>
@@ -127,9 +128,9 @@
                 <font-awesome-icon icon="fa-solid fa-sort-up" style="vertical-align: bottom" v-if="this.sortBy=='doc_identifier' && this.sortOrder==1"/>
                 <font-awesome-icon icon="fa-solid fa-sort-down" style="vertical-align: top" v-if="this.sortBy=='doc_identifier' && this.sortOrder==-1"/>                
               </th>
-              <th @click='sortColumn("doc_code")' style="min-width: 10%;" scope="col">Doc #
-                <font-awesome-icon icon="fa-solid fa-sort-up" style="vertical-align: bottom" v-if="this.sortBy=='doc_code' && this.sortOrder==1"/>
-                <font-awesome-icon icon="fa-solid fa-sort-down" style="vertical-align: top" v-if="this.sortBy=='doc_code' && this.sortOrder==-1"/>                
+              <th @click='sortColumn("number")' style="min-width: 15%;" scope="col">Doc #
+                <font-awesome-icon icon="fa-solid fa-sort-up" style="vertical-align: bottom" v-if="this.sortBy=='number' && this.sortOrder==1"/>
+                <font-awesome-icon icon="fa-solid fa-sort-down" style="vertical-align: top" v-if="this.sortBy=='number' && this.sortOrder==-1"/>                
               </th>
               <th @click='sortColumn("entry_type")' style="min-width: 5%;" scope="col">Type
                 <font-awesome-icon icon="fa-solid fa-sort-up" style="vertical-align: bottom" v-if="this.sortBy=='entry_type' && this.sortOrder==1"/>
@@ -158,10 +159,10 @@
             <tr v-for="(doc, index) in filteredDocuments" :key="index" :style="changeControlledStyleMap[doc.change_controlled]">
               <td data-toggle="tooltip" data-placement="bottom" :title="doc.title" style="cursor: default"
                 v-if="doc.title.length > 30">
-                <a :href="'docs/' + doc.doc_identifier" target="_blank">{{
+                <a :href="'/docs/' + doc.doc_identifier" target="_blank">{{
                   truncate(doc.title, 30) }}</a>
               </td>
-              <td v-else><a :href="'docs/' + doc.doc_identifier" target="_blank">{{ doc.title }}</a></td>
+              <td v-else><a :href="'/docs/' + doc.doc_identifier" target="_blank">{{ doc.title }}</a></td>
 
               <td data-toggle="tooltip" data-placement="bottom" :title="doc.author" style="cursor: default"
                 v-if="doc.author.length > 30">{{ truncate(doc.author, 30) }}</td>
@@ -169,15 +170,33 @@
 
               <td data-toggle="tooltip" data-placement="bottom" :title="doc.doc_identifier" style="cursor: default"
                 v-if="doc.doc_identifier.length > 30">
-                <a :href="'docs/' + doc.doc_identifier" target="_blank">{{
+                <a :href="'/docs/' + doc.doc_identifier" target="_blank">{{
                   truncate(doc.doc_identifier, 30) }}</a>
               </td>
-              <td v-else><a :href="'docs/' + doc.doc_identifier" target="_blank">{{ doc.doc_identifier }}</a></td>
+              <td v-else><a :href="'/docs/' + doc.doc_identifier" target="_blank">{{ doc.doc_identifier }}</a></td>
 
-              <td data-toggle="tooltip" data-placement="bottom" :title="doc.doc_code" style="cursor: default"
-                v-if="doc.doc_code.length > 30">{{ truncate(doc.doc_code, 30) }}</td>
-              <td v-else>{{ doc.doc_code }}</td>
-
+              <td v-if="doc.number" data-toggle="tooltip" data-placement="bottom" :title="doc.number" style="cursor: default">
+                <ul>
+                  <li>
+                    <a v-if="(doc.number.value.length > 30)" :href="'/docs/' + doc.number.value" target="_blank" class="d-block">{{ truncate(doc.number.value, 30) }}</a>
+                    <a v-else :href="'/docs/' + doc.number.value" target="_blank" class="d-block">{{ doc.number.value }}</a>
+                  </li>
+                  
+                  <!-- No truncation for aliases, pretty awkward to solve. Will revisit if it becomes a problem -->
+                  <li v-if="doc.aliases.length > 0">
+                    <a v-for="(alias, index) in doc.aliases" :key="index" :href="'/docs/' + alias.value" target="_blank" class="d-block">{{ alias.value }}</a>
+                  </li>
+                </ul>
+              </td>
+              <td v-else>
+                <ul>
+                  <!-- No truncation for aliases, pretty awkward to solve. Will revisit if it becomes a problem -->
+                  <li v-if="doc.aliases.length > 0">
+                    <a v-for="(alias, index) in doc.aliases" :key="index" :href="'demo/docs/' + alias.value" target="_blank" class="d-block">{{ alias.value }}</a>
+                  </li>
+                </ul>
+              </td>
+              
               <td><font-awesome-icon v-if="entryTypeIconMap[doc.entry_type]" :icon="entryTypeIconMap[doc.entry_type]" data-toggle="tooltip" data-placement="bottom" :title="doc.entry_type" class="text-secondary" /></td>
 
               <td>
@@ -207,7 +226,7 @@
                   <button type="button" class="btn btn-warning btn-sm" @click="toggleEditDocumentModal(doc)">
                     Update
                   </button>
-                  <button v-if="!doc.doc_code || superuser" type="button" class="btn btn-danger btn-sm" @click="handleDeleteDocument(doc)">
+                  <button type="button" class="btn btn-danger btn-sm" @click="handleDeleteDocument(doc)">
                     Delete
                   </button>
                 </div>
@@ -230,7 +249,7 @@
         <h3>Sorry, you are not authorized to view this page.</h3>
         <p>If you think you should have access, please contact your project PI to request access.</p>
       </div>    
-      <!-- <div v-if="hideContent">Sorry, this page is not available or you are not authorized to view it.</div> -->
+      <div v-if="hideContent">Sorry, this page is not available or you are not authorized to view it.</div>
     </div>
 
     <!-- add new document modal -->
@@ -245,11 +264,18 @@
             </button>
           </div>
           <div class="modal-body">
+            <div v-if="showAddFormError" class="alert alert-danger">
+              <p class="mb-1">Please fix the following errors before submitting:</p>
+              <ul class="mb-0">
+                <li v-for="(err, idx) in addFormErrorList" :key="idx">{{ err }}</li>
+              </ul>
+            </div>
             <form>
               <div class="mb-3">
-                <label for="addDocumentTitle" class="form-label">Title:</label>
-                <input type="text" class="form-control" id="addDocumentTitle" v-model="addDocumentForm.title"
+                <label for="addDocumentTitle" class="form-label">Title / Name: <span class="text-danger">*</span></label>
+                <input type="text" :class="['form-control', { 'is-invalid': addFormTitleMissing }]" id="addDocumentTitle" v-model="addDocumentForm.title"
                   placeholder="Enter title">
+                <div v-if="addFormTitleMissing" class="form-text text-danger">This field is required.</div>
               </div>
               <div class="mb-3">
                 <label for="addDocumentAuthor" class="form-label">Author:</label>
@@ -257,21 +283,34 @@
                   placeholder="Enter author">
               </div>
               <div class="mb-3">
-                <label for="addDocumentDocCode" class="form-label">Doc # (optional):</label>
-                <input type="text" class="form-control" id="addDocCode" v-model="addDocumentForm.doc_code"
-                  placeholder="Enter document code">
-              </div>
-              <div class="mb-3">
-                <label for="addDocumentEntryType" class="form-label">Type:</label>
-                <select class="form-control" id="addEntryType" v-model="addDocumentForm.entry_type">
+                <label for="addDocumentEntryType" class="form-label"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="TypeInfo"/>Type: <span class="text-danger">*</span></label>
+                <select :class="['form-control', { 'is-invalid': addFormEntryTypeMissing }]" id="addEntryType" v-model="addDocumentForm.entry_type">
                   <option v-for="option in entryTypeOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
                 </select>
+                <div v-if="addFormEntryTypeMissing" class="form-text text-danger">This field is required.</div>
               </div>
               <div class="mb-3">
-                <label for="addDocumentChangeControlled" class="form-label">Change Controlled:</label>
-                <select class="form-control" id="addDocumentChangeControlled" v-model="addDocumentForm.change_controlled">
+                <label for="addDocumentChangeControlled" class="form-label"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="CCInfo"/>Change Controlled: <span class="text-danger">*</span></label>
+                <select :class="['form-control', { 'is-invalid': addFormChangeControlledMissing }]" id="addDocumentChangeControlled" v-model="addDocumentForm.change_controlled">
                   <option v-for="option in changeControlledOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
                 </select>
+                <div v-if="addFormChangeControlledMissing" class="form-text text-danger">This field is required.</div>
+              </div>
+              <div class="mb-3" v-if="(addDocumentForm.change_controlled === 10) && (addDocumentForm.entry_type === 'drawing')">
+                <label for="addDocumentDocCode" class="form-label">New Number:</label>
+                <!-- Adding key ensures full re-render on reset -->
+                <DrawingCodeBuilder
+                  :initialSteps="codeStepsDrawing"
+                  @codeComplete="handleAddCodeComplete"
+                  @resetCode="handleAddCodeReset"
+                  @partialCodeUpdate="handleAddPartialCodeUpdate"
+                  :key="builderKey"
+                />
+                <div class="mt-2 ps-5" style="width: 90%" v-if="builderComplete && activeAddDocumentModal">
+                  <label class="form-label">Optional 3-digit number of an existing entry (will increment config):</label>
+                  <input type="text" class="form-control" v-model="addDocumentForm.provided_number" maxlength="3" placeholder="e.g. 001" />
+                </div>
+                <input type="text" class="form-control mt-2" id="addDocumentDocCode" v-model="addDocumentForm.number" readonly />
               </div>
               <div class="mb-3">
                 <label for="addDocumentUrl" class="form-label"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="URLInfo"/>URL:</label>
@@ -294,7 +333,8 @@
                   placeholder="Enter abstract"></textarea>
               </div>
               <div class="btn-group" role="group">
-                <button type="button" class="btn btn-primary btn-sm" @click="handleAddSubmit">
+                <button type="button" class="btn btn-primary btn-sm" @click="handleAddSubmit"
+                      :disabled="!builderComplete && (addDocumentForm.change_controlled === 10) && (addDocumentForm.entry_type === 'drawing')">
                   Submit
                 </button>
                 <button type="button" class="btn btn-danger btn-sm" @click="handleAddReset">
@@ -309,7 +349,7 @@
     <div v-if="activeAddDocumentModal" class="modal-backdrop fade show"></div>
 
     <!-- add documents via file upload modal -->
-    <div ref="uploadFileModal" class="modal fade"
+    <!-- <div ref="uploadFileModal" class="modal fade"
       :class="{ show: activeUploadFileModal, 'd-block': activeUploadFileModal }" tabindex="-1" role="dialog">
       <div class="modal-dialog modal-lg" role="document">
         <div class="modal-content">
@@ -354,7 +394,7 @@
         </div>
       </div>
     </div>
-    <div v-if="activeUploadFileModal" class="modal-backdrop fade show"></div>
+    <div v-if="activeUploadFileModal" class="modal-backdrop fade show"></div> -->
 
     <!-- edit document modal -->
     <div ref="editDocumentModal" class="modal fade"
@@ -368,9 +408,15 @@
             </button>
           </div>
           <div class="modal-body">
+            <div v-if="showEditFormError" class="alert alert-danger">
+              <p class="mb-1">Please fix the following errors before submitting:</p>
+              <ul class="mb-0">
+                <li v-for="(err, idx) in editFormErrorList" :key="idx">{{ err }}</li>
+              </ul>
+            </div>
             <form>
               <div class="mb-3">
-                <label for="editDocumentTitle" class="form-label">Title:</label>
+                <label for="editDocumentTitle" class="form-label">Title / Name:</label>
                 <input type="text" class="form-control" maxlength="500" id="editDocumentTitle"
                   v-model="editDocumentForm.title" placeholder="Enter title">
               </div>
@@ -380,31 +426,55 @@
                   v-model="editDocumentForm.author" placeholder="Enter author">
               </div>
               <div class="mb-3">
-                <label for="editDocumentDocCode" class="form-label">Doc # (optional):</label>
-                <input type="text" class="form-control" maxlength="30" id="editDocCode"
-                  v-if="!editDocumentForm.doc_code || superuser"
-                  v-model="editDocumentForm.doc_code" placeholder="Enter document code">
-                <input type="text" class="form-control-plaintext" maxlength="30" id="editDocCode"
-                  v-else readonly 
-                  v-model="editDocumentForm.doc_code">
-              </div>
-              <div class="mb-3">
-                <label for="editDocumentEntryType" class="form-label">Type:</label>
-                <select class="form-control" id="editDocumentEntryType" v-model="editDocumentForm.entry_type"
-                  v-if="!editDocumentForm.doc_code || superuser">
-                  <option v-for="option in entryTypeOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
-                </select>
-                <select class="form-control" id="editDocumentEntryType" v-model="editDocumentForm.entry_type"
-                  v-else disabled>
+                <label for="editDocumentEntryType" class="form-label"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="TypeInfo"/>Type:</label>
+                <select class="form-control" id="editDocumentEntryType" v-model="editDocumentForm.entry_type" :disabled="editDocumentForm.number!=''">
                   <option v-for="option in entryTypeOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
                 </select>
               </div>
               <div class="mb-3">
-                <label for="editDocumentChangeControlled" class="form-label">Change Controlled:</label>
-                <select class="form-control" id="editDocumentChangeControlled" v-model="editDocumentForm.change_controlled">
+                <label for="editDocumentChangeControlled" class="form-label"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="CCInfo"/>Change Controlled:</label>
+                <select class="form-control" id="editDocumentChangeControlled" v-model="editDocumentForm.change_controlled" :disabled="editDocumentForm.number!=''">
                   <option v-for="option in changeControlledOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
                 </select>
               </div>
+              <div v-if="docModal && docModal.number" class="mb-3">
+                <label for="editDocumentDocCode" class="form-label">Number:</label>
+
+                <!-- This should only be shown if user made the entry change controlled of type "drawing" and 
+                  either no number is already linked or, if it is, it's a document-type number-->
+                  <!-- Adding key ensures full re-render on reset -->
+                <DrawingCodeBuilder
+                  v-if="(editDocumentForm.change_controlled === 10) && (editDocumentForm.entry_type === 'drawing') && docModal.number.entry_type === 'document'"
+                  :initialSteps="codeStepsDrawing"
+                  @codeComplete="handleEditCodeComplete"
+                  @resetCode="handleEditCodeReset"
+                  @partialCodeUpdate="handleEditPartialCodeUpdate"
+                  :key="builderKey"
+                />
+
+                <input type="text" class="form-control mt-2" id="editDocumentDocCode" v-model="editDocumentForm.number" readonly :disabled="(editDocumentForm.change_controlled === 10) && (editDocumentForm.entry_type === 'drawing')" />
+              </div>
+              <div v-else-if="(editDocumentForm.change_controlled === 10) && (editDocumentForm.entry_type === 'drawing')" class="mb-3">
+                <label for="editDocumentDocCode" class="form-label">New Number:</label>
+
+                <!-- This should only be shown if user made the entry change controlled of type "drawing" and 
+                  either no number is already linked or, if it is, it's a document-type number-->
+                  <!-- Adding key ensures full re-render on reset -->
+                <DrawingCodeBuilder
+                  :initialSteps="codeStepsDrawing"
+                  @codeComplete="handleEditCodeComplete"
+                  @resetCode="handleEditCodeReset"
+                  @partialCodeUpdate="handleEditPartialCodeUpdate"
+                  :key="builderKey"
+                />
+
+                <div class="mt-2 ps-5" style="width: 90%" v-if="builderComplete && activeEditDocumentModal">
+                  <label class="form-label">Optional 3-digit number of an existing entry (will increment config):</label>
+                  <input type="text" class="form-control" v-model="editDocumentForm.provided_number" maxlength="3" placeholder="e.g. 001" />
+                </div>
+                <input type="text" class="form-control mt-2" id="editDocumentDocCode" v-model="editDocumentForm.number" readonly />
+              </div>
+              
               <div class="mb-3">
                 <label for="editDocumentUrl" class="form-label"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="URLInfo"/>URL:</label>
                 <input type="text" class="form-control" maxlength="500" id="editUrl"
@@ -426,7 +496,8 @@
                   placeholder="Enter abstract"></textarea>
               </div>
               <div class="btn-group" role="group">
-                <button type="button" class="btn btn-primary btn-sm" @click="handleEditSubmit">
+                <button type="button" class="btn btn-primary btn-sm" @click="handleEditSubmit"
+                      :disabled="(editDocumentForm.change_controlled === 10) && (editDocumentForm.entry_type === 'drawing') && !builderComplete && !editDocumentForm.number">
                   Submit
                 </button>
                 <button type="button" class="btn btn-danger btn-sm" @click="handleEditCancel">
@@ -440,14 +511,56 @@
     </div>
     <div v-if="activeEditDocumentModal" class="modal-backdrop fade show"></div>
   </div>
+  <!-- Confirmation Modal -->
+  <div v-if="confirmModalActive" class="modal fade show d-block" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Confirm Number</h5>
+          <button type="button" class="btn-close" aria-label="Close" @click="confirmModalCancel"></button>
+        </div>
+        <div class="modal-body">
+          <div v-html="confirmModalMessageHtml"></div>
+          <p><strong>Suggested:</strong> {{ confirmModalSuggested }}</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" @click="confirmModalCancel">Cancel</button>
+          <button type="button" class="btn btn-primary" @click="confirmModalAccept">Accept suggested</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div v-if="confirmModalActive" class="modal-backdrop fade show"></div>
+
+  <!-- Delete Confirmation Modal -->
+  <div v-if="activeDeleteDocumentModal" class="modal fade show d-block" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Confirm Delete</h5>
+          <button type="button" class="btn-close" aria-label="Close" @click="cancelDeleteDocument"></button>
+        </div>
+        <div class="modal-body">
+          <p>{{ deleteMessage }}</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" @click="cancelDeleteDocument">Cancel</button>
+          <button type="button" class="btn btn-danger" @click="confirmDeleteDocument">Delete</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div v-if="activeDeleteDocumentModal" class="modal-backdrop fade show"></div>
 </template>
 
 <script>
+
 import axios from 'axios';
 import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import { auth } from '../firebaseConfig';
-import AlertMessage from './AlertMessage.vue';
 import ExcelJS from 'exceljs';
+import AlertMessage from './AlertMessage.vue';
+import DrawingCodeBuilder from './DrawingCodeBuilder.vue';
 
 const API_URL = '/api';
 // const API_URL = 'http://localhost:5001/api';
@@ -462,7 +575,7 @@ export default {
         title: '',
         author: '',
         doc_identifier: '',
-        doc_code: '',
+        number: '',
         entry_type: '',
         change_controlled: '',
         compiled_url: '',
@@ -476,7 +589,9 @@ export default {
       addDocumentForm: {
         title: '',
         author: '',
-        doc_code: '',
+        number: '',
+        _stub: '',
+        provided_number: '',
         entry_type: '',
         change_controlled: '',
         compiled_url: '',
@@ -484,6 +599,76 @@ export default {
         creator_email: this.email,
         abstract: '',
       },
+      // Add-form error display
+      addFormErrorList: [],
+      showAddFormError: false,
+      // Edit-form error display
+      editFormErrorList: [],
+      showEditFormError: false,
+      codeStepsDrawing: [
+        {
+          label: 'Category:',
+          options: [
+              { label: 'Extra-Solar Coronograph', value: 'ESC' },
+              { label: 'Widefield Context Camera', value: 'WCC' },
+            ],
+          connectorAfter: '-'
+        },
+        {
+          label: 'Development Category:',
+          options: {
+            ESC: [
+            { label: 'Flight', value: 'F' },
+            { label: 'GSE', value: 'G' },
+            { label: 'Test Development Unit / Prototype', value: 'T' },
+            ], 
+            WCC: [
+            { label: 'Flight', value: 'F' },
+            { label: 'GSE', value: 'G' },
+            { label: 'Test Development Unit / Prototype', value: 'T' },
+            ], 
+          },
+          connectorAfter: ''
+        },
+        {
+          label: 'Engineering Subset:',
+          options: {
+            ESC_F: [
+            { label: 'Assembly', value: 'A' },
+            { label: 'Part', value: 'P' },
+            { label: 'Interface Control Drawing', value: 'X' },
+            ], 
+            ESC_G: [
+            { label: 'Assembly', value: 'A' },
+            { label: 'Part', value: 'P' },
+            { label: 'Interface Control Drawing', value: 'X' },
+            ], 
+            ESC_T: [
+            { label: 'Assembly', value: 'A' },
+            { label: 'Part', value: 'P' },
+            { label: 'Interface Control Drawing', value: 'X' },
+            ], 
+            WCC_F: [
+            { label: 'Assembly', value: 'A' },
+            { label: 'Part', value: 'P' },
+            { label: 'Interface Control Drawing', value: 'X' },
+            ], 
+            WCC_G: [
+            { label: 'Assembly', value: 'A' },
+            { label: 'Part', value: 'P' },
+            { label: 'Interface Control Drawing', value: 'X' },
+            ], 
+            WCC_T: [
+            { label: 'Assembly', value: 'A' },
+            { label: 'Part', value: 'P' },
+            { label: 'Interface Control Drawing', value: 'X' },
+            ], 
+          },
+          connectorAfter: '-'
+        },
+      ],
+      builderComplete: false,
+      builderKey: 0,
       filter: '',
       documents: [],
       admins: [],
@@ -493,7 +678,9 @@ export default {
         title: '',
         author: '',
         doc_identifier: '',
-        doc_code: '',
+        number: '',
+        _stub: '',
+        provided_number: '',
         entry_type: '',
         change_controlled: '',
         compiled_url: '',
@@ -501,6 +688,9 @@ export default {
         creator_email: '',
         abstract: '',
       },
+      docModal: null,
+      TypeInfo: 'Choosing Type "drawing" and Change Controlled "yes" will give the option to generate a new Drawing Number (unless one already assigned).',
+      CCInfo: 'Choosing Type "drawing" and Change Controlled "yes" will give the option to generate a new Drawing Number (unless one already assigned).',
       URLInfo: 'The URL of the file described by the metadata in this entry.',
       sourceURLInfo: '(optional) The URL of the source components (Git repository, Power Point presentation etc.) used to compile / build the file described by the metadata in this entry.',
       gitLabInfo: 'This URL requires the ANT VPN to be activated.',
@@ -508,7 +698,7 @@ export default {
       message: '',
       showMessage: false,
       isAuthorized: false,
-      // hideContent: false,
+      hideContent: false,
       superuser: false,
       file: null,
       sortBy: "doc_identifier",
@@ -519,10 +709,22 @@ export default {
       changeControlledOptions: [],
       changeControlledStyleMap: {},
       changeControlledDefault: null,
+      // Confirmation modal state
+      confirmModalActive: false,
+      confirmModalMessage: '',
+      confirmModalSuggested: '',
+      confirmModalType: '',
+      confirmPendingPayload: null,
+      confirmPendingDocID: null,
+      // Delete-confirmation modal state
+      activeDeleteDocumentModal: false,
+      deleteTarget: null,
+      deleteMessage: '',
     };
   },
   components: {
     alert: AlertMessage,
+    DrawingCodeBuilder: DrawingCodeBuilder,
   },
   watch: {
     documents: function (newVal, oldVal) {
@@ -531,7 +733,50 @@ export default {
       } else {
         this.show_table = false;
       }
-    }
+    },
+    'addDocumentForm.change_controlled'(newVal) {
+      if (newVal === 0) {
+        this.addDocumentForm.number = "";
+      };
+      if (newVal === 10) {
+        this.resetDrawingCodeBuilder();
+      };
+    },
+    'addDocumentForm.entry_type'(newVal) {
+      this.resetDrawingCodeBuilder();
+    },
+    'addDocumentForm.provided_number'(newVal) {
+      // keep only digits, max 3
+      if (newVal === undefined) return;
+      const digits = newVal.replace(/\D/g, '').slice(0,3);
+      if (digits !== newVal) this.addDocumentForm.provided_number = digits;
+      const stub = this.addDocumentForm._stub || '';
+      if (stub) {
+        this.addDocumentForm.number = digits ? `${stub}${digits.padStart(3,'0')}` : stub;
+      }
+    },
+    'editDocumentForm.change_controlled'(newVal) {
+      // Reset only if type drawing, otherwise we don't really care
+      if (newVal === 0) {
+        this.editDocumentForm.number = this.resetEditNumber();
+      };
+
+      if (newVal === 10) {
+        this.resetDrawingCodeBuilder();
+      };
+    },
+    'editDocumentForm.entry_type'(newVal, oldVal) {
+      this.resetDrawingCodeBuilder();
+    },
+    'editDocumentForm.provided_number'(newVal) {
+      if (newVal === undefined) return;
+      const digits = newVal.replace(/\D/g, '').slice(0,3);
+      if (digits !== newVal) this.editDocumentForm.provided_number = digits;
+      const stub = this.editDocumentForm._stub || '';
+      if (stub) {
+        this.editDocumentForm.number = digits ? `${stub}${digits.padStart(3,'0')}` : stub;
+      }
+    },
   },
   computed: {
     filteredDocuments() {
@@ -546,22 +791,29 @@ export default {
             const title = doc.title ? doc.title.toString().toLowerCase() : doc.title;
             const author = doc.author ? doc.author.toString().toLowerCase() : doc.author;
             const doc_identifier = doc.doc_identifier ? doc.doc_identifier.toString().toLowerCase() : doc.doc_identifier;
-            const doc_code = doc.doc_code ? doc.doc_code.toString().toLowerCase() : doc.doc_code;
+            const number = (doc.number && doc.number.value) ? doc.number.value.toString().toLowerCase() : '';
             const entry_type = doc.entry_type ? doc.entry_type.toString().toLowerCase() : doc.entry_type;
             const compiled_url = doc.compiled_url ? doc.compiled_url.toString().toLowerCase() : doc.compiled_url;
             const source_url = doc.source_url ? doc.source_url.toString().toLowerCase() : doc.source_url;
             const abstract = doc.abstract ? doc.abstract.toString().toLowerCase() : doc.abstract;
             const creator_email = doc.creator_email ? doc.creator_email.toString().toLowerCase() : doc.creator_email;
 
+            // Also check if searchTerm is in any alias
+            const foundInAliases = doc.aliases && doc.aliases.some(alias => {
+              const value = alias.value ? alias.value.toString().toLowerCase() : null;
+              return value && value.includes(searchTerm);
+            });
+
             return (title && title.includes(searchTerm)) ||
               (author && author.includes(searchTerm)) ||
               (doc_identifier && doc_identifier.includes(searchTerm)) ||
-              (doc_code && doc_code.includes(searchTerm)) ||
+              (number && number.includes(searchTerm)) ||
               (entry_type && entry_type.includes(searchTerm)) ||
               (compiled_url && compiled_url.includes(searchTerm)) ||
               (source_url && source_url.includes(searchTerm)) ||
               (abstract && abstract.includes(searchTerm)) ||
-              (creator_email && creator_email.includes(searchTerm));
+              (creator_email && creator_email.includes(searchTerm)) ||
+              foundInAliases;
           });
         }
       }
@@ -569,7 +821,22 @@ export default {
       // Apply advanced filters
       return this.documents.filter(doc => {
         return Object.keys(this.columnFilters).every(key => {
-          if (typeof (this.columnFilters[key]) === 'number') {
+          if (key === "number") {
+            const searchTerm = this.columnFilters["number"].toLowerCase();
+            const value = doc.number ? doc.number.value.toString().toLowerCase() : '';
+            // Check if string in associated number
+            if (value.includes(searchTerm)) {
+              return true;
+            // If string not found, check aliases too
+            } else if (doc.aliases && doc.aliases.length > 0) {
+              return doc.aliases.some(alias => {
+                  const aliasValue = alias.value ? alias.value.toString().toLowerCase() : '';
+                  return aliasValue.includes(searchTerm);
+                });
+            // String not found in any associated object
+            }
+            return false;
+          } else if (typeof (this.columnFilters[key]) === 'number') {
             const searchTerm = this.columnFilters[key];
             const value = doc[key]
             return value === searchTerm;
@@ -604,6 +871,59 @@ export default {
         return '';
       }
     },
+    confirmModalMessageHtml() {
+      const msg = this.confirmModalMessage || '';
+      const escape = (s) => {
+        return s.replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+      };
+
+      const lines = msg.split('\n');
+      let html = '';
+      let inList = false;
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        if (line.startsWith('- ')) {
+          if (!inList) { html += '<ul>'; inList = true; }
+          html += '<li>' + escape(line.slice(2)) + '</li>';
+        } else {
+          if (inList) { html += '</ul>'; inList = false; }
+          if (line.trim() === '') {
+            html += '<br/>';
+          } else {
+            html += '<p>' + escape(line) + '</p>';
+          }
+        }
+      }
+      if (inList) html += '</ul>';
+      return html;
+    },
+    // Validation for add document form
+    addFormTitleMissing() {
+      if (!this.showAddFormError) return false;
+      return !this.addDocumentForm.title || this.addDocumentForm.title.trim() === '';
+    },
+    addFormEntryTypeMissing() {
+      if (!this.showAddFormError) return false;
+      return !this.addDocumentForm.entry_type || this.addDocumentForm.entry_type === '';
+    },
+    addFormChangeControlledMissing() {
+      if (!this.showAddFormError) return false;
+      return this.addDocumentForm.change_controlled === '' || this.addDocumentForm.change_controlled === null || this.addDocumentForm.change_controlled === undefined;
+    },
+    isAddFormValid() {
+      if (this.addFormTitleMissing) return false;
+      if (this.addFormEntryTypeMissing) return false;
+      if (this.addFormChangeControlledMissing) return false;
+      // If drawing and change controlled == 10, require builderComplete
+      if (this.addDocumentForm.entry_type === 'drawing' && Number(this.addDocumentForm.change_controlled) === 10) {
+        if (!this.builderComplete) return false;
+      }
+      return true;
+    },
   },
   methods: {
     logInUser() {
@@ -634,6 +954,17 @@ export default {
 
         axios.post(path, payload, config)
           .then((res) => {
+            // Handle server signals for number confirmation or out-of-order by showing modal
+            if (res.data.status === 'confirm' || res.data.status === 'out_of_order') {
+              this.confirmModalActive = true;
+              this.confirmModalType = res.data.status;
+              this.confirmModalMessage = res.data.message;
+              this.confirmModalSuggested = res.data.suggested_value || res.data.suggested_next || '';
+              this.confirmPendingPayload = payload; // store for later resubmission
+              this.confirmPendingDocID = null;
+              return;
+            }
+
             this.getDocuments();
             if (res.data.status == 'success') {
               this.message = 'Document added!';
@@ -668,13 +999,13 @@ export default {
             console.error(error);
             this.superuser = false;
             this.isAuthorized = error.response.data.isAuthorized;
-            // this.hideContent = !this.isAuthorized;
+            this.hideContent = !this.isAuthorized;
           });
       }).catch(function (error) {
         console.log(error)
         this.superuser = false;
         this.isAuthorized = false;
-        // this.hideContent = true;
+        this.hideContent = true;
       });
     },
     getAdmins() {
@@ -699,11 +1030,30 @@ export default {
       this.initForm();
     },
     handleAddSubmit() {
-      this.toggleAddDocumentModal();
+      // Validate required fields on submit and show inline errors without closing the modal
+      const missing = [];
+      if (!this.addDocumentForm.title || this.addDocumentForm.title.trim() === '') missing.push('Title is required');
+      if (!this.addDocumentForm.entry_type || this.addDocumentForm.entry_type === '') missing.push('Type is required');
+      if (this.addDocumentForm.change_controlled === '' || this.addDocumentForm.change_controlled === null || this.addDocumentForm.change_controlled === undefined) missing.push('Change Controlled is required');
+      if (this.addDocumentForm.entry_type === 'drawing' && Number(this.addDocumentForm.change_controlled) === 10 && !this.builderComplete) missing.push('Drawing code must be completed to generate a number');
+      if (missing.length > 0) {
+        this.addFormErrorList = missing;
+        this.showAddFormError = true;
+        return;
+      }
+      // All good: clear any previous errors and proceed to submit
+      this.showAddFormError = false;
+      this.addFormErrorList = [];
+      // Combine sanitized stub and optional provided 3-digit number (prefer stub if available)
+      const stub = this.addDocumentForm._stub ? this.addDocumentForm._stub.replace(/^-+|-+$/g,'') : '';
+      const providedRaw = this.addDocumentForm.provided_number ? this.addDocumentForm.provided_number.replace(/\D/g,'') : '';
+      const provided = providedRaw ? providedRaw.padStart(3,'0') : '';
+      const combinedNumber = stub ? (provided ? `${stub}${provided}` : stub) : (this.addDocumentForm.number || '');
+
       const payload = {
         title: this.addDocumentForm.title,
         author: this.addDocumentForm.author,
-        doc_code: this.addDocumentForm.doc_code,
+        number: combinedNumber,
         entry_type: this.addDocumentForm.entry_type,
         change_controlled: this.addDocumentForm.change_controlled,
         compiled_url: this.addDocumentForm.compiled_url,
@@ -711,11 +1061,22 @@ export default {
         creator_email: this.addDocumentForm.creator_email || this.email,        
         abstract: this.addDocumentForm.abstract,
       };
+      this.toggleAddDocumentModal();
       this.addDocument(payload);
       this.initForm();
     },
-    handleDeleteDocument(document) {
-      this.removeDocument(document.doc_identifier);
+    handleDeleteDocument(doc) {
+      // For change-controlled entries open a styled confirmation modal.
+      const isChangeControlled = Number(doc.change_controlled) === 10;
+      if (isChangeControlled) {
+        this.deleteTarget = doc.doc_identifier;
+        this.deleteMessage = 'WARNING: This entry is marked as change-controlled. Deleting it may affect linked numbers and audit trails. Are you sure you want to proceed?';
+        const body = window.document.querySelector('body');
+        this.activeDeleteDocumentModal = true;
+        body.classList.add('modal-open');
+        return;
+      }
+      this.removeDocument(doc.doc_identifier);
     },
     handleEditCancel() {
       this.toggleEditDocumentModal(null);
@@ -723,41 +1084,70 @@ export default {
       this.getDocuments(); // initForm sets values of doc open in modal to empty, so repopulate them
     },
     handleEditSubmit() {
-      this.toggleEditDocumentModal(null);
+      // Validate required fields and show inline errors without closing the modal
+      const missing = [];
+      if (!this.editDocumentForm.title || this.editDocumentForm.title.trim() === '') missing.push('Title is required');
+      if (!this.editDocumentForm.entry_type || this.editDocumentForm.entry_type === '') missing.push('Type is required');
+      if (this.editDocumentForm.change_controlled === '' || this.editDocumentForm.change_controlled === null || this.editDocumentForm.change_controlled === undefined) missing.push('Change Controlled is required');
+      if (this.editDocumentForm.entry_type === 'drawing' && Number(this.editDocumentForm.change_controlled) === 10 && !this.builderComplete && !this.editDocumentForm.number) missing.push('Drawing code must be completed to generate a number');
+      if (missing.length > 0) {
+        this.editFormErrorList = missing;
+        this.showEditFormError = true;
+        return;
+      }
+      this.showEditFormError = false;
+      this.editFormErrorList = [];
+
+      const stub = this.editDocumentForm._stub ? this.editDocumentForm._stub.replace(/^-+|-+$/g,'') : '';
+      const providedRaw = this.editDocumentForm.provided_number ? this.editDocumentForm.provided_number.replace(/\D/g,'') : '';
+      const provided = providedRaw ? providedRaw.padStart(3,'0') : '';
+      const combinedNumber = stub ? (provided ? `${stub}${provided}` : stub) : (this.editDocumentForm.number || '');
+
       const payload = {
         title: this.editDocumentForm.title,
         author: this.editDocumentForm.author,
-        doc_code: this.editDocumentForm.doc_code,
+        number: combinedNumber,
         entry_type: this.editDocumentForm.entry_type,
         change_controlled: this.editDocumentForm.change_controlled,
         compiled_url: this.editDocumentForm.compiled_url,
         source_url: this.editDocumentForm.source_url,
-        creator_email: this.editDocumentForm.creator_email || this.email,            
+        creator_email: this.editDocumentForm.creator_email || this.email,
         abstract: this.editDocumentForm.abstract,
       };
+      // Close modal only after successful client validation
+      this.toggleEditDocumentModal(null);
       this.updateDocument(payload, this.editDocumentForm.doc_identifier);
     },
     initForm() {
       this.addDocumentForm.title = '';
       this.addDocumentForm.author = '';
-      this.addDocumentForm.doc_code = '';
+      this.addDocumentForm.number = '';
+      this.addDocumentForm._stub = '';
+      this.addDocumentForm.provided_number = '';
       this.addDocumentForm.entry_type = this.entryTypeDefault;
       this.addDocumentForm.change_controlled = this.changeControlledDefault;
       this.addDocumentForm.compiled_url = '';
       this.addDocumentForm.source_url = '';
       this.addDocumentForm.creator_email = this.email;
       this.addDocumentForm.abstract = '';
+      this.showAddFormError = false;
+      this.addFormErrorList = [];
       this.editDocumentForm.pk = '';
       this.editDocumentForm.title = '';
       this.editDocumentForm.author = '';
       this.editDocumentForm.doc_identifier = '';
-      this.editDocumentForm.doc_code = '';
+      this.editDocumentForm.number = '';
+      this.editDocumentForm._stub = '';
+      this.editDocumentForm.provided_number = '';
       this.editDocumentForm.entry_type = '';
       this.editDocumentForm.change_controlled = '';
       this.editDocumentForm.compiled_url = '';
       this.editDocumentForm.source_url = '';
       this.editDocumentForm.creator_email = '';      
       this.editDocumentForm.abstract = '';
+      this.showEditFormError = false;
+      this.editFormErrorList = [];
+      this.docModal = null;
     },
     removeDocument(docID) {
       const path = `${API_URL}/documents/${docID}`;
@@ -785,6 +1175,80 @@ export default {
         console.log(error)
       });
     },
+
+    confirmDeleteDocument() {
+      // Called when user confirms deletion in modal
+      this.removeDocument(this.deleteTarget);
+      this.deleteTarget = null;
+      this.deleteMessage = '';
+      this.activeDeleteDocumentModal = false;
+      const body = document.querySelector('body');
+      body.classList.remove('modal-open');
+    },
+
+    cancelDeleteDocument() {
+      // Close modal without deleting
+      this.deleteTarget = null;
+      this.deleteMessage = '';
+      this.activeDeleteDocumentModal = false;
+      const body = document.querySelector('body');
+      body.classList.remove('modal-open');
+    },
+    handleAddCodeComplete(code) {
+      const stub = code ? code.replace(/^-+|-+$/g,'') : '';
+      this.addDocumentForm._stub = stub;
+      // if user already entered a provided_number, compose final preview
+      const provided = this.addDocumentForm.provided_number ? this.addDocumentForm.provided_number.replace(/\D/g,'').padStart(3,'0') : '';
+      this.addDocumentForm.number = provided ? `${stub}${provided}` : stub;
+      this.builderComplete = true;
+    },
+    handleAddPartialCodeUpdate(partialCode) {
+        this.addDocumentForm.number = partialCode;
+    },
+    handleAddCodeReset() {
+      // Reset document code on builder reset
+      this.addDocumentForm.number = "";
+      this.builderComplete = false;
+    },
+    handleEditCodeComplete(code) {
+      const stub = code ? code.replace(/^-+|-+$/g,'') : '';
+      this.editDocumentForm._stub = stub;
+      const provided = this.editDocumentForm.provided_number ? this.editDocumentForm.provided_number.replace(/\D/g,'').padStart(3,'0') : '';
+      this.editDocumentForm.number = provided ? `${stub}${provided}` : stub;
+      this.builderComplete = true;
+    },
+    handleEditPartialCodeUpdate(partialCode) {
+        this.editDocumentForm.number = partialCode;
+    },
+    handleEditCodeReset() {
+      // Reset document code on builder reset
+      this.editDocumentForm.number = this.resetEditNumber();
+      this.builderComplete = false;
+    },
+    resetDrawingCodeBuilder() {
+      // We want to reset the field for both forms here
+      // (Don't see any risk in doing so)
+      this.addDocumentForm.number = "";
+      this.addDocumentForm.provided_number = "";
+      this.addDocumentForm._stub = "";
+      this.editDocumentForm.number = this.resetEditNumber();
+      this.editDocumentForm.provided_number = "";
+      this.editDocumentForm._stub = "";
+      this.builderComplete = false;
+      // Change the key to force a re-render of DrawingCodeBuilder
+      this.builderKey++;
+    },
+    resetEditNumber() {
+      if (this.docModal) {
+        if ( this.editDocumentForm.entry_type === this.docModal.entry_type ) {
+          return this.docModal.number && this.docModal.number.value || "";
+        } else {
+          return "";
+        }
+      } else {
+        return "";
+      }
+    },
     toggleAddDocumentModal() {
       const body = document.querySelector('body');
       this.activeAddDocumentModal = !this.activeAddDocumentModal;
@@ -800,6 +1264,8 @@ export default {
         this.editDocumentForm = { ...doc };
         this.editDocumentForm.entry_type = doc.entry_type;
         this.editDocumentForm.change_controlled = doc.change_controlled;
+        this.editDocumentForm.number = doc.number && doc.number.value;
+        this.docModal = doc;
       }
       const body = document.querySelector('body');
       this.activeEditDocumentModal = !this.activeEditDocumentModal;
@@ -828,6 +1294,17 @@ export default {
 
         axios.put(path, payload, config)
           .then((res) => {
+            // Handle server signals for number confirmation or out-of-order by showing modal
+            if (res.data.status === 'confirm' || res.data.status === 'out_of_order') {
+              this.confirmModalActive = true;
+              this.confirmModalType = res.data.status;
+              this.confirmModalMessage = res.data.message;
+              this.confirmModalSuggested = res.data.suggested_value || res.data.suggested_next || '';
+              this.confirmPendingPayload = payload; // store for later resubmission
+              this.confirmPendingDocID = docID;
+              return;
+            }
+
             this.getDocuments();
             if (res.data.status == 'success') {
               this.message = 'Document updated!';
@@ -843,6 +1320,36 @@ export default {
       }).catch(function (error) {
         console.log(error)
       });
+    },
+    confirmModalAccept() {
+      if (!this.confirmPendingPayload) return;
+      // attach suggested confirmed number and resubmit
+      this.confirmPendingPayload.confirmed_number = this.confirmModalSuggested;
+      const payload = this.confirmPendingPayload;
+      const docID = this.confirmPendingDocID;
+
+      // clear modal state
+      this.confirmModalActive = false;
+      this.confirmModalMessage = '';
+      this.confirmModalSuggested = '';
+      this.confirmPendingPayload = null;
+      this.confirmPendingDocID = null;
+
+      if (docID) {
+        this.updateDocument(payload, docID);
+      } else {
+        this.addDocument(payload);
+      }
+    },
+    confirmModalCancel() {
+      this.confirmModalActive = false;
+      this.confirmModalMessage = '';
+      this.confirmModalSuggested = '';
+      this.confirmPendingPayload = null;
+      this.confirmPendingDocID = null;
+      this.message = 'Action cancelled by user.';
+      this.showMessage = true;
+      this.getDocuments();
     },
     truncate(value, length) {
       if (value.length > length) {
@@ -926,7 +1433,7 @@ export default {
       const emailSubject = encodeURIComponent(`Teledocs Alert: Document '${doc.title}' is out of date`);
       const emailBody = encodeURIComponent(`Hi,\n\n
 This is to inform you that the document '${doc.title}' was reported as being out of date. The data currently associated with it is:\n
-Title: ${doc.title}\n
+Title / Name: ${doc.title}\n
 Author: ${doc.author}\n
 URL: ${doc.compiled_url}\n
 Source URL: ${doc.source_url}\n
@@ -950,10 +1457,10 @@ Please update the entry at your earliest convenience.\n\nRegards,\nteledocs`);
       const worksheet = workbook.addWorksheet('Documents');
 
       worksheet.columns = [
-        { title: 'Title', key: 'title'},
+        { title: 'Title / Name', key: 'title'},
         { author: 'Author', key: 'author'},
         { doc_identifier: 'Doc Identifier', key: 'doc_identifier'},
-        { doc_code: 'Doc #', key: 'doc_code'},
+        { number: 'Doc #', key: 'number'},
         { entry_type: 'Type', key: 'entry_type'},
         { change_controlled: 'Change Controlled', key: 'change_controlled'},
         { compiled_url: 'URL', key: 'compiled_url'},        
@@ -963,10 +1470,10 @@ Please update the entry at your earliest convenience.\n\nRegards,\nteledocs`);
       ];
 
       worksheet.addRow({
-        title: 'Title',
+        title: 'Title / Name',
         author: 'Author',
         doc_identifier: 'Doc Identifier',
-        doc_code: 'Doc #',
+        number: 'Doc #',
         entry_type: 'Type',
         change_controlled: 'Change Controlled',
         compiled_url: 'URL',        
@@ -980,7 +1487,7 @@ Please update the entry at your earliest convenience.\n\nRegards,\nteledocs`);
           title: doc.title,
           author: doc.author,
           doc_identifier: doc.doc_identifier,
-          doc_code: doc.doc_code,
+          number: doc.number.value,
           entry_type: doc.entry_type,
           change_controlled: doc.change_controlled,
           compiled_url: doc.compiled_url,
@@ -1066,5 +1573,9 @@ Please update the entry at your earliest convenience.\n\nRegards,\nteledocs`);
     this.getEntryTypeOptions();
     this.getChangeControlledOptions();
   },
+  mounted() {
+    // Initialize steps for the current value of addDocumentEntryType
+    this.resetDrawingCodeBuilder();
+  }
 };
 </script>

@@ -21,6 +21,7 @@ def create_app():
 
     logger.info("Instantiating db with Flask app.")
     # app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///docs.db"
+
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
     app.config["SQLALCHEMY_DATABASE_URI"] = DB_URI
 
@@ -60,6 +61,7 @@ def create_app():
         SingleUser,
         AllDomains,
         SingleDomain,
+        AllNumbers,
     )
 
     logger.info("Registering views.")
@@ -68,12 +70,12 @@ def create_app():
     app.add_url_rule(
         "/api/documents/upload_file", view_func=UploadFile.as_view("upload_file")
     )
-    app.add_url_rule("/api/entry_types", view_func=EntryTypes.as_view("entry_types"))
-    app.add_url_rule("/api/change_controlled_types", view_func=ChangeControlledTypes.as_view("change_controlled_types"))
     app.add_url_rule(
-        "/api/documents/<doc_identifier>",
+        "/api/documents/<doc_string>",
         view_func=SingleDocument.as_view("single_document"),
     )
+    app.add_url_rule("/api/entry_types", view_func=EntryTypes.as_view("entry_types"))
+    app.add_url_rule("/api/change_controlled_types", view_func=ChangeControlledTypes.as_view("change_controlled_types"))
     app.add_url_rule("/api/users", view_func=AllUsers.as_view("user_list"))
     app.add_url_rule("/api/users/<pk>", view_func=SingleUser.as_view("single_user"))
     app.add_url_rule("/api/admins", view_func=AllAdmins.as_view("admin_list"))
@@ -81,8 +83,9 @@ def create_app():
     app.add_url_rule(
         "/api/domains/<pk>", view_func=SingleDomain.as_view("single_domain")
     )
-    return app
+    app.add_url_rule("/api/numbers", view_func=AllNumbers.as_view("number_list"))
 
+    return app
 
 app = create_app()
 
