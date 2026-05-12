@@ -49,14 +49,19 @@ def get_cred_config() -> dict[str, str]:
         }
 
 
-creds = get_cred_config()
-db_user = creds["DB_USER"]
-db_pass = creds["DB_PASSWORD"]
-db_name = creds["DB_NAME"]
-# db_socket_dir = creds.get("DB_SOCKET_DIR", "/cloudsql")
-cloud_sql_connection_name = creds["CLOUD_SQL_CONNECTION_NAME"]
+def get_db_config() -> tuple[str, str]:
+    """Build and return (DB_URI, CERT_PATH) from credentials.
+    Called lazily so importing this module has no side effects.
+    """
+    creds = get_cred_config()
+    db_user = creds["DB_USER"]
+    db_pass = creds["DB_PASSWORD"]
+    db_name = creds["DB_NAME"]
+    # db_socket_dir = creds.get("DB_SOCKET_DIR", "/cloudsql")
+    cloud_sql_connection_name = creds["CLOUD_SQL_CONNECTION_NAME"]
 
-# DB_URI = f"postgresql+pg8000://{db_user}:{db_pass}@/{db_name}?unix_sock={db_socket_dir}/{cloud_sql_connection_name}/.s.PGSQL.5432"
-DB_URI = f"postgresql+pg8000://{db_user}:{db_pass}@{cloud_sql_connection_name}:5432/{db_name}"
+    # db_uri = f"postgresql+pg8000://{db_user}:{db_pass}@/{db_name}?unix_sock={db_socket_dir}/{cloud_sql_connection_name}/.s.PGSQL.5432"
+    db_uri = f"postgresql+pg8000://{db_user}:{db_pass}@{cloud_sql_connection_name}:5432/{db_name}"
+    cert_path = creds["CERT_PATH"]
 
-CERT_PATH = creds["CERT_PATH"]
+    return db_uri, cert_path

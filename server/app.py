@@ -5,8 +5,6 @@ from flask_cors import CORS
 import ssl
 import logging
 
-from database import DB_URI, CERT_PATH
-
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("logger")
 
@@ -21,6 +19,9 @@ def create_app():
 
     logger.info("Instantiating db with Flask app.")
     # app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///docs.db"
+
+    from database import get_db_config
+    DB_URI, CERT_PATH = get_db_config()
 
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
     app.config["SQLALCHEMY_DATABASE_URI"] = DB_URI
