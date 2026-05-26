@@ -88,14 +88,13 @@ def create_app():
 
     return app
 
-app = create_app()
-
-with app.app_context():
-    from models import User, db
-
-    nb_users = User.query.count()
-    logger.info(f"HERE::::: {nb_users} users")
-
 if __name__ == "__main__":
+    app = create_app()
+    with app.app_context():
+        from models import User, db
+
+        nb_users = User.query.count()
+        logger.info(f"HERE::::: {nb_users} users")
+
     logger.info("Starting app.")
     app.run()
