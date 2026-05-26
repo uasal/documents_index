@@ -1,7 +1,8 @@
 name: Run Python tests
 
 on:
-  push: {}
+  push:
+    branches: [ aws, local ]
   pull_request:
     branches: [ aws, local ]
 
