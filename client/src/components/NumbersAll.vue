@@ -233,6 +233,18 @@ export default {
     alert: AlertMessage,
   },
   watch: {
+    filter(newVal) {
+      this.syncFiltersToUrl();
+    },
+    columnFilters: {
+      handler() {
+        this.syncFiltersToUrl();
+      },
+      deep: true,
+    },
+    showDrawingsOnly() {
+      this.syncFiltersToUrl();
+    },
     numbers: function (newVal, oldVal) {
       if (this.numbers.length > 0) {
         this.show_table = true;
@@ -441,10 +453,44 @@ export default {
       }
     },
     resetFilters() {
-      // Reset all filter inputs and checkboxes
       Object.keys(this.columnFilters).forEach(key => {
         this.columnFilters[key] = '';
       });
+    },
+    syncFiltersToUrl() {
+      const query = {};
+      if (!this.showDrawingsOnly) query.view = 'documents';
+      if (this.showFilters) {
+        Object.entries(this.columnFilters).forEach(([key, value]) => {
+          if (value !== '') query[key] = value;
+        });
+      } else if (this.filter !== '') {
+        query.q = this.filter;
+      }
+      const currentQuery = this.$route.query;
+      if (JSON.stringify(query) !== JSON.stringify(currentQuery)) {
+        this.$router.replace({ query });
+      }
+    },
+    loadFiltersFromUrl() {
+      const query = this.$route.query;
+      if (!query || Object.keys(query).length === 0) return;
+      if (query.view === 'documents') {
+        this.showDrawingsOnly = false;
+      }
+      const columnFilterKeys = Object.keys(this.columnFilters);
+      const hasColumnFilter = Object.keys(query).some(k => columnFilterKeys.includes(k));
+      if (hasColumnFilter) {
+        this.showFilters = true;
+        this.filterButtonText = 'General Filter';
+        columnFilterKeys.forEach(key => {
+          if (query[key] !== undefined) {
+            this.columnFilters[key] = query[key];
+          }
+        });
+      } else if (query.q) {
+        this.filter = query.q;
+      }
     },
     getChangeControlledOptions() {
       const path = `${API_URL}/change_controlled_types`;
@@ -475,6 +521,7 @@ export default {
     },
   },
   created() {
+    this.loadFiltersFromUrl();
     this.getNumbers();
     this.getAdmins();
     this.getChangeControlledOptions();

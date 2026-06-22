@@ -727,6 +727,15 @@ export default {
     DrawingCodeBuilder: DrawingCodeBuilder,
   },
   watch: {
+    filter(newVal) {
+      this.syncFiltersToUrl();
+    },
+    columnFilters: {
+      handler() {
+        this.syncFiltersToUrl();
+      },
+      deep: true,
+    },
     documents: function (newVal, oldVal) {
       if (this.documents.length > 0) {
         this.show_table = true;
@@ -1423,10 +1432,40 @@ export default {
       }
     },
     resetFilters() {
-      // Reset all filter inputs and checkboxes
       Object.keys(this.columnFilters).forEach(key => {
         this.columnFilters[key] = '';
       });
+    },
+    syncFiltersToUrl() {
+      const query = {};
+      if (this.showFilters) {
+        Object.entries(this.columnFilters).forEach(([key, value]) => {
+          if (value !== '') query[key] = value;
+        });
+      } else if (this.filter !== '') {
+        query.q = this.filter;
+      }
+      const currentQuery = this.$route.query;
+      if (JSON.stringify(query) !== JSON.stringify(currentQuery)) {
+        this.$router.replace({ query });
+      }
+    },
+    loadFiltersFromUrl() {
+      const query = this.$route.query;
+      if (!query || Object.keys(query).length === 0) return;
+      const columnFilterKeys = Object.keys(this.columnFilters);
+      const hasColumnFilter = Object.keys(query).some(k => columnFilterKeys.includes(k));
+      if (hasColumnFilter) {
+        this.showFilters = true;
+        this.filterButtonText = 'General Filter';
+        columnFilterKeys.forEach(key => {
+          if (query[key] !== undefined) {
+            this.columnFilters[key] = query[key];
+          }
+        });
+      } else if (query.q) {
+        this.filter = query.q;
+      }
     },
     sendEmail(doc) {
       // alert(`Sending email to ${doc.creator_email}`);
@@ -1568,6 +1607,7 @@ Please update the entry at your earliest convenience.\n\nRegards,\nteledocs`);
     },    
   },
   created() {
+    this.loadFiltersFromUrl();
     this.getDocuments();
     this.getAdmins();
     this.getEntryTypeOptions();
