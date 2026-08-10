@@ -14,6 +14,7 @@ from models import (
     User,
     Domain,
     Number,
+    Label,
     TypeEnum,
     ChangeControlledEnum,
     NumberConfirmationRequired,
@@ -163,10 +164,11 @@ class AllDocuments(MethodView):
                 select(Document)
                 .options(
                     # Here 'joinedload' can be replaced by "selectinload"
-                    # 'joinedload' is good if no duplicates (which should be out case), 
+                    # 'joinedload' is good if no duplicates (which should be out case),
                     # "selectinload" has better performance if duplicates
                     joinedload(Document.number),
                     joinedload(Document.aliases),
+                    joinedload(Document.labels),
                 )
                 .order_by(Document.time_created.asc())
             )
@@ -470,6 +472,149 @@ class SingleDocument(MethodView):
                 f"SingleDocument: User {email} tried to delete inexistent document."
             )
             response_object["message"] = "Document not found"
+        return jsonify(response_object)
+
+
+class AllLabels(MethodView):
+    """View class for the /labels route."""
+
+    decorators = [token_required]
+
+    def post(self):
+        """
+        Method with logic for post requests.
+        Post requests are made here when a superuser adds a new label.
+
+        Returns
+        -------
+        json
+            Json response to post request. Contains 'status' and 'message'.
+        """
+        entity = getattr(request, "entity")
+        email = getattr(request, "email")
+        response_object = {"status": "success"}
+
+        if not is_superuser(entity):
+            response_object["status"] = "fail"
+            response_object["message"] = "Not authorized"
+            logger.info(f"AllLabels: User {email} tried to add a label without superuser rights.")
+            return jsonify(response_object), 403
+
+        post_data = request.get_json()
+        logger.info(f'AllLabels: User {email} is adding new label {post_data.get("name")}.')
+        success = Label.create(**post_data)
+        if not success:
+            response_object["status"] = "fail"
+        response_object["message"] = "Label added!"
+        return jsonify(response_object)
+
+    def get(self):
+        """
+        Method with logic for get requests.
+        Get requests here return a list of all the labels in the db.
+
+        Returns
+        -------
+        json
+            Json response to get request. Contains 'status' and a
+            list of each label serialized.
+        """
+        entity = getattr(request, "entity")
+        email = getattr(request, "email")
+        logger.info(f"AllLabels: User {email} is viewing all labels.")
+        labels = db.session.scalars(select(Label).order_by(Label.name.asc()))
+
+        response_object = {
+            "status": "success",
+            "labels": Label.serialize_list(labels),
+            "superuser": is_superuser(entity),
+        }
+        return jsonify(response_object)
+
+
+class SingleLabel(MethodView):
+    """View class for the /labels/<pk> route."""
+
+    decorators = [token_required]
+
+    def put(self, pk):
+        """
+        Method with logic for put requests.
+        Put requests here update the column values for the label with given
+        private key.
+
+        Parameters
+        ----------
+        pk : int / str
+            pk of label entry to be updated.
+
+        Returns
+        -------
+        json
+            Json response to put request. Contains 'status' and 'message'.
+        """
+        entity = getattr(request, "entity")
+        email = getattr(request, "email")
+        response_object = {"status": "success"}
+
+        if not is_superuser(entity):
+            response_object["status"] = "fail"
+            response_object["message"] = "Not authorized"
+            logger.info(f"SingleLabel: User {email} tried to update a label without superuser rights.")
+            return jsonify(response_object), 403
+
+        post_data = request.get_json()
+        label = Label.get_by_pk(pk)
+        if label:
+            logger.info(f"SingleLabel: User {email} is updating label {label}.")
+            success = label.update(**post_data)
+            if not success:
+                response_object['status'] = 'fail'
+            response_object["message"] = "Label updated!"
+        else:
+            logger.info(
+                f"SingleLabel: User {email} tried to update inexistent label."
+            )
+            response_object["message"] = "Label not found"
+        return jsonify(response_object)
+
+    def delete(self, pk):
+        """
+        Method with logic for delete requests.
+        Delete requests here delete label with given primary key from the db.
+
+        Parameters
+        ----------
+        pk : int / str
+            pk of label entry to be deleted.
+
+        Returns
+        -------
+        json
+            Json response to delete request. Contains 'status' and 'message'.
+        """
+        entity = getattr(request, "entity")
+        email = getattr(request, "email")
+        response_object = {"status": "success"}
+
+        if not is_superuser(entity):
+            response_object["status"] = "fail"
+            response_object["message"] = "Not authorized"
+            logger.info(f"SingleLabel: User {email} tried to delete a label without superuser rights.")
+            return jsonify(response_object), 403
+
+        label = Label.get_by_pk(pk)
+        if label:
+            logger.info(f"SingleLabel: User {email} is deleting label {label}.")
+            success = label.delete_label()
+            if not success:
+                response_object['status'] = 'fail'
+            response_object["message"] = "Label removed!"
+        else:
+            logger.info(
+                f"SingleLabel: User {email} tried to delete inexistent label."
+            )
+            response_object["message"] = "Label not found"
         return jsonify(response_object)
 
 

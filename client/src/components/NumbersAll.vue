@@ -173,7 +173,7 @@
   </div>
 </template>
 
-<style>
+<style scoped>
   .form-check-input:not(:checked) {
     background-color: #198754;
     border-color: #198754 !important;

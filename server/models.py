@@ -182,6 +182,148 @@ class OutOfOrderNumber(Exception):
         super().__init__(message or "Out of order number")
         self.suggested_next = suggested_next
 
+document_labels = db.Table(
+    "document_labels",
+    db.Column("document_pk", db.Integer, db.ForeignKey("document.pk", ondelete="CASCADE"), primary_key=True),
+    db.Column("label_pk", db.Integer, db.ForeignKey("label.pk", ondelete="CASCADE"), primary_key=True),
+)
+
+
+class Label(db.Model, Serializer):
+    """
+    Label model class to act as interface between the Flask logic and the
+    sql table.
+    """
+
+    pk = db.Column("pk", db.Integer, primary_key=True)
+    time_created = db.Column(db.DateTime(timezone=True), server_default=func.now())
+    name = db.Column("name", db.String(100), nullable=False, unique=True)
+
+    @validates("name")
+    def validate_name(self, key, name):
+        if not name or not name.strip():
+            raise AssertionError("No label name provided")
+        return name.strip()
+
+    def __repr__(self):
+        """
+        Magic method that returns the string representation of the Label model.
+
+        Returns
+        -------
+        str
+            String representation of the Label model.
+        """
+        return "<Label %r>" % self.name
+
+    def update(self, **kwargs):
+        """
+        Method to update an existing object's column values with those in the
+        kwargs.
+
+        Returns
+        -------
+        bool
+            Returns True is update was successful and False if an error was
+            encountered.
+        """
+        try:
+            new_val = kwargs.get("name", None)
+            if new_val is not None:
+                setattr(self, "name", new_val)
+            db.session.add(self)
+            db.session.commit()
+            logger.info("Labels: Updating Label object.")
+        except Exception as e:
+            logger.error(f"Labels: Updating Label object. Error: {e}")
+            return False
+        return True
+
+    @classmethod
+    def create(cls, **kwargs):
+        """
+        Class method to create a new object and add a new entry in the
+        label table.
+
+        Returns
+        -------
+        bool or Label object
+            If table successfully updated and object succesfully created,
+            object is returned, otherwise returns False.
+        """
+        try:
+            obj = Label(name=kwargs["name"])
+            db.session.add(obj)
+            db.session.commit()
+            logger.info("Labels: Creating Label object.")
+            return obj
+        except Exception as e:
+            logger.error(f"Labels: Creating Label object. Error: {e}")
+            return False
+
+    @classmethod
+    def get_by_pk(cls, pk):
+        """
+        Class method that retrieves label for a given primary key and logs errors.
+
+        Parameters
+        ----------
+        pk : int / str
+            pk of label to be found
+
+        Returns
+        -------
+        Label object or None
+            Label object with given pk is returned if query succesful,
+            otherwise None is returned if no results found.
+        """
+        try:
+            label = db.session.scalars(select(Label).where(Label.pk == int(pk))).one()
+            return label
+        except NoResultFound as e:
+            logger.error(f"Label: Error: {e}:\n Label with pk {pk} not found.")
+            return None
+
+    @classmethod
+    def get_by_pks(cls, pks):
+        """
+        Class method that retrieves labels for a given list of primary keys.
+        Used to resolve the label_ids submitted for a document into Label
+        objects.
+
+        Parameters
+        ----------
+        pks : list
+            list of label pks to be found
+
+        Returns
+        -------
+        list
+            List of Label objects matching the given pks.
+        """
+        if not pks:
+            return []
+        return db.session.scalars(select(Label).where(Label.pk.in_(pks))).all()
+
+    def delete_label(self):
+        """
+        Class method that deletes table entry.
+
+        Returns
+        -------
+        bool
+            If delete was successful, returns True, otherwise returns False
+        """
+        try:
+            db.session.delete(self)
+            db.session.commit()
+            logger.info("Label: Deleting Label object.")
+            return True
+        except Exception as e:
+            logger.error(f"Label: Deleting Label object. Error: {e}")
+            return False
+
+
 class Document(db.Model, Serializer):
     """
     Document model class to act as interface between the Flask logic and the
@@ -208,6 +350,9 @@ class Document(db.Model, Serializer):
     # Relationship to Alias
     aliases = db.relationship("Alias", back_populates="document")
 
+    # Relationship to Label
+    labels = db.relationship("Label", secondary=document_labels)
+
 
     def __repr__(self):
         """
@@ -231,7 +376,7 @@ class Document(db.Model, Serializer):
         """
         columns = inspect(self).attrs.keys()
         return list(
-            set(columns) - set(["time_created", "time_updated", "doc_identifier", "number", "aliases"])
+            set(columns) - set(["time_created", "time_updated", "doc_identifier", "number", "aliases", "labels"])
         )
 
     def _get_all_columns(self):
@@ -280,10 +425,15 @@ class Document(db.Model, Serializer):
 
                 if new_val is not None:
                     setattr(self, column, new_val)
-            self._update_number(kwargs.get("change_controlled"), 
-                                kwargs.get("entry_type"), 
+            self._update_number(kwargs.get("change_controlled"),
+                                kwargs.get("entry_type"),
                                 kwargs.get("number"),
                                 kwargs.get("confirmed_number"))
+
+            label_ids = kwargs.get("label_ids")
+            if label_ids is not None:
+                self.labels = Label.get_by_pks(label_ids)
+
             db.session.add(self)
             db.session.commit()
             logger.info("Documents: Updating Document object.")
@@ -513,7 +663,11 @@ class Document(db.Model, Serializer):
 
             number = kwargs.pop("number")
             confirmed_number = kwargs.pop("confirmed_number", None)
+            label_ids = kwargs.pop("label_ids", None)
             obj = Document(**kwargs)
+
+            if label_ids is not None:
+                obj.labels = Label.get_by_pks(label_ids)
 
             # Make new associated number (for change controlled drawings and all docs)
             if confirmed_number:

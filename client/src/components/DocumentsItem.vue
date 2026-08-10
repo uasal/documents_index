@@ -31,6 +31,9 @@
                     </p>
                     <p><b>Type: </b><font-awesome-icon v-if="entryTypeIconMap[document.entry_type]" :icon="entryTypeIconMap[document.entry_type]" data-toggle="tooltip" data-placement="bottom" :title="document.entry_type" class="text-secondary" /></p>
                     <p><b>Change controlled: </b> {{ changeControlledValueMap[document.change_controlled] }}</p>
+                    <p><b>Labels: </b>
+                        <span v-for="label in document.labels" :key="label.pk" class="badge bg-secondary me-1">{{ label.name }}</span>
+                    </p>
                     <p><b><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="URLInfo"/>URL: </b><font-awesome-icon v-if="document.compiled_url && document.compiled_url.toLowerCase().includes(gitLabANT)" icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="gitLabInfo"/><a :href=document.compiled_url target="_blank">{{ document.compiled_url }}</a></p>
                     <p><b><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="sourceURLInfo"/>Source URL: </b><font-awesome-icon v-if="document.source_url && document.source_url.toLowerCase().includes(gitLabANT)" icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="gitLabInfo"/><a :href=document.source_url target="_blank">{{ document.source_url }}</a></p>
                     <p><b>Entry maintained by: </b>{{ document.creator_email }}</p>
@@ -128,7 +131,14 @@
                         </div>
                         <input type="text" class="form-control mt-2" id="editDocumentDocCode" v-model="editDocumentForm.number" readonly />
                     </div>
-                    
+
+                    <div class="mb-3">
+                        <label for="editDocumentLabels" class="form-label">Labels (Ctrl/Cmd+click to select multiple):</label>
+                        <select class="form-control" id="editDocumentLabels" v-model="editDocumentForm.label_ids" multiple>
+                            <option v-for="label in labels" :key="label.pk" :value="label.pk">{{ label.name }}</option>
+                        </select>
+                    </div>
+
                     <div class="mb-3">
                         <label for="editDocumentUrl" class="form-label"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="URLInfo"/>URL:</label>
                         <input type="text" class="form-control" maxlength="500" id="editUrl"
@@ -185,6 +195,7 @@ export default {
             activeEditDocumentModal: false,
             document: {},
             admins: [],
+            labels: [],
             codeStepsDrawing: [
             {
             label: 'Category:',
@@ -259,8 +270,9 @@ export default {
                 change_controlled: '',
                 compiled_url: '',
                 source_url: '',
-                creator_email: '',                
+                creator_email: '',
                 abstract: '',
+                label_ids: [],
             },
             // Edit-form error display
             editFormErrorList: [],
@@ -389,7 +401,26 @@ export default {
             }).catch(function (error) {
                 console.log(error)
             });
-        },        
+        },
+        getLabels() {
+            const path = `${API_URL}/labels`;
+            auth.currentUser.getIdToken(true).then(idToken => {
+                const config = {
+                headers: { Authorization: `${idToken}` }
+                };
+
+                axios.get(path, config)
+                .then((res) => {
+                    this.labels = res.data.labels || [];
+                })
+                .catch((error) => {
+                    console.error(error);
+                    this.labels = [];
+                });
+            }).catch(function (error) {
+                console.log(error)
+            });
+        },
         handleEditCancel() {
             this.toggleEditDocumentModal(null);
             this.initForm();
@@ -420,6 +451,7 @@ export default {
                 source_url: this.editDocumentForm.source_url,
                 creator_email: this.editDocumentForm.creator_email || this.email,
                 abstract: this.editDocumentForm.abstract,
+                label_ids: this.editDocumentForm.label_ids,
             };
             // Close modal after validation passes
             this.toggleEditDocumentModal(null);
@@ -435,8 +467,9 @@ export default {
             this.editDocumentForm.change_controlled = '';
             this.editDocumentForm.compiled_url = '';
             this.editDocumentForm.source_url = '';
-            this.editDocumentForm.creator_email = '';            
+            this.editDocumentForm.creator_email = '';
             this.editDocumentForm.abstract = '';
+            this.editDocumentForm.label_ids = [];
             this.docModal = null;
             this.showEditFormError = false;
             this.editFormErrorList = [];
@@ -476,6 +509,7 @@ export default {
                 this.editDocumentForm.entry_type = doc.entry_type;
                 this.editDocumentForm.change_controlled = doc.change_controlled;
                 this.editDocumentForm.number = (doc.number && doc.number.value);
+                this.editDocumentForm.label_ids = doc.labels ? doc.labels.map(label => label.pk) : [];
                 this.docModal = doc;
             }
             const body = document.querySelector('body');
@@ -591,6 +625,7 @@ Please update the entry at your earliest convenience.\n\nRegards,\nteledocs`);
     created() {
         this.getDocument();
         this.getAdmins();
+        this.getLabels();
         this.getEntryTypeOptions();
         this.getChangeControlledOptions();
     },
