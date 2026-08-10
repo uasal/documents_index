@@ -10,6 +10,7 @@
             <div class="d-inline-flex float-end">
               <a role="button" class="btn btn-primary" href="/numbers" target="_blank">View Assigned Numbers</a>
               <a v-if="superuser" role="button" class="btn btn-primary ms-4" href="/collaborators" target="_blank">Edit collaborators</a>
+              <a v-if="superuser" role="button" class="btn btn-primary ms-4" href="/labels" target="_blank">Manage Labels</a>
             </div>
           </div>
         </div>
@@ -105,8 +106,26 @@
               <div class="col mb-3">
                 <!-- <label for="columnFiltersCreatorEmail" class="form-label">Maintainer Email:</label> -->
                 <input type="text" class="form-control" id="columnFiltersCreatorEmail" v-model="columnFilters.creator_email" placeholder="Filter by Maintainer Email">
-              </div>         
-            </div>    
+              </div>
+              <div class="col mb-3">
+                <div class="dropdown" ref="labelFilterDropdown">
+                  <button type="button" class="form-control text-start dropdown-toggle" id="columnFiltersLabels"
+                    data-toggle="tooltip" data-placement="bottom" :title="labelFilterInfo"
+                    @click="toggleLabelFilterDropdown">
+                    {{ labelFilterButtonText }}
+                  </button>
+                  <div class="dropdown-menu p-2" :class="{ show: showLabelFilterDropdown }"
+                    style="min-width: 220px; max-height: 250px; overflow-y: auto;">
+                    <div v-if="labels.length === 0" class="dropdown-item-text text-muted">No labels defined yet.</div>
+                    <div class="form-check" v-for="label in labels" :key="label.pk">
+                      <input class="form-check-input" type="checkbox" :id="'columnFiltersLabel' + label.pk"
+                        :value="label.pk" v-model="columnFilters.label_ids">
+                      <label class="form-check-label" :for="'columnFiltersLabel' + label.pk">{{ label.name }}</label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
             <div class="row row-cols-auto" style="margin-left: 0.1rem;">
               <button type="button" class="col btn btn-primary btn-sm" @click="resetFilters">Reset Filters</button>            
             </div>
@@ -134,8 +153,9 @@
               </th>
               <th @click='sortColumn("entry_type")' style="min-width: 5%;" scope="col">Type
                 <font-awesome-icon icon="fa-solid fa-sort-up" style="vertical-align: bottom" v-if="this.sortBy=='entry_type' && this.sortOrder==1"/>
-                <font-awesome-icon icon="fa-solid fa-sort-down" style="vertical-align: top" v-if="this.sortBy=='entry_type' && this.sortOrder==-1"/>                
+                <font-awesome-icon icon="fa-solid fa-sort-down" style="vertical-align: top" v-if="this.sortBy=='entry_type' && this.sortOrder==-1"/>
               </th>
+              <th style="min-width: 10%;" scope="col">Labels</th>
               <th @click='sortColumn("compiled_url")' style="min-width: 10%;" scope="col"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="URLInfo"/>URL
                 <font-awesome-icon icon="fa-solid fa-sort-up" style="vertical-align: bottom" v-if="this.sortBy=='compiled_url' && this.sortOrder==1"/>
                 <font-awesome-icon icon="fa-solid fa-sort-down" style="vertical-align: top" v-if="this.sortBy=='compiled_url' && this.sortOrder==-1"/>
@@ -198,6 +218,10 @@
               </td>
               
               <td><font-awesome-icon v-if="entryTypeIconMap[doc.entry_type]" :icon="entryTypeIconMap[doc.entry_type]" data-toggle="tooltip" data-placement="bottom" :title="doc.entry_type" class="text-secondary" /></td>
+
+              <td>
+                <span v-for="label in doc.labels" :key="label.pk" class="badge bg-secondary me-1">{{ label.name }}</span>
+              </td>
 
               <td>
                 <font-awesome-icon v-if="doc.compiled_url && doc.compiled_url.toLowerCase().includes(gitLabANT)" icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="gitLabInfo"/>
@@ -311,6 +335,12 @@
                   <input type="text" class="form-control" v-model="addDocumentForm.provided_number" maxlength="3" placeholder="e.g. 001" />
                 </div>
                 <input type="text" class="form-control mt-2" id="addDocumentDocCode" v-model="addDocumentForm.number" readonly />
+              </div>
+              <div class="mb-3">
+                <label for="addDocumentLabels" class="form-label">Labels (Ctrl/Cmd+click to select multiple):</label>
+                <select class="form-control" id="addDocumentLabels" v-model="addDocumentForm.label_ids" multiple>
+                  <option v-for="label in labels" :key="label.pk" :value="label.pk">{{ label.name }}</option>
+                </select>
               </div>
               <div class="mb-3">
                 <label for="addDocumentUrl" class="form-label"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="URLInfo"/>URL:</label>
@@ -474,7 +504,14 @@
                 </div>
                 <input type="text" class="form-control mt-2" id="editDocumentDocCode" v-model="editDocumentForm.number" readonly />
               </div>
-              
+
+              <div class="mb-3">
+                <label for="editDocumentLabels" class="form-label">Labels (Ctrl/Cmd+click to select multiple):</label>
+                <select class="form-control" id="editDocumentLabels" v-model="editDocumentForm.label_ids" multiple>
+                  <option v-for="label in labels" :key="label.pk" :value="label.pk">{{ label.name }}</option>
+                </select>
+              </div>
+
               <div class="mb-3">
                 <label for="editDocumentUrl" class="form-label"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="URLInfo"/>URL:</label>
                 <input type="text" class="form-control" maxlength="500" id="editUrl"
@@ -581,7 +618,8 @@ export default {
         compiled_url: '',
         source_url: '',
         abstract: '',
-        creator_email: ''
+        creator_email: '',
+        label_ids: []
       },
       activeAddDocumentModal: false,
       activeEditDocumentModal: false,
@@ -598,6 +636,7 @@ export default {
         source_url: '',
         creator_email: this.email,
         abstract: '',
+        label_ids: [],
       },
       // Add-form error display
       addFormErrorList: [],
@@ -672,6 +711,9 @@ export default {
       filter: '',
       documents: [],
       admins: [],
+      labels: [],
+      showLabelFilterDropdown: false,
+      labelFilterInfo: 'Filter by labels. Only entries carrying all of the selected labels are shown.',
       show_table: false,
       editDocumentForm: {
         pk: '',
@@ -687,6 +729,7 @@ export default {
         source_url: '',
         creator_email: '',
         abstract: '',
+        label_ids: [],
       },
       docModal: null,
       TypeInfo: 'Choosing Type "drawing" and Change Controlled "yes" will give the option to generate a new Drawing Number (unless one already assigned).',
@@ -813,6 +856,12 @@ export default {
               return value && value.includes(searchTerm);
             });
 
+            // Also check if searchTerm matches any assigned label name
+            const foundInLabels = doc.labels && doc.labels.some(label => {
+              const value = label.name ? label.name.toString().toLowerCase() : null;
+              return value && value.includes(searchTerm);
+            });
+
             return (title && title.includes(searchTerm)) ||
               (author && author.includes(searchTerm)) ||
               (doc_identifier && doc_identifier.includes(searchTerm)) ||
@@ -822,7 +871,8 @@ export default {
               (source_url && source_url.includes(searchTerm)) ||
               (abstract && abstract.includes(searchTerm)) ||
               (creator_email && creator_email.includes(searchTerm)) ||
-              foundInAliases;
+              foundInAliases ||
+              foundInLabels;
           });
         }
       }
@@ -845,6 +895,12 @@ export default {
             // String not found in any associated object
             }
             return false;
+          } else if (key === "label_ids") {
+            const selectedLabelIds = this.columnFilters.label_ids;
+            if (!selectedLabelIds || selectedLabelIds.length === 0) return true;
+            // AND logic: document must carry every selected label
+            const docLabelIds = doc.labels ? doc.labels.map(label => label.pk) : [];
+            return selectedLabelIds.every(pk => docLabelIds.includes(pk));
           } else if (typeof (this.columnFilters[key]) === 'number') {
             const searchTerm = this.columnFilters[key];
             const value = doc[key]
@@ -856,6 +912,10 @@ export default {
           }
         });
       });
+    },
+    labelFilterButtonText() {
+      const count = this.columnFilters.label_ids.length;
+      return count > 0 ? `Labels (${count})` : 'Filter by Labels';
     },
     isLoggedIn() {
       if (auth.currentUser) {
@@ -1035,6 +1095,25 @@ export default {
         console.log(error)
       });
     },
+    getLabels() {
+      const path = `${API_URL}/labels`;
+      auth.currentUser.getIdToken(true).then(idToken => {
+        const config = {
+          headers: { Authorization: `${idToken}` }
+        };
+
+        axios.get(path, config)
+          .then((res) => {
+            this.labels = res.data.labels || [];
+          })
+          .catch((error) => {
+            console.error(error);
+            this.labels = [];
+          });
+      }).catch(function (error) {
+        console.log(error)
+      });
+    },
     handleAddReset() {
       this.initForm();
     },
@@ -1067,8 +1146,9 @@ export default {
         change_controlled: this.addDocumentForm.change_controlled,
         compiled_url: this.addDocumentForm.compiled_url,
         source_url: this.addDocumentForm.source_url,
-        creator_email: this.addDocumentForm.creator_email || this.email,        
+        creator_email: this.addDocumentForm.creator_email || this.email,
         abstract: this.addDocumentForm.abstract,
+        label_ids: this.addDocumentForm.label_ids,
       };
       this.toggleAddDocumentModal();
       this.addDocument(payload);
@@ -1122,6 +1202,7 @@ export default {
         source_url: this.editDocumentForm.source_url,
         creator_email: this.editDocumentForm.creator_email || this.email,
         abstract: this.editDocumentForm.abstract,
+        label_ids: this.editDocumentForm.label_ids,
       };
       // Close modal only after successful client validation
       this.toggleEditDocumentModal(null);
@@ -1139,6 +1220,7 @@ export default {
       this.addDocumentForm.source_url = '';
       this.addDocumentForm.creator_email = this.email;
       this.addDocumentForm.abstract = '';
+      this.addDocumentForm.label_ids = [];
       this.showAddFormError = false;
       this.addFormErrorList = [];
       this.editDocumentForm.pk = '';
@@ -1152,8 +1234,9 @@ export default {
       this.editDocumentForm.change_controlled = '';
       this.editDocumentForm.compiled_url = '';
       this.editDocumentForm.source_url = '';
-      this.editDocumentForm.creator_email = '';      
+      this.editDocumentForm.creator_email = '';
       this.editDocumentForm.abstract = '';
+      this.editDocumentForm.label_ids = [];
       this.showEditFormError = false;
       this.editFormErrorList = [];
       this.docModal = null;
@@ -1274,6 +1357,7 @@ export default {
         this.editDocumentForm.entry_type = doc.entry_type;
         this.editDocumentForm.change_controlled = doc.change_controlled;
         this.editDocumentForm.number = doc.number && doc.number.value;
+        this.editDocumentForm.label_ids = doc.labels ? doc.labels.map(label => label.pk) : [];
         this.docModal = doc;
       }
       const body = document.querySelector('body');
@@ -1433,14 +1517,30 @@ export default {
     },
     resetFilters() {
       Object.keys(this.columnFilters).forEach(key => {
-        this.columnFilters[key] = '';
+        this.columnFilters[key] = Array.isArray(this.columnFilters[key]) ? [] : '';
       });
+    },
+    toggleLabelFilterDropdown() {
+      this.showLabelFilterDropdown = !this.showLabelFilterDropdown;
+    },
+    handleLabelFilterClickOutside(event) {
+      // Bootstrap's JS bundle isn't loaded, so the dropdown is closed manually
+      // when the user clicks anywhere outside of it.
+      if (!this.showLabelFilterDropdown) return;
+      const dropdown = this.$refs.labelFilterDropdown;
+      if (dropdown && !dropdown.contains(event.target)) {
+        this.showLabelFilterDropdown = false;
+      }
     },
     syncFiltersToUrl() {
       const query = {};
       if (this.showFilters) {
         Object.entries(this.columnFilters).forEach(([key, value]) => {
-          if (value !== '') query[key] = value;
+          if (Array.isArray(value)) {
+            if (value.length > 0) query[key] = value.join(',');
+          } else if (value !== '') {
+            query[key] = value;
+          }
         });
       } else if (this.filter !== '') {
         query.q = this.filter;
@@ -1459,7 +1559,10 @@ export default {
         this.showFilters = true;
         this.filterButtonText = 'General Filter';
         columnFilterKeys.forEach(key => {
-          if (query[key] !== undefined) {
+          if (query[key] === undefined) return;
+          if (Array.isArray(this.columnFilters[key])) {
+            this.columnFilters[key] = query[key].split(',').filter(v => v !== '').map(Number);
+          } else {
             this.columnFilters[key] = query[key];
           }
         });
@@ -1502,10 +1605,11 @@ Please update the entry at your earliest convenience.\n\nRegards,\nteledocs`);
         { number: 'Doc #', key: 'number'},
         { entry_type: 'Type', key: 'entry_type'},
         { change_controlled: 'Change Controlled', key: 'change_controlled'},
-        { compiled_url: 'URL', key: 'compiled_url'},        
-        { source_url: 'Source URL', key: 'source_url'},        
-        { abstract: 'Abstract', key: 'abstract'},        
-        { creator_email: 'Maintainer Email', key: 'creator_email'},        
+        { labels: 'Labels', key: 'labels'},
+        { compiled_url: 'URL', key: 'compiled_url'},
+        { source_url: 'Source URL', key: 'source_url'},
+        { abstract: 'Abstract', key: 'abstract'},
+        { creator_email: 'Maintainer Email', key: 'creator_email'},
       ];
 
       worksheet.addRow({
@@ -1515,7 +1619,8 @@ Please update the entry at your earliest convenience.\n\nRegards,\nteledocs`);
         number: 'Doc #',
         entry_type: 'Type',
         change_controlled: 'Change Controlled',
-        compiled_url: 'URL',        
+        labels: 'Labels',
+        compiled_url: 'URL',
         source_url: 'Source URL',
         abstract: 'Abstract',
         creator_email: 'Maintainer Email',
@@ -1529,6 +1634,7 @@ Please update the entry at your earliest convenience.\n\nRegards,\nteledocs`);
           number: doc.number.value,
           entry_type: doc.entry_type,
           change_controlled: doc.change_controlled,
+          labels: (doc.labels || []).map(label => label.name).join(', '),
           compiled_url: doc.compiled_url,
           source_url: doc.source_url,
           abstract: doc.abstract,
@@ -1610,12 +1716,17 @@ Please update the entry at your earliest convenience.\n\nRegards,\nteledocs`);
     this.loadFiltersFromUrl();
     this.getDocuments();
     this.getAdmins();
+    this.getLabels();
     this.getEntryTypeOptions();
     this.getChangeControlledOptions();
   },
   mounted() {
     // Initialize steps for the current value of addDocumentEntryType
     this.resetDrawingCodeBuilder();
+    document.addEventListener('click', this.handleLabelFilterClickOutside);
+  },
+  beforeUnmount() {
+    document.removeEventListener('click', this.handleLabelFilterClickOutside);
   }
 };
 </script>

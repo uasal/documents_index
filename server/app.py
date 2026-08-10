@@ -63,6 +63,8 @@ def create_app():
         AllDomains,
         SingleDomain,
         AllNumbers,
+        AllLabels,
+        SingleLabel,
     )
 
     logger.info("Registering views.")
@@ -85,6 +87,8 @@ def create_app():
         "/api/domains/<pk>", view_func=SingleDomain.as_view("single_domain")
     )
     app.add_url_rule("/api/numbers", view_func=AllNumbers.as_view("number_list"))
+    app.add_url_rule("/api/labels", view_func=AllLabels.as_view("label_list"))
+    app.add_url_rule("/api/labels/<pk>", view_func=SingleLabel.as_view("single_label"))
 
     return app
 

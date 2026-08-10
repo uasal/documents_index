@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import DocumentsAll from '../components/DocumentsAll.vue'
 import NumbersAll from '../components/NumbersAll.vue'
 import CollaboratorsAll from '../components/CollaboratorsAll.vue'
+import LabelsAll from '../components/LabelsAll.vue'
 import DocumentsItem from '../components/DocumentsItem.vue'
 import Ping from '../components/Ping.vue'
 
@@ -28,6 +29,11 @@ const router = createRouter({
       path: '/collaborators',
       name: 'CollaboratorsAll',
       component: CollaboratorsAll,
+    },
+    {
+      path: '/labels',
+      name: 'LabelsAll',
+      component: LabelsAll,
     },
     {
       path: '/ping',
