@@ -135,40 +135,40 @@
         <table class="table table-hover" v-if="show_table">
           <thead>
             <tr>
-              <th @click='sortColumn("title")' style="min-width: 10%;" scope="col">Title / Name
+              <th @click='sortColumn("title")' style="min-width: 9%;" scope="col">Title / Name
                 <font-awesome-icon icon="fa-solid fa-sort-up" style="vertical-align: bottom" v-if="this.sortBy=='title' && this.sortOrder==1"/>
                 <font-awesome-icon icon="fa-solid fa-sort-down" style="vertical-align: top" v-if="this.sortBy=='title' && this.sortOrder==-1"/>
               </th>
-              <th @click='sortColumn("author")' style="min-width: 10%;" scope="col">Author
+              <th @click='sortColumn("author")' style="min-width: 8%;" scope="col">Author
                 <font-awesome-icon icon="fa-solid fa-sort-up" style="vertical-align: bottom" v-if="this.sortBy=='author' && this.sortOrder==1"/>
                 <font-awesome-icon icon="fa-solid fa-sort-down" style="vertical-align: top" v-if="this.sortBy=='author' && this.sortOrder==-1"/>
               </th>
-              <th @click='sortColumn("doc_identifier")' style="min-width: 10%;" scope="col">Identifier
+              <th @click='sortColumn("doc_identifier")' style="min-width: 8%;" scope="col">Identifier
                 <font-awesome-icon icon="fa-solid fa-sort-up" style="vertical-align: bottom" v-if="this.sortBy=='doc_identifier' && this.sortOrder==1"/>
                 <font-awesome-icon icon="fa-solid fa-sort-down" style="vertical-align: top" v-if="this.sortBy=='doc_identifier' && this.sortOrder==-1"/>                
               </th>
-              <th @click='sortColumn("number")' style="min-width: 15%;" scope="col">Doc #
+              <th @click='sortColumn("number")' style="min-width: 12%;" scope="col">Doc #
                 <font-awesome-icon icon="fa-solid fa-sort-up" style="vertical-align: bottom" v-if="this.sortBy=='number' && this.sortOrder==1"/>
                 <font-awesome-icon icon="fa-solid fa-sort-down" style="vertical-align: top" v-if="this.sortBy=='number' && this.sortOrder==-1"/>                
               </th>
-              <th @click='sortColumn("entry_type")' style="min-width: 5%;" scope="col">Type
+              <th @click='sortColumn("entry_type")' style="min-width: 4%;" scope="col">Type
                 <font-awesome-icon icon="fa-solid fa-sort-up" style="vertical-align: bottom" v-if="this.sortBy=='entry_type' && this.sortOrder==1"/>
                 <font-awesome-icon icon="fa-solid fa-sort-down" style="vertical-align: top" v-if="this.sortBy=='entry_type' && this.sortOrder==-1"/>
               </th>
-              <th style="min-width: 10%;" scope="col">Labels</th>
-              <th @click='sortColumn("compiled_url")' style="min-width: 10%;" scope="col"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="URLInfo"/>URL
+              <th style="min-width: 8%;" scope="col">Labels</th>
+              <th @click='sortColumn("compiled_url")' style="min-width: 8%;" scope="col"><span data-toggle="tooltip" data-placement="bottom" :title="URLInfo"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" /></span>URL
                 <font-awesome-icon icon="fa-solid fa-sort-up" style="vertical-align: bottom" v-if="this.sortBy=='compiled_url' && this.sortOrder==1"/>
                 <font-awesome-icon icon="fa-solid fa-sort-down" style="vertical-align: top" v-if="this.sortBy=='compiled_url' && this.sortOrder==-1"/>
               </th>
-              <th @click='sortColumn("source_url")' style="min-width: 10%;" scope="col"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="sourceURLInfo"/>Source URL
+              <th @click='sortColumn("source_url")' style="min-width: 8%;" scope="col"><span data-toggle="tooltip" data-placement="bottom" :title="sourceURLInfo"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" /></span>Source URL
                 <font-awesome-icon icon="fa-solid fa-sort-up" style="vertical-align: bottom" v-if="this.sortBy=='source_url' && this.sortOrder==1"/>
                 <font-awesome-icon icon="fa-solid fa-sort-down" style="vertical-align: top" v-if="this.sortBy=='source_url' && this.sortOrder==-1"/>                
               </th>
-              <th @click='sortColumn("abstract")' style="min-width: 20%;" scope="col">Abstract
+              <th @click='sortColumn("abstract")' style="min-width: 16%;" scope="col">Abstract
                 <font-awesome-icon icon="fa-solid fa-sort-up" style="vertical-align: bottom" v-if="this.sortBy=='abstract' && this.sortOrder==1"/>
                 <font-awesome-icon icon="fa-solid fa-sort-down" style="vertical-align: top" v-if="this.sortBy=='abstract' && this.sortOrder==-1"/>                
               </th>
-              <th @click='sortColumn("creator_email")' style="min-width: 10%;" scope="col">Maintained By
+              <th @click='sortColumn("creator_email")' style="min-width: 9%;" scope="col">Maintained By
                 <font-awesome-icon icon="fa-solid fa-sort-up" style="vertical-align: bottom" v-if="this.sortBy=='creator_email' && this.sortOrder==1"/>
                 <font-awesome-icon icon="fa-solid fa-sort-down" style="vertical-align: top" v-if="this.sortBy=='creator_email' && this.sortOrder==-1"/>                
               </th>
@@ -217,21 +217,21 @@
                 </ul>
               </td>
               
-              <td><font-awesome-icon v-if="entryTypeIconMap[doc.entry_type]" :icon="entryTypeIconMap[doc.entry_type]" data-toggle="tooltip" data-placement="bottom" :title="doc.entry_type" class="text-secondary" /></td>
+              <td><span v-if="entryTypeIconMap[doc.entry_type]" data-toggle="tooltip" data-placement="bottom" :title="doc.entry_type"><font-awesome-icon :icon="entryTypeIconMap[doc.entry_type]" class="text-secondary" /></span></td>
 
               <td>
                 <span v-for="label in doc.labels" :key="label.pk" class="badge bg-secondary me-1">{{ label.name }}</span>
               </td>
 
               <td>
-                <font-awesome-icon v-if="doc.compiled_url && doc.compiled_url.toLowerCase().includes(gitLabANT)" icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="gitLabInfo"/>
+                <span v-if="doc.compiled_url && doc.compiled_url.toLowerCase().includes(gitLabANT)" data-toggle="tooltip" data-placement="bottom" :title="gitLabInfo"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" /></span>
                 <a v-if="doc.compiled_url" :href="doc.compiled_url" target="_blank">link</a>
                 <!-- <a class="ms-3" :href=doc.compiled_url target="_blank" download><font-awesome-icon
                     icon="fa-solid fa-download" /></a> -->
               </td>
 
               <td>
-                <font-awesome-icon v-if="doc.source_url && doc.source_url.toLowerCase().includes(gitLabANT)" icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="gitLabInfo"/>
+                <span v-if="doc.source_url && doc.source_url.toLowerCase().includes(gitLabANT)" data-toggle="tooltip" data-placement="bottom" :title="gitLabInfo"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" /></span>
                 <a v-if="doc.source_url" :href="doc.source_url" target="_blank">link</a>
                 <!-- <a class="ms-3" :href=doc.source_url target="_blank" download><font-awesome-icon
                     icon="fa-solid fa-download" /></a> -->
@@ -241,12 +241,23 @@
                 v-if="doc.abstract.length > 30">{{ truncate(doc.abstract, 30) }}</td>
               <td v-else>{{ doc.abstract }}</td>
 
-              <td data-toggle="tooltip" data-placement="bottom" :title="doc.creator_email" style="cursor: default"
-                v-if="doc.creator_email.length > 15">{{ truncate(doc.creator_email, 15) }}</td>
-              <td v-else>{{ doc.creator_email }}</td>
+              <td class="text-nowrap">
+                <!-- Flex so the notify icons line up down the column instead of trailing
+                  each address at a different offset -->
+                <div class="d-flex align-items-center justify-content-between">
+                  <span data-toggle="tooltip" data-placement="bottom" :title="doc.creator_email" style="cursor: default">{{
+                    doc.creator_email.length > 15 ? truncate(doc.creator_email, 15) : doc.creator_email }}</span>
+                  <!-- Notify the maintainer. Available to anyone who doesn't maintain the entry themselves, admins included -->
+                  <button v-if="email != doc.creator_email" type="button" class="btn btn-sm text-primary px-1 ms-2"
+                  data-toggle="tooltip" data-placement="top"
+                  title="Notify maintainer that entry needs to be updated" @click="sendEmail(doc)">
+                    <font-awesome-icon icon="fa-solid fa-circle-exclamation" />
+                  </button>
+                </div>
+              </td>
 
-              <td v-if="(email == doc.creator_email) || superuser">
-                <div class="btn-group" role="group">
+              <td>
+                <div class="btn-group" role="group" v-if="(email == doc.creator_email) || superuser">
                   <button type="button" class="btn btn-warning btn-sm" @click="toggleEditDocumentModal(doc)">
                     Update
                   </button>
@@ -254,12 +265,6 @@
                     Delete
                   </button>
                 </div>
-              </td>
-              <td v-else>
-                <button type="button" class="btn text-primary" data-toggle="tooltip" 
-                data-placement="top" title="Notify maintainer that entry needs to be updated" @click="sendEmail(doc)">
-                  <font-awesome-icon icon="fa-solid fa-circle-exclamation" />
-                </button>
               </td>
             </tr>
           </tbody>
@@ -307,14 +312,14 @@
                   placeholder="Enter author">
               </div>
               <div class="mb-3">
-                <label for="addDocumentEntryType" class="form-label"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="TypeInfo"/>Type: <span class="text-danger">*</span></label>
+                <label for="addDocumentEntryType" class="form-label"><span data-toggle="tooltip" data-placement="bottom" :title="TypeInfo"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" /></span>Type: <span class="text-danger">*</span></label>
                 <select :class="['form-control', { 'is-invalid': addFormEntryTypeMissing }]" id="addEntryType" v-model="addDocumentForm.entry_type">
                   <option v-for="option in entryTypeOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
                 </select>
                 <div v-if="addFormEntryTypeMissing" class="form-text text-danger">This field is required.</div>
               </div>
               <div class="mb-3">
-                <label for="addDocumentChangeControlled" class="form-label"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="CCInfo"/>Change Controlled: <span class="text-danger">*</span></label>
+                <label for="addDocumentChangeControlled" class="form-label"><span data-toggle="tooltip" data-placement="bottom" :title="CCInfo"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" /></span>Change Controlled: <span class="text-danger">*</span></label>
                 <select :class="['form-control', { 'is-invalid': addFormChangeControlledMissing }]" id="addDocumentChangeControlled" v-model="addDocumentForm.change_controlled">
                   <option v-for="option in changeControlledOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
                 </select>
@@ -337,7 +342,7 @@
                 <input type="text" class="form-control mt-2" id="addDocumentDocCode" v-model="addDocumentForm.number" readonly />
               </div>
               <div class="mb-3" v-if="superuser && (addDocumentForm.entry_type === 'document')">
-                <label for="addDocumentNumberStub" class="form-label"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="DocNumberInfo"/>Document Number:</label>
+                <label for="addDocumentNumberStub" class="form-label"><span data-toggle="tooltip" data-placement="bottom" :title="DocNumberInfo"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" /></span>Document Number:</label>
                 <select class="form-control" id="addDocumentNumberStub" v-model="addDocumentForm.document_stub">
                   <option value="">No number</option>
                   <option v-for="stub in documentStubOptions" :key="stub.value" :value="stub.value">{{ stub.label }} ({{ stub.example }})</option>
@@ -350,12 +355,12 @@
                 </select>
               </div>
               <div class="mb-3">
-                <label for="addDocumentUrl" class="form-label"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="URLInfo"/>URL:</label>
+                <label for="addDocumentUrl" class="form-label"><span data-toggle="tooltip" data-placement="bottom" :title="URLInfo"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" /></span>URL:</label>
                 <input type="text" class="form-control" id="addUrl" v-model="addDocumentForm.compiled_url"
                   placeholder="Enter URL">
               </div>
               <div class="mb-3">
-                <label for="addDocumentSourceUrl" class="form-label"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="sourceURLInfo"/>Source URL:</label>
+                <label for="addDocumentSourceUrl" class="form-label"><span data-toggle="tooltip" data-placement="bottom" :title="sourceURLInfo"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" /></span>Source URL:</label>
                 <input type="text" class="form-control" id="addSourceUrl" v-model="addDocumentForm.source_url"
                   placeholder="Enter source URL">
               </div>
@@ -463,13 +468,13 @@
                   v-model="editDocumentForm.author" placeholder="Enter author">
               </div>
               <div class="mb-3">
-                <label for="editDocumentEntryType" class="form-label"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="TypeInfo"/>Type:</label>
+                <label for="editDocumentEntryType" class="form-label"><span data-toggle="tooltip" data-placement="bottom" :title="TypeInfo"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" /></span>Type:</label>
                 <select class="form-control" id="editDocumentEntryType" v-model="editDocumentForm.entry_type" :disabled="editDocumentForm.number!=''">
                   <option v-for="option in entryTypeOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
                 </select>
               </div>
               <div class="mb-3">
-                <label for="editDocumentChangeControlled" class="form-label"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="CCInfo"/>Change Controlled:</label>
+                <label for="editDocumentChangeControlled" class="form-label"><span data-toggle="tooltip" data-placement="bottom" :title="CCInfo"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" /></span>Change Controlled:</label>
                 <select class="form-control" id="editDocumentChangeControlled" v-model="editDocumentForm.change_controlled" :disabled="editDocumentForm.number!=''">
                   <option v-for="option in changeControlledOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
                 </select>
@@ -515,7 +520,7 @@
               <!-- Documents that don't already carry a number can have one assigned by an admin.
                 Existing numbers are never reassigned here, they have to be released first. -->
               <div class="mb-3" v-if="superuser && (editDocumentForm.entry_type === 'document') && !(docModal && docModal.number)">
-                <label for="editDocumentNumberStub" class="form-label"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="DocNumberInfo"/>Document Number:</label>
+                <label for="editDocumentNumberStub" class="form-label"><span data-toggle="tooltip" data-placement="bottom" :title="DocNumberInfo"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" /></span>Document Number:</label>
                 <select class="form-control" id="editDocumentNumberStub" v-model="editDocumentForm.document_stub">
                   <option value="">No number</option>
                   <option v-for="stub in documentStubOptions" :key="stub.value" :value="stub.value">{{ stub.label }} ({{ stub.example }})</option>
@@ -530,12 +535,12 @@
               </div>
 
               <div class="mb-3">
-                <label for="editDocumentUrl" class="form-label"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="URLInfo"/>URL:</label>
+                <label for="editDocumentUrl" class="form-label"><span data-toggle="tooltip" data-placement="bottom" :title="URLInfo"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" /></span>URL:</label>
                 <input type="text" class="form-control" maxlength="500" id="editUrl"
                   v-model="editDocumentForm.compiled_url" placeholder="Enter URL">
               </div>
               <div class="mb-3">
-                <label for="editDocumentSourceUrl" class="form-label"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="sourceURLInfo"/>Source URL:</label>
+                <label for="editDocumentSourceUrl" class="form-label"><span data-toggle="tooltip" data-placement="bottom" :title="sourceURLInfo"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" /></span>Source URL:</label>
                 <input type="text" class="form-control" maxlength="500" id="editSourceUrl"
                   v-model="editDocumentForm.source_url" placeholder="Enter source URL">
               </div>
@@ -617,8 +622,8 @@ import AlertMessage from './AlertMessage.vue';
 import DrawingCodeBuilder from './DrawingCodeBuilder.vue';
 import { loadNumberSchemes } from '../numberSchemes';
 
-const API_URL = '/api';
-// const API_URL = 'http://localhost:5001/api';
+// const API_URL = '/api';
+const API_URL = 'http://localhost:5001/api';
 
 export default {
   name: 'DocumentsAll',
