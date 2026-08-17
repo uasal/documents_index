@@ -18,7 +18,9 @@ from models import (
     TypeEnum,
     ChangeControlledEnum,
     NumberConfirmationRequired,
+    NumberGenerationError,
     OutOfOrderNumber,
+    DRAWING_NUMBER_STEPS,
     get_entity,
     is_superuser
 )
@@ -80,6 +82,33 @@ def token_required(f):
     return decorated_function
 
 
+def _may_assign_document_number(entity, post_data):
+    """
+    Whether the caller is allowed to assign the number carried by post_data.
+
+    Document numbers are admin only, so a non-superuser may only submit a
+    document entry with no number. Drawing numbers are unaffected.
+
+    Parameters
+    ----------
+    entity : User or Domain
+        Entity the request was authenticated as.
+    post_data : dict
+        Payload of the create / update request.
+
+    Returns
+    -------
+    bool
+        True if the request may proceed, False if it must be rejected.
+    """
+    requests_number = bool(post_data.get("number") or post_data.get("confirmed_number"))
+    is_document = post_data.get("entry_type") == TypeEnum.document.value
+
+    if is_document and requests_number:
+        return is_superuser(entity)
+    return True
+
+
 def superuser(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -123,11 +152,21 @@ class AllDocuments(MethodView):
         response_object = {"status": "success"}
         logger.info(f"AllDocuments: User {email} is adding new document.")
         post_data = request.get_json()
-        
+
         # If user is superuser, accept input value for creator_email
         if not is_superuser(entity):
             post_data["creator_email"] = email
-        
+
+        # Assigning a number to a document entry is superuser only. Drawings
+        # keep their existing behaviour.
+        if not _may_assign_document_number(entity, post_data):
+            logger.info(
+                f"AllDocuments: User {email} tried to assign a document number "
+                "without superuser rights."
+            )
+            return jsonify(status="fail",
+                           message="Only admins can assign document numbers"), 403
+
         # TODO need to check if this isn't a duplicate
         # TODO should validate fields
         try:
@@ -138,6 +177,8 @@ class AllDocuments(MethodView):
         except OutOfOrderNumber as e:
             return jsonify(status="out_of_order", suggested_next=e.suggested_next,
                            message=str(e))
+        except NumberGenerationError as e:
+            return jsonify(status="fail", message=str(e)), 400
 
         if not success:
             response_object["status"] = "fail"
@@ -248,6 +289,33 @@ class EntryTypes(MethodView):
             for entry_type in TypeEnum
         ]
         return jsonify(entry_types=entry_types, default=Document.entry_type.default.arg.value)
+
+
+class NumberSchemes(MethodView):
+    """View class for the /number_schemes route."""
+
+    decorators = [token_required]
+
+    def get(self):
+        """
+        Method with logic for get requests.
+        Get requests here return both numbering schemes, so that the client
+        renders pickers from them instead of holding its own copy.
+
+        Returns
+        -------
+        json
+            Json response to get request. Contains 'status', the drawing tree
+            steps and the list of document number stubs.
+        """
+        response = jsonify(
+            status="success",
+            drawing={"steps": DRAWING_NUMBER_STEPS},
+            document={"stubs": Number.document_stubs()},
+        )
+        # The schemes change very rarely, so let the browser reuse them.
+        response.headers["Cache-Control"] = "private, max-age=3600"
+        return response
 
 
 class ChangeControlledTypes(MethodView):
@@ -411,7 +479,17 @@ class SingleDocument(MethodView):
             # If user is superuser, accept input value for creator_email
             if not is_superuser(entity):
                 post_data.pop("creator_email", None)
-            
+
+            # Assigning a number to a document entry is superuser only.
+            if not _may_assign_document_number(entity, post_data):
+                response_object["status"] = "fail"
+                response_object["message"] = "Only admins can assign document numbers"
+                logger.info(
+                    f"SingleDocument: User {email} tried to assign a document "
+                    "number without superuser rights."
+                )
+                return jsonify(response_object), 403
+
             try:
                 success = document.update(**post_data)
             except NumberConfirmationRequired as e:
@@ -420,6 +498,8 @@ class SingleDocument(MethodView):
             except OutOfOrderNumber as e:
                 return jsonify(status="out_of_order", suggested_next=e.suggested_next,
                                message=str(e))
+            except NumberGenerationError as e:
+                return jsonify(status="fail", message=str(e)), 400
 
             if not success:
                 response_object['status'] = 'fail'

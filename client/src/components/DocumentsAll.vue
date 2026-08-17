@@ -336,6 +336,13 @@
                 </div>
                 <input type="text" class="form-control mt-2" id="addDocumentDocCode" v-model="addDocumentForm.number" readonly />
               </div>
+              <div class="mb-3" v-if="superuser && (addDocumentForm.entry_type === 'document')">
+                <label for="addDocumentNumberStub" class="form-label"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="DocNumberInfo"/>Document Number:</label>
+                <select class="form-control" id="addDocumentNumberStub" v-model="addDocumentForm.document_stub">
+                  <option value="">No number</option>
+                  <option v-for="stub in documentStubOptions" :key="stub.value" :value="stub.value">{{ stub.label }} ({{ stub.example }})</option>
+                </select>
+              </div>
               <div class="mb-3">
                 <label for="addDocumentLabels" class="form-label">Labels (Ctrl/Cmd+click to select multiple):</label>
                 <select class="form-control" id="addDocumentLabels" v-model="addDocumentForm.label_ids" multiple>
@@ -505,6 +512,16 @@
                 <input type="text" class="form-control mt-2" id="editDocumentDocCode" v-model="editDocumentForm.number" readonly />
               </div>
 
+              <!-- Documents that don't already carry a number can have one assigned by an admin.
+                Existing numbers are never reassigned here, they have to be released first. -->
+              <div class="mb-3" v-if="superuser && (editDocumentForm.entry_type === 'document') && !(docModal && docModal.number)">
+                <label for="editDocumentNumberStub" class="form-label"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="DocNumberInfo"/>Document Number:</label>
+                <select class="form-control" id="editDocumentNumberStub" v-model="editDocumentForm.document_stub">
+                  <option value="">No number</option>
+                  <option v-for="stub in documentStubOptions" :key="stub.value" :value="stub.value">{{ stub.label }} ({{ stub.example }})</option>
+                </select>
+              </div>
+
               <div class="mb-3">
                 <label for="editDocumentLabels" class="form-label">Labels (Ctrl/Cmd+click to select multiple):</label>
                 <select class="form-control" id="editDocumentLabels" v-model="editDocumentForm.label_ids" multiple>
@@ -598,6 +615,7 @@ import { auth } from '../firebaseConfig';
 import ExcelJS from 'exceljs';
 import AlertMessage from './AlertMessage.vue';
 import DrawingCodeBuilder from './DrawingCodeBuilder.vue';
+import { loadNumberSchemes } from '../numberSchemes';
 
 const API_URL = '/api';
 // const API_URL = 'http://localhost:5001/api';
@@ -630,6 +648,7 @@ export default {
         number: '',
         _stub: '',
         provided_number: '',
+        document_stub: '',
         entry_type: '',
         change_controlled: '',
         compiled_url: '',
@@ -644,68 +663,9 @@ export default {
       // Edit-form error display
       editFormErrorList: [],
       showEditFormError: false,
-      codeStepsDrawing: [
-        {
-          label: 'Category:',
-          options: [
-              { label: 'Extra-Solar Coronograph', value: 'ESC' },
-              { label: 'Widefield Context Camera', value: 'WCC' },
-            ],
-          connectorAfter: '-'
-        },
-        {
-          label: 'Development Category:',
-          options: {
-            ESC: [
-            { label: 'Flight', value: 'F' },
-            { label: 'GSE', value: 'G' },
-            { label: 'Test Development Unit / Prototype', value: 'T' },
-            ], 
-            WCC: [
-            { label: 'Flight', value: 'F' },
-            { label: 'GSE', value: 'G' },
-            { label: 'Test Development Unit / Prototype', value: 'T' },
-            ], 
-          },
-          connectorAfter: ''
-        },
-        {
-          label: 'Engineering Subset:',
-          options: {
-            ESC_F: [
-            { label: 'Assembly', value: 'A' },
-            { label: 'Part', value: 'P' },
-            { label: 'Interface Control Drawing', value: 'X' },
-            ], 
-            ESC_G: [
-            { label: 'Assembly', value: 'A' },
-            { label: 'Part', value: 'P' },
-            { label: 'Interface Control Drawing', value: 'X' },
-            ], 
-            ESC_T: [
-            { label: 'Assembly', value: 'A' },
-            { label: 'Part', value: 'P' },
-            { label: 'Interface Control Drawing', value: 'X' },
-            ], 
-            WCC_F: [
-            { label: 'Assembly', value: 'A' },
-            { label: 'Part', value: 'P' },
-            { label: 'Interface Control Drawing', value: 'X' },
-            ], 
-            WCC_G: [
-            { label: 'Assembly', value: 'A' },
-            { label: 'Part', value: 'P' },
-            { label: 'Interface Control Drawing', value: 'X' },
-            ], 
-            WCC_T: [
-            { label: 'Assembly', value: 'A' },
-            { label: 'Part', value: 'P' },
-            { label: 'Interface Control Drawing', value: 'X' },
-            ], 
-          },
-          connectorAfter: '-'
-        },
-      ],
+      // Both numbering schemes are served by the API, see numberSchemes.js
+      codeStepsDrawing: [],
+      documentStubOptions: [],
       builderComplete: false,
       builderKey: 0,
       filter: '',
@@ -723,6 +683,7 @@ export default {
         number: '',
         _stub: '',
         provided_number: '',
+        document_stub: '',
         entry_type: '',
         change_controlled: '',
         compiled_url: '',
@@ -732,8 +693,9 @@ export default {
         label_ids: [],
       },
       docModal: null,
-      TypeInfo: 'Choosing Type "drawing" and Change Controlled "yes" will give the option to generate a new Drawing Number (unless one already assigned).',
-      CCInfo: 'Choosing Type "drawing" and Change Controlled "yes" will give the option to generate a new Drawing Number (unless one already assigned).',
+      TypeInfo: 'Choosing Type "drawing" and Change Controlled "yes" will give the option to generate a new Drawing Number (unless one already assigned). Admins can assign a Document Number to any entry of Type "document".',
+      CCInfo: 'Choosing Type "drawing" and Change Controlled "yes" will give the option to generate a new Drawing Number (unless one already assigned). Document Numbers do not depend on change control.',
+      DocNumberInfo: 'Optional, admins only. The counter is assigned by the server when the entry is saved and is never reused. Existing numbers cannot be reassigned here.',
       URLInfo: 'The URL of the file described by the metadata in this entry.',
       sourceURLInfo: '(optional) The URL of the source components (Git repository, Power Point presentation etc.) used to compile / build the file described by the metadata in this entry.',
       gitLabInfo: 'This URL requires the ANT VPN to be activated.',
@@ -1044,11 +1006,18 @@ export default {
           })
           .catch((error) => {
             console.log(error);
+            this.message = this.serverMessage(error) || 'Document not added, error occured';
+            this.showMessage = true;
             this.getDocuments();
           });
       }).catch(function (error) {
         console.log(error)
       });
+    },
+    serverMessage(error) {
+      // Number generation failures and permission errors carry a message meant
+      // for the user, rather than being reported as a generic failure.
+      return (error && error.response && error.response.data && error.response.data.message) || '';
     },
     getDocuments() {
       const path = `${API_URL}/documents`;
@@ -1136,7 +1105,10 @@ export default {
       const stub = this.addDocumentForm._stub ? this.addDocumentForm._stub.replace(/^-+|-+$/g,'') : '';
       const providedRaw = this.addDocumentForm.provided_number ? this.addDocumentForm.provided_number.replace(/\D/g,'') : '';
       const provided = providedRaw ? providedRaw.padStart(3,'0') : '';
-      const combinedNumber = stub ? (provided ? `${stub}${provided}` : stub) : (this.addDocumentForm.number || '');
+      // Documents carry the stub the admin picked, the server appends the counter
+      const combinedNumber = this.addDocumentForm.entry_type === 'document'
+        ? (this.addDocumentForm.document_stub || '')
+        : (stub ? (provided ? `${stub}${provided}` : stub) : (this.addDocumentForm.number || ''));
 
       const payload = {
         title: this.addDocumentForm.title,
@@ -1190,7 +1162,10 @@ export default {
       const stub = this.editDocumentForm._stub ? this.editDocumentForm._stub.replace(/^-+|-+$/g,'') : '';
       const providedRaw = this.editDocumentForm.provided_number ? this.editDocumentForm.provided_number.replace(/\D/g,'') : '';
       const provided = providedRaw ? providedRaw.padStart(3,'0') : '';
-      const combinedNumber = stub ? (provided ? `${stub}${provided}` : stub) : (this.editDocumentForm.number || '');
+      // Documents carry the stub the admin picked, the server appends the counter
+      const combinedNumber = this.editDocumentForm.entry_type === 'document'
+        ? (this.editDocumentForm.document_stub || '')
+        : (stub ? (provided ? `${stub}${provided}` : stub) : (this.editDocumentForm.number || ''));
 
       const payload = {
         title: this.editDocumentForm.title,
@@ -1214,6 +1189,7 @@ export default {
       this.addDocumentForm.number = '';
       this.addDocumentForm._stub = '';
       this.addDocumentForm.provided_number = '';
+      this.addDocumentForm.document_stub = '';
       this.addDocumentForm.entry_type = this.entryTypeDefault;
       this.addDocumentForm.change_controlled = this.changeControlledDefault;
       this.addDocumentForm.compiled_url = '';
@@ -1230,6 +1206,7 @@ export default {
       this.editDocumentForm.number = '';
       this.editDocumentForm._stub = '';
       this.editDocumentForm.provided_number = '';
+      this.editDocumentForm.document_stub = '';
       this.editDocumentForm.entry_type = '';
       this.editDocumentForm.change_controlled = '';
       this.editDocumentForm.compiled_url = '';
@@ -1408,6 +1385,8 @@ export default {
           })
           .catch((error) => {
             console.error(error);
+            this.message = this.serverMessage(error) || 'Document not updated, error occured';
+            this.showMessage = true;
             this.getDocuments();
           });
       }).catch(function (error) {
@@ -1710,7 +1689,23 @@ Please update the entry at your earliest convenience.\n\nRegards,\nteledocs`);
         this.superuser = false;
         this.isAuthorized = false;
       });
-    },    
+    },
+    getNumberSchemes() {
+      loadNumberSchemes()
+        .then((schemes) => {
+          this.codeStepsDrawing = schemes.drawingSteps;
+          this.documentStubOptions = schemes.documentStubs;
+          // Force a fresh builder: it sizes its internal selection array from
+          // the steps it was created with, so one created before the tree
+          // arrived would keep an array sized for an empty tree.
+          this.builderKey += 1;
+        })
+        .catch((error) => {
+          console.error(error);
+          this.message = 'Numbering schemes could not be loaded, so new numbers cannot be assigned.';
+          this.showMessage = true;
+        });
+    },
   },
   created() {
     this.loadFiltersFromUrl();
@@ -1719,6 +1714,7 @@ Please update the entry at your earliest convenience.\n\nRegards,\nteledocs`);
     this.getLabels();
     this.getEntryTypeOptions();
     this.getChangeControlledOptions();
+    this.getNumberSchemes();
   },
   mounted() {
     // Initialize steps for the current value of addDocumentEntryType

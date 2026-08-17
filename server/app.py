@@ -55,6 +55,7 @@ def create_app():
         AllDocuments,
         EntryTypes,
         ChangeControlledTypes,
+        NumberSchemes,
         UploadFile,
         SingleDocument,
         AllUsers,
@@ -79,6 +80,7 @@ def create_app():
     )
     app.add_url_rule("/api/entry_types", view_func=EntryTypes.as_view("entry_types"))
     app.add_url_rule("/api/change_controlled_types", view_func=ChangeControlledTypes.as_view("change_controlled_types"))
+    app.add_url_rule("/api/number_schemes", view_func=NumberSchemes.as_view("number_schemes"))
     app.add_url_rule("/api/users", view_func=AllUsers.as_view("user_list"))
     app.add_url_rule("/api/users/<pk>", view_func=SingleUser.as_view("single_user"))
     app.add_url_rule("/api/admins", view_func=AllAdmins.as_view("admin_list"))
