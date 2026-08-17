@@ -132,6 +132,16 @@
                         <input type="text" class="form-control mt-2" id="editDocumentDocCode" v-model="editDocumentForm.number" readonly />
                     </div>
 
+                    <!-- Documents that don't already carry a number can have one assigned by an admin.
+                    Existing numbers are never reassigned here, they have to be released first. -->
+                    <div class="mb-3" v-if="superuser && (editDocumentForm.entry_type === 'document') && !(docModal && docModal.number)">
+                        <label for="editDocumentNumberStub" class="form-label"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="DocNumberInfo"/>Document Number:</label>
+                        <select class="form-control" id="editDocumentNumberStub" v-model="editDocumentForm.document_stub">
+                            <option value="">No number</option>
+                            <option v-for="stub in documentStubOptions" :key="stub.value" :value="stub.value">{{ stub.label }} ({{ stub.example }})</option>
+                        </select>
+                    </div>
+
                     <div class="mb-3">
                         <label for="editDocumentLabels" class="form-label">Labels (Ctrl/Cmd+click to select multiple):</label>
                         <select class="form-control" id="editDocumentLabels" v-model="editDocumentForm.label_ids" multiple>
@@ -184,6 +194,7 @@ import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import { auth } from '../firebaseConfig';
 import AlertMessage from './AlertMessage.vue';
 import DrawingCodeBuilder from './DrawingCodeBuilder.vue';
+import { loadNumberSchemes } from '../numberSchemes';
 
 const API_URL = '/api';
 // const API_URL = 'http://localhost:5001/api';
@@ -196,68 +207,9 @@ export default {
             document: {},
             admins: [],
             labels: [],
-            codeStepsDrawing: [
-            {
-            label: 'Category:',
-            options: [
-                { label: 'Extra-Solar Coronograph', value: 'ESC' },
-                { label: 'Widefield Context Camera', value: 'WCC' },
-                ],
-            connectorAfter: '-'
-            },
-            {
-            label: 'Development Category:',
-            options: {
-                ESC: [
-                { label: 'Flight', value: 'F' },
-                { label: 'GSE', value: 'G' },
-                { label: 'Test Development Unit / Prototype', value: 'T' },
-                ], 
-                WCC: [
-                { label: 'Flight', value: 'F' },
-                { label: 'GSE', value: 'G' },
-                { label: 'Test Development Unit / Prototype', value: 'T' },
-                ], 
-            },
-            connectorAfter: ''
-            },
-            {
-            label: 'Engineering Subset:',
-            options: {
-                ESC_F: [
-                { label: 'Assembly', value: 'A' },
-                { label: 'Part', value: 'P' },
-                { label: 'Interface Control Drawing', value: 'X' },
-                ], 
-                ESC_G: [
-                { label: 'Assembly', value: 'A' },
-                { label: 'Part', value: 'P' },
-                { label: 'Interface Control Drawing', value: 'X' },
-                ], 
-                ESC_T: [
-                { label: 'Assembly', value: 'A' },
-                { label: 'Part', value: 'P' },
-                { label: 'Interface Control Drawing', value: 'X' },
-                ], 
-                WCC_F: [
-                { label: 'Assembly', value: 'A' },
-                { label: 'Part', value: 'P' },
-                { label: 'Interface Control Drawing', value: 'X' },
-                ], 
-                WCC_G: [
-                { label: 'Assembly', value: 'A' },
-                { label: 'Part', value: 'P' },
-                { label: 'Interface Control Drawing', value: 'X' },
-                ], 
-                WCC_T: [
-                { label: 'Assembly', value: 'A' },
-                { label: 'Part', value: 'P' },
-                { label: 'Interface Control Drawing', value: 'X' },
-                ], 
-            },
-            connectorAfter: '-'
-            },
-            ],
+            // Both numbering schemes are served by the API, see numberSchemes.js
+            codeStepsDrawing: [],
+            documentStubOptions: [],
             builderComplete: false,
             builderKey: 0,
             editDocumentForm: {
@@ -266,6 +218,7 @@ export default {
                 author: '',
                 doc_identifier: '',
                 number: '',
+                document_stub: '',
                 entry_type: '',
                 change_controlled: '',
                 compiled_url: '',
@@ -279,6 +232,7 @@ export default {
             showEditFormError: false,
             docModal: null,
             DisabledInfo: 'Field can only be edited from the main Documents & Drawings page',
+            DocNumberInfo: 'Optional, admins only. The counter is assigned by the server when the entry is saved and is never reused. Existing numbers cannot be reassigned here.',
             URLInfo: 'The URL of the file described by the metadata in this entry.',
             sourceURLInfo: '(optional) The URL of the source components (Git repository, Power Point presentation etc.) used to compile / build the file described by the metadata in this entry.',            
             gitLabInfo: 'This URL requires the ANT VPN to be activated.',
@@ -441,10 +395,15 @@ export default {
             this.showEditFormError = false;
             this.editFormErrorList = [];
 
+            // Documents carry the stub the admin picked, the server appends the counter
+            const combinedNumber = this.editDocumentForm.entry_type === 'document'
+                ? (this.editDocumentForm.document_stub || '')
+                : this.editDocumentForm.number;
+
             const payload = {
                 title: this.editDocumentForm.title,
                 author: this.editDocumentForm.author,
-                number: this.editDocumentForm.number,
+                number: combinedNumber,
                 entry_type: this.editDocumentForm.entry_type,
                 change_controlled: this.editDocumentForm.change_controlled,
                 compiled_url: this.editDocumentForm.compiled_url,
@@ -463,6 +422,7 @@ export default {
             this.editDocumentForm.author = '';
             this.editDocumentForm.doc_identifier = '';
             this.editDocumentForm.number = '';
+            this.editDocumentForm.document_stub = '';
             this.editDocumentForm.entry_type = '';
             this.editDocumentForm.change_controlled = '';
             this.editDocumentForm.compiled_url = '';
@@ -620,7 +580,24 @@ Please update the entry at your earliest convenience.\n\nRegards,\nteledocs`);
                 this.superuser = false;
                 this.isAuthorized = false;
             });
-        },    
+        },
+        getNumberSchemes() {
+            loadNumberSchemes()
+                .then((schemes) => {
+                    this.codeStepsDrawing = schemes.drawingSteps;
+                    this.documentStubOptions = schemes.documentStubs;
+                    // Force a fresh builder: it sizes its internal selection
+                    // array from the steps it was created with, so one created
+                    // before the tree arrived would keep an array sized for an
+                    // empty tree.
+                    this.builderKey += 1;
+                })
+                .catch((error) => {
+                    console.error(error);
+                    this.message = 'Numbering schemes could not be loaded, so new numbers cannot be assigned.';
+                    this.showMessage = true;
+                });
+        },
     },
     created() {
         this.getDocument();
@@ -628,6 +605,7 @@ Please update the entry at your earliest convenience.\n\nRegards,\nteledocs`);
         this.getLabels();
         this.getEntryTypeOptions();
         this.getChangeControlledOptions();
+        this.getNumberSchemes();
     },
 };
 </script>
