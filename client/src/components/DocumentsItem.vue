@@ -15,7 +15,9 @@
                 @click="toggleEditDocumentModal(document)">
                 Update
             </button>
-            <button v-else type="button" class="btn btn-outline-primary mb-3" data-toggle="tooltip" 
+            <!-- Available to anyone who doesn't maintain the entry themselves, admins included -->
+            <button v-if="email != document.creator_email" type="button" class="btn btn-outline-primary mb-3"
+            :class="{ 'ms-2': superuser }" data-toggle="tooltip"
             data-placement="top" title="Notify maintainer that entry needs to be updated" @click="sendEmail(document)">
                 <font-awesome-icon icon="fa-solid fa-circle-exclamation" class="me-1" />Notify maintainer
             </button>
@@ -29,13 +31,13 @@
                     <p v-if="document.aliases"><b>Other handles: </b>
                         <a v-for="(alias, index) in document.aliases" :key="index" :href="'/docs/' + alias.value" target="_blank" class="d-block">{{ alias.value }}</a>
                     </p>
-                    <p><b>Type: </b><font-awesome-icon v-if="entryTypeIconMap[document.entry_type]" :icon="entryTypeIconMap[document.entry_type]" data-toggle="tooltip" data-placement="bottom" :title="document.entry_type" class="text-secondary" /></p>
+                    <p><b>Type: </b><span v-if="entryTypeIconMap[document.entry_type]" data-toggle="tooltip" data-placement="bottom" :title="document.entry_type"><font-awesome-icon :icon="entryTypeIconMap[document.entry_type]" class="text-secondary" /></span></p>
                     <p><b>Change controlled: </b> {{ changeControlledValueMap[document.change_controlled] }}</p>
                     <p><b>Labels: </b>
                         <span v-for="label in document.labels" :key="label.pk" class="badge bg-secondary me-1">{{ label.name }}</span>
                     </p>
-                    <p><b><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="URLInfo"/>URL: </b><font-awesome-icon v-if="document.compiled_url && document.compiled_url.toLowerCase().includes(gitLabANT)" icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="gitLabInfo"/><a :href=document.compiled_url target="_blank">{{ document.compiled_url }}</a></p>
-                    <p><b><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="sourceURLInfo"/>Source URL: </b><font-awesome-icon v-if="document.source_url && document.source_url.toLowerCase().includes(gitLabANT)" icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="gitLabInfo"/><a :href=document.source_url target="_blank">{{ document.source_url }}</a></p>
+                    <p><b><span data-toggle="tooltip" data-placement="bottom" :title="URLInfo"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" /></span>URL: </b><span v-if="document.compiled_url && document.compiled_url.toLowerCase().includes(gitLabANT)" data-toggle="tooltip" data-placement="bottom" :title="gitLabInfo"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" /></span><a :href=document.compiled_url target="_blank">{{ document.compiled_url }}</a></p>
+                    <p><b><span data-toggle="tooltip" data-placement="bottom" :title="sourceURLInfo"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" /></span>Source URL: </b><span v-if="document.source_url && document.source_url.toLowerCase().includes(gitLabANT)" data-toggle="tooltip" data-placement="bottom" :title="gitLabInfo"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" /></span><a :href=document.source_url target="_blank">{{ document.source_url }}</a></p>
                     <p><b>Entry maintained by: </b>{{ document.creator_email }}</p>
                 </div>
             </div>
@@ -82,13 +84,13 @@
                         v-model="editDocumentForm.author" placeholder="Enter author">
                     </div>
                     <div class="mb-3">
-                        <label for="editDocumentEntryType" class="form-label"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="DisabledInfo"/>Type:</label>
+                        <label for="editDocumentEntryType" class="form-label"><span data-toggle="tooltip" data-placement="bottom" :title="DisabledInfo"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" /></span>Type:</label>
                         <select class="form-control" id="editDocumentEntryType" v-model="editDocumentForm.entry_type" :disabled="editDocumentForm.number!=''">
                             <option v-for="option in entryTypeOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label for="editDocumentChangeControlled" class="form-label"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="DisabledInfo"></font-awesome-icon>Change Controlled:</label>
+                        <label for="editDocumentChangeControlled" class="form-label"><span data-toggle="tooltip" data-placement="bottom" :title="DisabledInfo"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" /></span>Change Controlled:</label>
                         <select class="form-control" id="editDocumentChangeControlled" v-model="editDocumentForm.change_controlled" :disabled="editDocumentForm.number!=''">
                             <option v-for="option in changeControlledOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
                         </select>
@@ -135,7 +137,7 @@
                     <!-- Documents that don't already carry a number can have one assigned by an admin.
                     Existing numbers are never reassigned here, they have to be released first. -->
                     <div class="mb-3" v-if="superuser && (editDocumentForm.entry_type === 'document') && !(docModal && docModal.number)">
-                        <label for="editDocumentNumberStub" class="form-label"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="DocNumberInfo"/>Document Number:</label>
+                        <label for="editDocumentNumberStub" class="form-label"><span data-toggle="tooltip" data-placement="bottom" :title="DocNumberInfo"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" /></span>Document Number:</label>
                         <select class="form-control" id="editDocumentNumberStub" v-model="editDocumentForm.document_stub">
                             <option value="">No number</option>
                             <option v-for="stub in documentStubOptions" :key="stub.value" :value="stub.value">{{ stub.label }} ({{ stub.example }})</option>
@@ -150,12 +152,12 @@
                     </div>
 
                     <div class="mb-3">
-                        <label for="editDocumentUrl" class="form-label"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="URLInfo"/>URL:</label>
+                        <label for="editDocumentUrl" class="form-label"><span data-toggle="tooltip" data-placement="bottom" :title="URLInfo"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" /></span>URL:</label>
                         <input type="text" class="form-control" maxlength="500" id="editUrl"
                         v-model="editDocumentForm.compiled_url" placeholder="Enter URL">
                     </div>
                     <div class="mb-3">
-                        <label for="editDocumentSourceUrl" class="form-label"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="sourceURLInfo"/>Source URL:</label>
+                        <label for="editDocumentSourceUrl" class="form-label"><span data-toggle="tooltip" data-placement="bottom" :title="sourceURLInfo"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" /></span>Source URL:</label>
                         <input type="text" class="form-control" maxlength="500" id="editSourceUrl"
                         v-model="editDocumentForm.source_url" placeholder="Enter source URL">
                     </div>
