@@ -161,6 +161,121 @@ class ChangeControlledType(TypeDecorator):
             return None
 
 
+# --- Number scheme definitions ------------------------------------------------
+# Both numbering schemes live here so that the server is the single source of
+# truth: it generates the values, validates the stubs the client sends, and
+# serves the schemes to the client (see the /number_schemes route).
+
+DOC_NUMBER_ROOT = "STP-LAZ"
+
+# (code, human readable label) for the department segment of a document number.
+DOC_DEPARTMENTS = (
+    ("PM", "Project Management"),
+    ("SE", "Systems Engineering"),
+    ("WCC", "Widefield Context Camera"),
+    ("ESC", "Extra-Solar Coronagraph"),
+    ("SPC", "Sponsor Provided Content"),
+    ("SW", "Software"),
+)
+
+# Series that share a department but keep independent counters. Adding an entry
+# here is all that is needed to extend the scheme (e.g. "TN" for technical
+# notes): the stub pattern, the value pattern and the picker the client renders
+# are all derived from this mapping.
+DOC_SERIES = {
+    "": {"label": "Document", "width": 3},
+    # "TN": {"label": "Technical Note", "width": 3},
+}
+
+def _build_doc_patterns():
+    """
+    Build the document stub and value patterns from the current
+    DOC_DEPARTMENTS / DOC_SERIES definitions.
+
+    The stub is what the client sends, e.g. 'STP-LAZ-ESC' (or 'STP-LAZ-ESC-TN'
+    once a named series is registered). The value is what gets stored, e.g.
+    'STP-LAZ-ESC-001' / 'STP-LAZ-ESC-TN001'. The counter is matched as \\d+
+    rather than at a fixed width so that widening a sequence later does not
+    stop older values from being recognised.
+
+    Kept as a function so that the patterns can be rebuilt after a new series
+    is registered.
+
+    Returns
+    -------
+    tuple
+        The compiled (stub, value) patterns.
+    """
+    departments = "|".join(code for code, _ in DOC_DEPARTMENTS)
+    named_series = [series for series in DOC_SERIES if series]
+
+    stub_series = rf"(?:-(?P<series>{'|'.join(named_series)}))?" if named_series else ""
+    value_series = rf"(?P<series>{'|'.join(named_series)})?" if named_series else ""
+
+    stub_pattern = re.compile(
+        rf"^{re.escape(DOC_NUMBER_ROOT)}-(?P<dept>{departments}){stub_series}$"
+    )
+    value_pattern = re.compile(
+        rf"^{re.escape(DOC_NUMBER_ROOT)}-(?P<dept>{departments})-"
+        rf"{value_series}(?P<num>\d+)$"
+    )
+    return stub_pattern, value_pattern
+
+
+DOC_STUB_PATTERN, DOC_VALUE_PATTERN = _build_doc_patterns()
+
+# The drawing tree the client walks to build a drawing stub. Kept as inert data
+# so it can be served as-is to the DrawingCodeBuilder component.
+DRAWING_NUMBER_STEPS = [
+    {
+        "label": "Category:",
+        "options": [
+            {"label": "Extra-Solar Coronograph", "value": "ESC"},
+            {"label": "Widefield Context Camera", "value": "WCC"},
+        ],
+        "connectorAfter": "-",
+    },
+    {
+        "label": "Development Category:",
+        "options": {
+            "ESC": [
+                {"label": "Flight", "value": "F"},
+                {"label": "GSE", "value": "G"},
+                {"label": "Test Development Unit / Prototype", "value": "T"},
+            ],
+            "WCC": [
+                {"label": "Flight", "value": "F"},
+                {"label": "GSE", "value": "G"},
+                {"label": "Test Development Unit / Prototype", "value": "T"},
+            ],
+        },
+        "connectorAfter": "",
+    },
+    {
+        "label": "Engineering Subset:",
+        "options": {
+            key: [
+                {"label": "Assembly", "value": "A"},
+                {"label": "Part", "value": "P"},
+                {"label": "Interface Control Drawing", "value": "X"},
+            ]
+            for key in ("ESC_F", "ESC_G", "ESC_T", "WCC_F", "WCC_G", "WCC_T")
+        },
+        "connectorAfter": "-",
+    },
+]
+
+
+class NumberGenerationError(ValueError):
+    """Raised when a number cannot be generated.
+
+    Carries a message meant to be shown to the end user (an unrecognised stub,
+    an exhausted sequence, or an existing value that cannot be parsed).
+    Subclasses ValueError so that callers already catching ValueError around
+    number generation keep working.
+    """
+
+
 class NumberConfirmationRequired(Exception):
     """Raised when a user-specified drawing number exists and confirmation is required.
 
@@ -181,6 +296,148 @@ class OutOfOrderNumber(Exception):
     def __init__(self, suggested_next, message=None):
         super().__init__(message or "Out of order number")
         self.suggested_next = suggested_next
+
+document_labels = db.Table(
+    "document_labels",
+    db.Column("document_pk", db.Integer, db.ForeignKey("document.pk", ondelete="CASCADE"), primary_key=True),
+    db.Column("label_pk", db.Integer, db.ForeignKey("label.pk", ondelete="CASCADE"), primary_key=True),
+)
+
+
+class Label(db.Model, Serializer):
+    """
+    Label model class to act as interface between the Flask logic and the
+    sql table.
+    """
+
+    pk = db.Column("pk", db.Integer, primary_key=True)
+    time_created = db.Column(db.DateTime(timezone=True), server_default=func.now())
+    name = db.Column("name", db.String(100), nullable=False, unique=True)
+
+    @validates("name")
+    def validate_name(self, key, name):
+        if not name or not name.strip():
+            raise AssertionError("No label name provided")
+        return name.strip()
+
+    def __repr__(self):
+        """
+        Magic method that returns the string representation of the Label model.
+
+        Returns
+        -------
+        str
+            String representation of the Label model.
+        """
+        return "<Label %r>" % self.name
+
+    def update(self, **kwargs):
+        """
+        Method to update an existing object's column values with those in the
+        kwargs.
+
+        Returns
+        -------
+        bool
+            Returns True is update was successful and False if an error was
+            encountered.
+        """
+        try:
+            new_val = kwargs.get("name", None)
+            if new_val is not None:
+                setattr(self, "name", new_val)
+            db.session.add(self)
+            db.session.commit()
+            logger.info("Labels: Updating Label object.")
+        except Exception as e:
+            logger.error(f"Labels: Updating Label object. Error: {e}")
+            return False
+        return True
+
+    @classmethod
+    def create(cls, **kwargs):
+        """
+        Class method to create a new object and add a new entry in the
+        label table.
+
+        Returns
+        -------
+        bool or Label object
+            If table successfully updated and object succesfully created,
+            object is returned, otherwise returns False.
+        """
+        try:
+            obj = Label(name=kwargs["name"])
+            db.session.add(obj)
+            db.session.commit()
+            logger.info("Labels: Creating Label object.")
+            return obj
+        except Exception as e:
+            logger.error(f"Labels: Creating Label object. Error: {e}")
+            return False
+
+    @classmethod
+    def get_by_pk(cls, pk):
+        """
+        Class method that retrieves label for a given primary key and logs errors.
+
+        Parameters
+        ----------
+        pk : int / str
+            pk of label to be found
+
+        Returns
+        -------
+        Label object or None
+            Label object with given pk is returned if query succesful,
+            otherwise None is returned if no results found.
+        """
+        try:
+            label = db.session.scalars(select(Label).where(Label.pk == int(pk))).one()
+            return label
+        except NoResultFound as e:
+            logger.error(f"Label: Error: {e}:\n Label with pk {pk} not found.")
+            return None
+
+    @classmethod
+    def get_by_pks(cls, pks):
+        """
+        Class method that retrieves labels for a given list of primary keys.
+        Used to resolve the label_ids submitted for a document into Label
+        objects.
+
+        Parameters
+        ----------
+        pks : list
+            list of label pks to be found
+
+        Returns
+        -------
+        list
+            List of Label objects matching the given pks.
+        """
+        if not pks:
+            return []
+        return db.session.scalars(select(Label).where(Label.pk.in_(pks))).all()
+
+    def delete_label(self):
+        """
+        Class method that deletes table entry.
+
+        Returns
+        -------
+        bool
+            If delete was successful, returns True, otherwise returns False
+        """
+        try:
+            db.session.delete(self)
+            db.session.commit()
+            logger.info("Label: Deleting Label object.")
+            return True
+        except Exception as e:
+            logger.error(f"Label: Deleting Label object. Error: {e}")
+            return False
+
 
 class Document(db.Model, Serializer):
     """
@@ -208,6 +465,9 @@ class Document(db.Model, Serializer):
     # Relationship to Alias
     aliases = db.relationship("Alias", back_populates="document")
 
+    # Relationship to Label
+    labels = db.relationship("Label", secondary=document_labels)
+
 
     def __repr__(self):
         """
@@ -231,7 +491,7 @@ class Document(db.Model, Serializer):
         """
         columns = inspect(self).attrs.keys()
         return list(
-            set(columns) - set(["time_created", "time_updated", "doc_identifier", "number", "aliases"])
+            set(columns) - set(["time_created", "time_updated", "doc_identifier", "number", "aliases", "labels"])
         )
 
     def _get_all_columns(self):
@@ -280,15 +540,21 @@ class Document(db.Model, Serializer):
 
                 if new_val is not None:
                     setattr(self, column, new_val)
-            self._update_number(kwargs.get("change_controlled"), 
-                                kwargs.get("entry_type"), 
+            self._update_number(kwargs.get("change_controlled"),
+                                kwargs.get("entry_type"),
                                 kwargs.get("number"),
                                 kwargs.get("confirmed_number"))
+
+            label_ids = kwargs.get("label_ids")
+            if label_ids is not None:
+                self.labels = Label.get_by_pks(label_ids)
+
             db.session.add(self)
             db.session.commit()
             logger.info("Documents: Updating Document object.")
-        except (NumberConfirmationRequired, OutOfOrderNumber):
-            # Let caller (views) handle confirmation / out-of-order flows
+        except (NumberConfirmationRequired, OutOfOrderNumber, NumberGenerationError):
+            # Let caller (views) handle confirmation / out-of-order flows and
+            # report generation failures with their own message
             raise
         except Exception as e:
             logger.error(f"Documents: Updating Document object. Error: {e}")
@@ -332,14 +598,12 @@ class Document(db.Model, Serializer):
                 # Release existing number and store this doc's pk in the comment field
                 self._release_number()
         
-        if confirmed_number:
-            # Frontend confirmed a specific final value to create
-            if entry_type == TypeEnum.drawing.value:
-                num_obj = Number._make_number(confirmed_number, TypeEnum.drawing)
-            else:
-                # num_obj = Number._make_number(confirmed_number, TypeEnum.document)
-                num_obj = None
-
+        if confirmed_number and entry_type == TypeEnum.drawing.value:
+            # Only drawings use the confirm / out-of-order flow, so a confirmed
+            # value is only ever a drawing value. For any other entry type it
+            # would be an unvalidated caller-supplied number, so it is ignored
+            # and normal generation runs below instead.
+            num_obj = Number._make_number(confirmed_number, TypeEnum.drawing)
             if num_obj:
                 db.session.add(num_obj)
                 self.number = num_obj
@@ -513,15 +777,20 @@ class Document(db.Model, Serializer):
 
             number = kwargs.pop("number")
             confirmed_number = kwargs.pop("confirmed_number", None)
+            label_ids = kwargs.pop("label_ids", None)
             obj = Document(**kwargs)
 
-            # Make new associated number (for change controlled drawings and all docs)
-            if confirmed_number:
+            if label_ids is not None:
+                obj.labels = Label.get_by_pks(label_ids)
+
+            # Make new associated number (for change controlled drawings and for
+            # documents an admin requested a number for).
+            # Only drawings use the confirm / out-of-order flow, so a confirmed
+            # value from any other entry type would be an unvalidated
+            # caller-supplied number: ignore it and generate normally instead.
+            if confirmed_number and kwargs.get("entry_type") == TypeEnum.drawing.value:
                 # Create exact number object when frontend confirmed suggested value
-                if kwargs.get("entry_type") == TypeEnum.drawing.value:
-                    num_obj = Number._make_number(confirmed_number, TypeEnum.drawing)
-                else:
-                    num_obj = Number._make_number(confirmed_number, TypeEnum.document)
+                num_obj = Number._make_number(confirmed_number, TypeEnum.drawing)
                 if num_obj:
                     db.session.add(num_obj)
                     obj.number = num_obj
@@ -537,8 +806,9 @@ class Document(db.Model, Serializer):
             db.session.commit()
             logger.info("Documents: Creating Document object.")
             return obj
-        except (NumberConfirmationRequired, OutOfOrderNumber):
-            # Let caller (views) handle confirmation / out-of-order flows
+        except (NumberConfirmationRequired, OutOfOrderNumber, NumberGenerationError):
+            # Let caller (views) handle confirmation / out-of-order flows and
+            # report generation failures with their own message
             raise
         except Exception as e:
             logger.error(f"Documents: Creating Document object. Error: {e}")
@@ -1032,11 +1302,53 @@ class Number(db.Model, Serializer):
             return None
 
     @classmethod
-    def _generate_doc_value(cls):
+    def document_stubs(cls):
+        """
+        Class method returning every document number stub an admin can pick
+        from, derived from DOC_DEPARTMENTS and DOC_SERIES. Served to the client
+        so that extending the scheme needs no client-side change.
+
+        Returns
+        -------
+        list
+            List of {"value": stub, "label": human readable label,
+            "example": what a generated value looks like} dicts.
+        """
+        stubs = []
+        for code, department_label in DOC_DEPARTMENTS:
+            for series, spec in DOC_SERIES.items():
+                value = f"{DOC_NUMBER_ROOT}-{code}"
+                label = department_label
+                if series:
+                    value = f"{value}-{series}"
+                    label = f"{department_label} - {spec['label']}"
+                    example = f"{value}{'#' * spec['width']}"
+                else:
+                    example = f"{value}-{'#' * spec['width']}"
+                stubs.append(
+                    {"value": value, "label": label, "example": example}
+                )
+        return stubs
+
+    @classmethod
+    def _generate_doc_value(cls, stub):
         """
         Class method to generate a new, unique value for a new number linked
         to a Document of type "document".
-        The doc_value follows the pattern: 'PRL-DOC-#####', where #=digit (0-9).
+        The value follows the pattern '<root>-<department>-<series><counter>',
+        e.g. 'STP-LAZ-ESC-001', where the department comes from DOC_DEPARTMENTS
+        and the series (with its own independent counter) from DOC_SERIES.
+
+        The next counter is the highest *parsed* counter of the entries that
+        match this exact department and series, rather than the highest entry by
+        string ordering. Values belonging to another series, to a drawing, or to
+        no scheme at all simply do not match DOC_VALUE_PATTERN and are skipped,
+        so sequences sharing a prefix can never collide with each other.
+
+        Parameters
+        ----------
+        stub : str
+            Stub selected by the user, e.g. 'STP-LAZ-ESC'.
 
         Returns
         -------
@@ -1045,55 +1357,49 @@ class Number(db.Model, Serializer):
 
         Raises
         ------
-        ValueError
-            Exception raised if Number already exists in the db with the newly
-            generated, unique value.
-        ValueError
-            Exception raised if Number exists with starting stub, 
-            but the rest doesn't follow the expected pattern.
+        NumberGenerationError
+            Exception raised if the stub is not part of the scheme, or if the
+            sequence for that stub is exhausted.
         """
-        # Build the string stub of the doc value
-        doc_value_str = 'PRL-DOC-'
-
-        # Find the latest Number entry with this value stub
-        number = db.session.scalars(
-            select(Number)
-            .where(Number.value.like(f"{doc_value_str}%"))
-            .order_by(Number.value.desc())
-            .limit(1)
-        ).first()
-
-        if number:
-            # If number with given stub exists, get its numerical part
-            pattern_match = re.match(
-                rf"{doc_value_str}(?P<code>\d{{5}})", number.value
+        stub_match = DOC_STUB_PATTERN.match((stub or "").strip())
+        if not stub_match:
+            valid = ", ".join(entry["value"] for entry in cls.document_stubs())
+            raise NumberGenerationError(
+                f"'{stub}' is not a valid document number stub. "
+                f"Expected one of: {valid}."
             )
-            highest_number = pattern_match.groupdict().get("code")
 
-            if highest_number:
-                # Build the next doc_identifier.
-                incremented = int(highest_number) + 1
-                doc_value = f"{doc_value_str}{incremented:05d}"
+        department = stub_match.group("dept")
+        series = stub_match.groupdict().get("series") or ""
+        width = DOC_SERIES[series]["width"]
 
-                # Sanity check that it doesn't exist
-                # found = db.session.scalars(select(exists().where(Number.value == doc_value))).first()
-                found = db.session.scalars(select(Number).where(Number.value == doc_value).limit(1)).first()
-                if found:
-                    raise ValueError(
-                        "Number: Generating number value for new "
-                        "doc entry. Number already exists with generated "
-                        f"doc_value {doc_value}. HELP"
-                    )
-            else:
-                # We're in uncharted waters, pattern should have found a match
-                raise ValueError(
-                    "Number: Generating number value for new doc entry. "
-                    "Number matching stub found, but no highest_number "
-                    f"found. Match: {pattern_match.groupdict()}. HELP"
-                )
-        else:
-            # No number found with given stub. No doc numbers added yet.
-            doc_value = f"{doc_value_str}00001"
+        # Coarse prefix filter in the db, exact matching in python.
+        candidates = db.session.scalars(
+            select(Number.value).where(
+                Number.value.like(f"{DOC_NUMBER_ROOT}-{department}-%")
+            )
+        ).all()
+
+        used = []
+        for value in candidates:
+            value_match = DOC_VALUE_PATTERN.match(value)
+            if not value_match:
+                continue
+            if value_match.group("dept") != department:
+                continue
+            if (value_match.groupdict().get("series") or "") != series:
+                continue
+            used.append(int(value_match.group("num")))
+
+        next_number = max(used, default=0) + 1
+        highest_allowed = 10 ** width - 1
+        if next_number > highest_allowed:
+            raise NumberGenerationError(
+                f"The {stub} sequence is exhausted "
+                f"(maximum {highest_allowed} entries)."
+            )
+
+        doc_value = f"{DOC_NUMBER_ROOT}-{department}-{series}{next_number:0{width}d}"
 
         logger.info(f"Number: Generating new doc value {doc_value}.")
         return doc_value
@@ -1124,7 +1430,7 @@ class Number(db.Model, Serializer):
             but the rest doesn't follow the expected pattern.
         """
         if not user_value:
-            raise ValueError("Number: No drawing stub provided by user.")
+            raise NumberGenerationError("No drawing code was provided.")
 
         user_value = user_value.rstrip("-")
 
@@ -1134,8 +1440,8 @@ class Number(db.Model, Serializer):
         if m_len:
             num_str = m_len.group("num")
             if len(num_str) != 3:
-                raise ValueError(
-                    f"Number: Provided numeric suffix '{num_str}' must be exactly 3 digits (e.g. '001')."
+                raise NumberGenerationError(
+                    f"Provided numeric suffix '{num_str}' must be exactly 3 digits (e.g. '001')."
                 )
 
         # If the user provided a 3-digit number at the end of the stub (with or without a hyphen): 
@@ -1226,11 +1532,12 @@ class Number(db.Model, Serializer):
             if highest_number:
                 incremented = int(highest_number) + 1
             else:
-                # We're in uncharted waters, pattern should have found a match
-                raise ValueError(
-                    "Number: Generating number value for new drawing entry. "
-                    "Number matching stub found, but no highest_number "
-                    f"found. Match: {pattern_match.groupdict()}. HELP"
+                # An existing entry shares this stub but does not follow the
+                # expected pattern, so the next number cannot be derived.
+                raise NumberGenerationError(
+                    f"Cannot generate the next number for '{user_value}': the "
+                    f"existing entry '{number.value}' does not follow the "
+                    f"expected '{user_value}###-##' pattern."
                 )
         else:
             incremented = 1
@@ -1262,31 +1569,37 @@ class Number(db.Model, Serializer):
         entry_type :
             value of Document object's entry_type field
         user_value :
-            user provided value; can be empty string
+            user provided value; can be empty string. For documents this is the
+            stub picked by the admin (e.g. 'STP-LAZ-ESC'), for drawings the stub
+            built from the drawing tree.
 
         Returns
         -------
         None or Number object
-            If criteria for creating Number object are met, object is created and 
+            If criteria for creating Number object are met, object is created and
             returned, otherwise returns None.
 
         Raises
         ------
-        ValueError
-            Exception raised if document already exists in the db with the newly
-            generated, unique doc_value.
+        NumberGenerationError
+            Exception raised if a value was requested but could not be generated.
         """
-        # if entry_type == TypeEnum.document.value:
-        #     value = cls._generate_doc_value()
-        #     return cls._make_number(value, TypeEnum.document)
+        if entry_type == TypeEnum.document.value:
+            # Document numbers are optional and, unlike drawings, independent of
+            # change control: no stub simply means none was requested.
+            if not user_value:
+                logger.info("Number: No document stub provided, no number created.")
+                return None
 
-        # elif entry_type == TypeEnum.drawing.value:
+            value = cls._generate_doc_value(user_value)
+            return cls._make_number(value, TypeEnum.document)
+
         if entry_type == TypeEnum.drawing.value:
             if change_controlled == ChangeControlledEnum.yes.value:
                 if not user_value:
-                    raise ValueError(
-                        "Number: No number provided by user for change controlled "
-                        "drawing."
+                    raise NumberGenerationError(
+                        "No drawing code was provided for this change controlled "
+                        "drawing, so no number could be generated."
                     )
                 
                 value = cls._generate_drawing_value(user_value)

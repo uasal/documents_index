@@ -3,7 +3,7 @@ import logging
 
 from flask import jsonify, request
 from flask.views import MethodView
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import joinedload
 import firebase_admin
 from firebase_admin import auth
@@ -14,10 +14,14 @@ from models import (
     User,
     Domain,
     Number,
+    Label,
+    document_labels,
     TypeEnum,
     ChangeControlledEnum,
     NumberConfirmationRequired,
+    NumberGenerationError,
     OutOfOrderNumber,
+    DRAWING_NUMBER_STEPS,
     get_entity,
     is_superuser
 )
@@ -79,6 +83,33 @@ def token_required(f):
     return decorated_function
 
 
+def _may_assign_document_number(entity, post_data):
+    """
+    Whether the caller is allowed to assign the number carried by post_data.
+
+    Document numbers are admin only, so a non-superuser may only submit a
+    document entry with no number. Drawing numbers are unaffected.
+
+    Parameters
+    ----------
+    entity : User or Domain
+        Entity the request was authenticated as.
+    post_data : dict
+        Payload of the create / update request.
+
+    Returns
+    -------
+    bool
+        True if the request may proceed, False if it must be rejected.
+    """
+    requests_number = bool(post_data.get("number") or post_data.get("confirmed_number"))
+    is_document = post_data.get("entry_type") == TypeEnum.document.value
+
+    if is_document and requests_number:
+        return is_superuser(entity)
+    return True
+
+
 def superuser(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -122,11 +153,21 @@ class AllDocuments(MethodView):
         response_object = {"status": "success"}
         logger.info(f"AllDocuments: User {email} is adding new document.")
         post_data = request.get_json()
-        
+
         # If user is superuser, accept input value for creator_email
         if not is_superuser(entity):
             post_data["creator_email"] = email
-        
+
+        # Assigning a number to a document entry is superuser only. Drawings
+        # keep their existing behaviour.
+        if not _may_assign_document_number(entity, post_data):
+            logger.info(
+                f"AllDocuments: User {email} tried to assign a document number "
+                "without superuser rights."
+            )
+            return jsonify(status="fail",
+                           message="Only admins can assign document numbers"), 403
+
         # TODO need to check if this isn't a duplicate
         # TODO should validate fields
         try:
@@ -137,6 +178,8 @@ class AllDocuments(MethodView):
         except OutOfOrderNumber as e:
             return jsonify(status="out_of_order", suggested_next=e.suggested_next,
                            message=str(e))
+        except NumberGenerationError as e:
+            return jsonify(status="fail", message=str(e)), 400
 
         if not success:
             response_object["status"] = "fail"
@@ -163,10 +206,11 @@ class AllDocuments(MethodView):
                 select(Document)
                 .options(
                     # Here 'joinedload' can be replaced by "selectinload"
-                    # 'joinedload' is good if no duplicates (which should be out case), 
+                    # 'joinedload' is good if no duplicates (which should be out case),
                     # "selectinload" has better performance if duplicates
                     joinedload(Document.number),
                     joinedload(Document.aliases),
+                    joinedload(Document.labels),
                 )
                 .order_by(Document.time_created.asc())
             )
@@ -246,6 +290,33 @@ class EntryTypes(MethodView):
             for entry_type in TypeEnum
         ]
         return jsonify(entry_types=entry_types, default=Document.entry_type.default.arg.value)
+
+
+class NumberSchemes(MethodView):
+    """View class for the /number_schemes route."""
+
+    decorators = [token_required]
+
+    def get(self):
+        """
+        Method with logic for get requests.
+        Get requests here return both numbering schemes, so that the client
+        renders pickers from them instead of holding its own copy.
+
+        Returns
+        -------
+        json
+            Json response to get request. Contains 'status', the drawing tree
+            steps and the list of document number stubs.
+        """
+        response = jsonify(
+            status="success",
+            drawing={"steps": DRAWING_NUMBER_STEPS},
+            document={"stubs": Number.document_stubs()},
+        )
+        # The schemes change very rarely, so let the browser reuse them.
+        response.headers["Cache-Control"] = "private, max-age=3600"
+        return response
 
 
 class ChangeControlledTypes(MethodView):
@@ -409,7 +480,17 @@ class SingleDocument(MethodView):
             # If user is superuser, accept input value for creator_email
             if not is_superuser(entity):
                 post_data.pop("creator_email", None)
-            
+
+            # Assigning a number to a document entry is superuser only.
+            if not _may_assign_document_number(entity, post_data):
+                response_object["status"] = "fail"
+                response_object["message"] = "Only admins can assign document numbers"
+                logger.info(
+                    f"SingleDocument: User {email} tried to assign a document "
+                    "number without superuser rights."
+                )
+                return jsonify(response_object), 403
+
             try:
                 success = document.update(**post_data)
             except NumberConfirmationRequired as e:
@@ -418,6 +499,8 @@ class SingleDocument(MethodView):
             except OutOfOrderNumber as e:
                 return jsonify(status="out_of_order", suggested_next=e.suggested_next,
                                message=str(e))
+            except NumberGenerationError as e:
+                return jsonify(status="fail", message=str(e)), 400
 
             if not success:
                 response_object['status'] = 'fail'
@@ -470,6 +553,164 @@ class SingleDocument(MethodView):
                 f"SingleDocument: User {email} tried to delete inexistent document."
             )
             response_object["message"] = "Document not found"
+        return jsonify(response_object)
+
+
+class AllLabels(MethodView):
+    """View class for the /labels route."""
+
+    decorators = [token_required]
+
+    def post(self):
+        """
+        Method with logic for post requests.
+        Post requests are made here when a superuser adds a new label.
+
+        Returns
+        -------
+        json
+            Json response to post request. Contains 'status' and 'message'.
+        """
+        entity = getattr(request, "entity")
+        email = getattr(request, "email")
+        response_object = {"status": "success"}
+
+        if not is_superuser(entity):
+            response_object["status"] = "fail"
+            response_object["message"] = "Not authorized"
+            logger.info(f"AllLabels: User {email} tried to add a label without superuser rights.")
+            return jsonify(response_object), 403
+
+        post_data = request.get_json()
+        logger.info(f'AllLabels: User {email} is adding new label {post_data.get("name")}.')
+        success = Label.create(**post_data)
+        if not success:
+            response_object["status"] = "fail"
+        response_object["message"] = "Label added!"
+        return jsonify(response_object)
+
+    def get(self):
+        """
+        Method with logic for get requests.
+        Get requests here return a list of all the labels in the db.
+
+        Returns
+        -------
+        json
+            Json response to get request. Contains 'status' and a
+            list of each label serialized.
+        """
+        entity = getattr(request, "entity")
+        email = getattr(request, "email")
+        logger.info(f"AllLabels: User {email} is viewing all labels.")
+        labels = db.session.scalars(select(Label).order_by(Label.name.asc()))
+
+        # How many entries each label is assigned to, so the frontend can warn
+        # before deleting a label that is still in use.
+        usage_counts = dict(
+            db.session.execute(
+                select(
+                    document_labels.c.label_pk,
+                    func.count(document_labels.c.document_pk),
+                ).group_by(document_labels.c.label_pk)
+            ).all()
+        )
+
+        serialized_labels = Label.serialize_list(labels)
+        for label in serialized_labels:
+            label["usage_count"] = usage_counts.get(label["pk"], 0)
+
+        response_object = {
+            "status": "success",
+            "labels": serialized_labels,
+            "superuser": is_superuser(entity),
+        }
+        return jsonify(response_object)
+
+
+class SingleLabel(MethodView):
+    """View class for the /labels/<pk> route."""
+
+    decorators = [token_required]
+
+    def put(self, pk):
+        """
+        Method with logic for put requests.
+        Put requests here update the column values for the label with given
+        private key.
+
+        Parameters
+        ----------
+        pk : int / str
+            pk of label entry to be updated.
+
+        Returns
+        -------
+        json
+            Json response to put request. Contains 'status' and 'message'.
+        """
+        entity = getattr(request, "entity")
+        email = getattr(request, "email")
+        response_object = {"status": "success"}
+
+        if not is_superuser(entity):
+            response_object["status"] = "fail"
+            response_object["message"] = "Not authorized"
+            logger.info(f"SingleLabel: User {email} tried to update a label without superuser rights.")
+            return jsonify(response_object), 403
+
+        post_data = request.get_json()
+        label = Label.get_by_pk(pk)
+        if label:
+            logger.info(f"SingleLabel: User {email} is updating label {label}.")
+            success = label.update(**post_data)
+            if not success:
+                response_object['status'] = 'fail'
+            response_object["message"] = "Label updated!"
+        else:
+            logger.info(
+                f"SingleLabel: User {email} tried to update inexistent label."
+            )
+            response_object["message"] = "Label not found"
+        return jsonify(response_object)
+
+    def delete(self, pk):
+        """
+        Method with logic for delete requests.
+        Delete requests here delete label with given primary key from the db.
+
+        Parameters
+        ----------
+        pk : int / str
+            pk of label entry to be deleted.
+
+        Returns
+        -------
+        json
+            Json response to delete request. Contains 'status' and 'message'.
+        """
+        entity = getattr(request, "entity")
+        email = getattr(request, "email")
+        response_object = {"status": "success"}
+
+        if not is_superuser(entity):
+            response_object["status"] = "fail"
+            response_object["message"] = "Not authorized"
+            logger.info(f"SingleLabel: User {email} tried to delete a label without superuser rights.")
+            return jsonify(response_object), 403
+
+        label = Label.get_by_pk(pk)
+        if label:
+            logger.info(f"SingleLabel: User {email} is deleting label {label}.")
+            success = label.delete_label()
+            if not success:
+                response_object['status'] = 'fail'
+            response_object["message"] = "Label removed!"
+        else:
+            logger.info(
+                f"SingleLabel: User {email} tried to delete inexistent label."
+            )
+            response_object["message"] = "Label not found"
         return jsonify(response_object)
 
 

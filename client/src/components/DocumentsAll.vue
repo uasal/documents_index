@@ -10,6 +10,7 @@
             <div class="d-inline-flex float-end">
               <a role="button" class="btn btn-primary" href="/numbers" target="_blank">View Assigned Numbers</a>
               <a v-if="superuser" role="button" class="btn btn-primary ms-4" href="/collaborators" target="_blank">Edit collaborators</a>
+              <a v-if="superuser" role="button" class="btn btn-primary ms-4" href="/labels" target="_blank">Manage Labels</a>
             </div>
           </div>
         </div>
@@ -105,8 +106,26 @@
               <div class="col mb-3">
                 <!-- <label for="columnFiltersCreatorEmail" class="form-label">Maintainer Email:</label> -->
                 <input type="text" class="form-control" id="columnFiltersCreatorEmail" v-model="columnFilters.creator_email" placeholder="Filter by Maintainer Email">
-              </div>         
-            </div>    
+              </div>
+              <div class="col mb-3">
+                <div class="dropdown" ref="labelFilterDropdown">
+                  <button type="button" class="form-control text-start dropdown-toggle" id="columnFiltersLabels"
+                    data-toggle="tooltip" data-placement="bottom" :title="labelFilterInfo"
+                    @click="toggleLabelFilterDropdown">
+                    {{ labelFilterButtonText }}
+                  </button>
+                  <div class="dropdown-menu p-2" :class="{ show: showLabelFilterDropdown }"
+                    style="min-width: 220px; max-height: 250px; overflow-y: auto;">
+                    <div v-if="labels.length === 0" class="dropdown-item-text text-muted">No labels defined yet.</div>
+                    <div class="form-check" v-for="label in labels" :key="label.pk">
+                      <input class="form-check-input" type="checkbox" :id="'columnFiltersLabel' + label.pk"
+                        :value="label.pk" v-model="columnFilters.label_ids">
+                      <label class="form-check-label" :for="'columnFiltersLabel' + label.pk">{{ label.name }}</label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
             <div class="row row-cols-auto" style="margin-left: 0.1rem;">
               <button type="button" class="col btn btn-primary btn-sm" @click="resetFilters">Reset Filters</button>            
             </div>
@@ -116,39 +135,40 @@
         <table class="table table-hover" v-if="show_table">
           <thead>
             <tr>
-              <th @click='sortColumn("title")' style="min-width: 10%;" scope="col">Title / Name
+              <th @click='sortColumn("title")' style="min-width: 9%;" scope="col">Title / Name
                 <font-awesome-icon icon="fa-solid fa-sort-up" style="vertical-align: bottom" v-if="this.sortBy=='title' && this.sortOrder==1"/>
                 <font-awesome-icon icon="fa-solid fa-sort-down" style="vertical-align: top" v-if="this.sortBy=='title' && this.sortOrder==-1"/>
               </th>
-              <th @click='sortColumn("author")' style="min-width: 10%;" scope="col">Author
+              <th @click='sortColumn("author")' style="min-width: 8%;" scope="col">Author
                 <font-awesome-icon icon="fa-solid fa-sort-up" style="vertical-align: bottom" v-if="this.sortBy=='author' && this.sortOrder==1"/>
                 <font-awesome-icon icon="fa-solid fa-sort-down" style="vertical-align: top" v-if="this.sortBy=='author' && this.sortOrder==-1"/>
               </th>
-              <th @click='sortColumn("doc_identifier")' style="min-width: 10%;" scope="col">Identifier
+              <th @click='sortColumn("doc_identifier")' style="min-width: 8%;" scope="col">Identifier
                 <font-awesome-icon icon="fa-solid fa-sort-up" style="vertical-align: bottom" v-if="this.sortBy=='doc_identifier' && this.sortOrder==1"/>
                 <font-awesome-icon icon="fa-solid fa-sort-down" style="vertical-align: top" v-if="this.sortBy=='doc_identifier' && this.sortOrder==-1"/>                
               </th>
-              <th @click='sortColumn("number")' style="min-width: 15%;" scope="col">Doc #
+              <th @click='sortColumn("number")' style="min-width: 12%;" scope="col">Doc #
                 <font-awesome-icon icon="fa-solid fa-sort-up" style="vertical-align: bottom" v-if="this.sortBy=='number' && this.sortOrder==1"/>
                 <font-awesome-icon icon="fa-solid fa-sort-down" style="vertical-align: top" v-if="this.sortBy=='number' && this.sortOrder==-1"/>                
               </th>
-              <th @click='sortColumn("entry_type")' style="min-width: 5%;" scope="col">Type
+              <th @click='sortColumn("entry_type")' style="min-width: 4%;" scope="col">Type
                 <font-awesome-icon icon="fa-solid fa-sort-up" style="vertical-align: bottom" v-if="this.sortBy=='entry_type' && this.sortOrder==1"/>
-                <font-awesome-icon icon="fa-solid fa-sort-down" style="vertical-align: top" v-if="this.sortBy=='entry_type' && this.sortOrder==-1"/>                
+                <font-awesome-icon icon="fa-solid fa-sort-down" style="vertical-align: top" v-if="this.sortBy=='entry_type' && this.sortOrder==-1"/>
               </th>
-              <th @click='sortColumn("compiled_url")' style="min-width: 10%;" scope="col"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="URLInfo"/>URL
+              <th style="min-width: 8%;" scope="col">Labels</th>
+              <th @click='sortColumn("compiled_url")' style="min-width: 8%;" scope="col"><span data-toggle="tooltip" data-placement="bottom" :title="URLInfo"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" /></span>URL
                 <font-awesome-icon icon="fa-solid fa-sort-up" style="vertical-align: bottom" v-if="this.sortBy=='compiled_url' && this.sortOrder==1"/>
                 <font-awesome-icon icon="fa-solid fa-sort-down" style="vertical-align: top" v-if="this.sortBy=='compiled_url' && this.sortOrder==-1"/>
               </th>
-              <th @click='sortColumn("source_url")' style="min-width: 10%;" scope="col"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="sourceURLInfo"/>Source URL
+              <th @click='sortColumn("source_url")' style="min-width: 8%;" scope="col"><span data-toggle="tooltip" data-placement="bottom" :title="sourceURLInfo"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" /></span>Source URL
                 <font-awesome-icon icon="fa-solid fa-sort-up" style="vertical-align: bottom" v-if="this.sortBy=='source_url' && this.sortOrder==1"/>
                 <font-awesome-icon icon="fa-solid fa-sort-down" style="vertical-align: top" v-if="this.sortBy=='source_url' && this.sortOrder==-1"/>                
               </th>
-              <th @click='sortColumn("abstract")' style="min-width: 20%;" scope="col">Abstract
+              <th @click='sortColumn("abstract")' style="min-width: 16%;" scope="col">Abstract
                 <font-awesome-icon icon="fa-solid fa-sort-up" style="vertical-align: bottom" v-if="this.sortBy=='abstract' && this.sortOrder==1"/>
                 <font-awesome-icon icon="fa-solid fa-sort-down" style="vertical-align: top" v-if="this.sortBy=='abstract' && this.sortOrder==-1"/>                
               </th>
-              <th @click='sortColumn("creator_email")' style="min-width: 10%;" scope="col">Maintained By
+              <th @click='sortColumn("creator_email")' style="min-width: 9%;" scope="col">Maintained By
                 <font-awesome-icon icon="fa-solid fa-sort-up" style="vertical-align: bottom" v-if="this.sortBy=='creator_email' && this.sortOrder==1"/>
                 <font-awesome-icon icon="fa-solid fa-sort-down" style="vertical-align: top" v-if="this.sortBy=='creator_email' && this.sortOrder==-1"/>                
               </th>
@@ -197,17 +217,21 @@
                 </ul>
               </td>
               
-              <td><font-awesome-icon v-if="entryTypeIconMap[doc.entry_type]" :icon="entryTypeIconMap[doc.entry_type]" data-toggle="tooltip" data-placement="bottom" :title="doc.entry_type" class="text-secondary" /></td>
+              <td><span v-if="entryTypeIconMap[doc.entry_type]" data-toggle="tooltip" data-placement="bottom" :title="doc.entry_type"><font-awesome-icon :icon="entryTypeIconMap[doc.entry_type]" class="text-secondary" /></span></td>
 
               <td>
-                <font-awesome-icon v-if="doc.compiled_url && doc.compiled_url.toLowerCase().includes(gitLabANT)" icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="gitLabInfo"/>
+                <span v-for="label in doc.labels" :key="label.pk" class="badge bg-secondary me-1">{{ label.name }}</span>
+              </td>
+
+              <td>
+                <span v-if="doc.compiled_url && doc.compiled_url.toLowerCase().includes(gitLabANT)" data-toggle="tooltip" data-placement="bottom" :title="gitLabInfo"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" /></span>
                 <a v-if="doc.compiled_url" :href="doc.compiled_url" target="_blank">link</a>
                 <!-- <a class="ms-3" :href=doc.compiled_url target="_blank" download><font-awesome-icon
                     icon="fa-solid fa-download" /></a> -->
               </td>
 
               <td>
-                <font-awesome-icon v-if="doc.source_url && doc.source_url.toLowerCase().includes(gitLabANT)" icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="gitLabInfo"/>
+                <span v-if="doc.source_url && doc.source_url.toLowerCase().includes(gitLabANT)" data-toggle="tooltip" data-placement="bottom" :title="gitLabInfo"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" /></span>
                 <a v-if="doc.source_url" :href="doc.source_url" target="_blank">link</a>
                 <!-- <a class="ms-3" :href=doc.source_url target="_blank" download><font-awesome-icon
                     icon="fa-solid fa-download" /></a> -->
@@ -217,12 +241,23 @@
                 v-if="doc.abstract.length > 30">{{ truncate(doc.abstract, 30) }}</td>
               <td v-else>{{ doc.abstract }}</td>
 
-              <td data-toggle="tooltip" data-placement="bottom" :title="doc.creator_email" style="cursor: default"
-                v-if="doc.creator_email.length > 15">{{ truncate(doc.creator_email, 15) }}</td>
-              <td v-else>{{ doc.creator_email }}</td>
+              <td class="text-nowrap">
+                <!-- Flex so the notify icons line up down the column instead of trailing
+                  each address at a different offset -->
+                <div class="d-flex align-items-center justify-content-between">
+                  <span data-toggle="tooltip" data-placement="bottom" :title="doc.creator_email" style="cursor: default">{{
+                    doc.creator_email.length > 15 ? truncate(doc.creator_email, 15) : doc.creator_email }}</span>
+                  <!-- Notify the maintainer. Available to anyone who doesn't maintain the entry themselves, admins included -->
+                  <button v-if="email != doc.creator_email" type="button" class="btn btn-sm text-primary px-1 ms-2"
+                  data-toggle="tooltip" data-placement="top"
+                  title="Notify maintainer that entry needs to be updated" @click="sendEmail(doc)">
+                    <font-awesome-icon icon="fa-solid fa-circle-exclamation" />
+                  </button>
+                </div>
+              </td>
 
-              <td v-if="(email == doc.creator_email) || superuser">
-                <div class="btn-group" role="group">
+              <td>
+                <div class="btn-group" role="group" v-if="(email == doc.creator_email) || superuser">
                   <button type="button" class="btn btn-warning btn-sm" @click="toggleEditDocumentModal(doc)">
                     Update
                   </button>
@@ -230,12 +265,6 @@
                     Delete
                   </button>
                 </div>
-              </td>
-              <td v-else>
-                <button type="button" class="btn text-primary" data-toggle="tooltip" 
-                data-placement="top" title="Notify maintainer that entry needs to be updated" @click="sendEmail(doc)">
-                  <font-awesome-icon icon="fa-solid fa-circle-exclamation" />
-                </button>
               </td>
             </tr>
           </tbody>
@@ -283,14 +312,14 @@
                   placeholder="Enter author">
               </div>
               <div class="mb-3">
-                <label for="addDocumentEntryType" class="form-label"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="TypeInfo"/>Type: <span class="text-danger">*</span></label>
+                <label for="addDocumentEntryType" class="form-label"><span data-toggle="tooltip" data-placement="bottom" :title="TypeInfo"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" /></span>Type: <span class="text-danger">*</span></label>
                 <select :class="['form-control', { 'is-invalid': addFormEntryTypeMissing }]" id="addEntryType" v-model="addDocumentForm.entry_type">
                   <option v-for="option in entryTypeOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
                 </select>
                 <div v-if="addFormEntryTypeMissing" class="form-text text-danger">This field is required.</div>
               </div>
               <div class="mb-3">
-                <label for="addDocumentChangeControlled" class="form-label"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="CCInfo"/>Change Controlled: <span class="text-danger">*</span></label>
+                <label for="addDocumentChangeControlled" class="form-label"><span data-toggle="tooltip" data-placement="bottom" :title="CCInfo"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" /></span>Change Controlled: <span class="text-danger">*</span></label>
                 <select :class="['form-control', { 'is-invalid': addFormChangeControlledMissing }]" id="addDocumentChangeControlled" v-model="addDocumentForm.change_controlled">
                   <option v-for="option in changeControlledOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
                 </select>
@@ -312,13 +341,26 @@
                 </div>
                 <input type="text" class="form-control mt-2" id="addDocumentDocCode" v-model="addDocumentForm.number" readonly />
               </div>
+              <div class="mb-3" v-if="superuser && (addDocumentForm.entry_type === 'document')">
+                <label for="addDocumentNumberStub" class="form-label"><span data-toggle="tooltip" data-placement="bottom" :title="DocNumberInfo"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" /></span>Document Number:</label>
+                <select class="form-control" id="addDocumentNumberStub" v-model="addDocumentForm.document_stub">
+                  <option value="">No number</option>
+                  <option v-for="stub in documentStubOptions" :key="stub.value" :value="stub.value">{{ stub.label }} ({{ stub.example }})</option>
+                </select>
+              </div>
               <div class="mb-3">
-                <label for="addDocumentUrl" class="form-label"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="URLInfo"/>URL:</label>
+                <label for="addDocumentLabels" class="form-label">Labels (Ctrl/Cmd+click to select multiple):</label>
+                <select class="form-control" id="addDocumentLabels" v-model="addDocumentForm.label_ids" multiple>
+                  <option v-for="label in labels" :key="label.pk" :value="label.pk">{{ label.name }}</option>
+                </select>
+              </div>
+              <div class="mb-3">
+                <label for="addDocumentUrl" class="form-label"><span data-toggle="tooltip" data-placement="bottom" :title="URLInfo"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" /></span>URL:</label>
                 <input type="text" class="form-control" id="addUrl" v-model="addDocumentForm.compiled_url"
                   placeholder="Enter URL">
               </div>
               <div class="mb-3">
-                <label for="addDocumentSourceUrl" class="form-label"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="sourceURLInfo"/>Source URL:</label>
+                <label for="addDocumentSourceUrl" class="form-label"><span data-toggle="tooltip" data-placement="bottom" :title="sourceURLInfo"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" /></span>Source URL:</label>
                 <input type="text" class="form-control" id="addSourceUrl" v-model="addDocumentForm.source_url"
                   placeholder="Enter source URL">
               </div>
@@ -426,13 +468,13 @@
                   v-model="editDocumentForm.author" placeholder="Enter author">
               </div>
               <div class="mb-3">
-                <label for="editDocumentEntryType" class="form-label"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="TypeInfo"/>Type:</label>
+                <label for="editDocumentEntryType" class="form-label"><span data-toggle="tooltip" data-placement="bottom" :title="TypeInfo"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" /></span>Type:</label>
                 <select class="form-control" id="editDocumentEntryType" v-model="editDocumentForm.entry_type" :disabled="editDocumentForm.number!=''">
                   <option v-for="option in entryTypeOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
                 </select>
               </div>
               <div class="mb-3">
-                <label for="editDocumentChangeControlled" class="form-label"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="CCInfo"/>Change Controlled:</label>
+                <label for="editDocumentChangeControlled" class="form-label"><span data-toggle="tooltip" data-placement="bottom" :title="CCInfo"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" /></span>Change Controlled:</label>
                 <select class="form-control" id="editDocumentChangeControlled" v-model="editDocumentForm.change_controlled" :disabled="editDocumentForm.number!=''">
                   <option v-for="option in changeControlledOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
                 </select>
@@ -474,14 +516,31 @@
                 </div>
                 <input type="text" class="form-control mt-2" id="editDocumentDocCode" v-model="editDocumentForm.number" readonly />
               </div>
-              
+
+              <!-- Documents that don't already carry a number can have one assigned by an admin.
+                Existing numbers are never reassigned here, they have to be released first. -->
+              <div class="mb-3" v-if="superuser && (editDocumentForm.entry_type === 'document') && !(docModal && docModal.number)">
+                <label for="editDocumentNumberStub" class="form-label"><span data-toggle="tooltip" data-placement="bottom" :title="DocNumberInfo"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" /></span>Document Number:</label>
+                <select class="form-control" id="editDocumentNumberStub" v-model="editDocumentForm.document_stub">
+                  <option value="">No number</option>
+                  <option v-for="stub in documentStubOptions" :key="stub.value" :value="stub.value">{{ stub.label }} ({{ stub.example }})</option>
+                </select>
+              </div>
+
               <div class="mb-3">
-                <label for="editDocumentUrl" class="form-label"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="URLInfo"/>URL:</label>
+                <label for="editDocumentLabels" class="form-label">Labels (Ctrl/Cmd+click to select multiple):</label>
+                <select class="form-control" id="editDocumentLabels" v-model="editDocumentForm.label_ids" multiple>
+                  <option v-for="label in labels" :key="label.pk" :value="label.pk">{{ label.name }}</option>
+                </select>
+              </div>
+
+              <div class="mb-3">
+                <label for="editDocumentUrl" class="form-label"><span data-toggle="tooltip" data-placement="bottom" :title="URLInfo"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" /></span>URL:</label>
                 <input type="text" class="form-control" maxlength="500" id="editUrl"
                   v-model="editDocumentForm.compiled_url" placeholder="Enter URL">
               </div>
               <div class="mb-3">
-                <label for="editDocumentSourceUrl" class="form-label"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="sourceURLInfo"/>Source URL:</label>
+                <label for="editDocumentSourceUrl" class="form-label"><span data-toggle="tooltip" data-placement="bottom" :title="sourceURLInfo"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" /></span>Source URL:</label>
                 <input type="text" class="form-control" maxlength="500" id="editSourceUrl"
                   v-model="editDocumentForm.source_url" placeholder="Enter source URL">
               </div>
@@ -561,6 +620,7 @@ import { auth } from '../firebaseConfig';
 import ExcelJS from 'exceljs';
 import AlertMessage from './AlertMessage.vue';
 import DrawingCodeBuilder from './DrawingCodeBuilder.vue';
+import { loadNumberSchemes } from '../numberSchemes';
 
 const API_URL = '/api';
 // const API_URL = 'http://localhost:5001/api';
@@ -581,7 +641,8 @@ export default {
         compiled_url: '',
         source_url: '',
         abstract: '',
-        creator_email: ''
+        creator_email: '',
+        label_ids: []
       },
       activeAddDocumentModal: false,
       activeEditDocumentModal: false,
@@ -592,12 +653,14 @@ export default {
         number: '',
         _stub: '',
         provided_number: '',
+        document_stub: '',
         entry_type: '',
         change_controlled: '',
         compiled_url: '',
         source_url: '',
         creator_email: this.email,
         abstract: '',
+        label_ids: [],
       },
       // Add-form error display
       addFormErrorList: [],
@@ -605,73 +668,17 @@ export default {
       // Edit-form error display
       editFormErrorList: [],
       showEditFormError: false,
-      codeStepsDrawing: [
-        {
-          label: 'Category:',
-          options: [
-              { label: 'Extra-Solar Coronograph', value: 'ESC' },
-              { label: 'Widefield Context Camera', value: 'WCC' },
-            ],
-          connectorAfter: '-'
-        },
-        {
-          label: 'Development Category:',
-          options: {
-            ESC: [
-            { label: 'Flight', value: 'F' },
-            { label: 'GSE', value: 'G' },
-            { label: 'Test Development Unit / Prototype', value: 'T' },
-            ], 
-            WCC: [
-            { label: 'Flight', value: 'F' },
-            { label: 'GSE', value: 'G' },
-            { label: 'Test Development Unit / Prototype', value: 'T' },
-            ], 
-          },
-          connectorAfter: ''
-        },
-        {
-          label: 'Engineering Subset:',
-          options: {
-            ESC_F: [
-            { label: 'Assembly', value: 'A' },
-            { label: 'Part', value: 'P' },
-            { label: 'Interface Control Drawing', value: 'X' },
-            ], 
-            ESC_G: [
-            { label: 'Assembly', value: 'A' },
-            { label: 'Part', value: 'P' },
-            { label: 'Interface Control Drawing', value: 'X' },
-            ], 
-            ESC_T: [
-            { label: 'Assembly', value: 'A' },
-            { label: 'Part', value: 'P' },
-            { label: 'Interface Control Drawing', value: 'X' },
-            ], 
-            WCC_F: [
-            { label: 'Assembly', value: 'A' },
-            { label: 'Part', value: 'P' },
-            { label: 'Interface Control Drawing', value: 'X' },
-            ], 
-            WCC_G: [
-            { label: 'Assembly', value: 'A' },
-            { label: 'Part', value: 'P' },
-            { label: 'Interface Control Drawing', value: 'X' },
-            ], 
-            WCC_T: [
-            { label: 'Assembly', value: 'A' },
-            { label: 'Part', value: 'P' },
-            { label: 'Interface Control Drawing', value: 'X' },
-            ], 
-          },
-          connectorAfter: '-'
-        },
-      ],
+      // Both numbering schemes are served by the API, see numberSchemes.js
+      codeStepsDrawing: [],
+      documentStubOptions: [],
       builderComplete: false,
       builderKey: 0,
       filter: '',
       documents: [],
       admins: [],
+      labels: [],
+      showLabelFilterDropdown: false,
+      labelFilterInfo: 'Filter by labels. Only entries carrying all of the selected labels are shown.',
       show_table: false,
       editDocumentForm: {
         pk: '',
@@ -681,16 +688,19 @@ export default {
         number: '',
         _stub: '',
         provided_number: '',
+        document_stub: '',
         entry_type: '',
         change_controlled: '',
         compiled_url: '',
         source_url: '',
         creator_email: '',
         abstract: '',
+        label_ids: [],
       },
       docModal: null,
-      TypeInfo: 'Choosing Type "drawing" and Change Controlled "yes" will give the option to generate a new Drawing Number (unless one already assigned).',
-      CCInfo: 'Choosing Type "drawing" and Change Controlled "yes" will give the option to generate a new Drawing Number (unless one already assigned).',
+      TypeInfo: 'Choosing Type "drawing" and Change Controlled "yes" will give the option to generate a new Drawing Number (unless one already assigned). Admins can assign a Document Number to any entry of Type "document".',
+      CCInfo: 'Choosing Type "drawing" and Change Controlled "yes" will give the option to generate a new Drawing Number (unless one already assigned). Document Numbers do not depend on change control.',
+      DocNumberInfo: 'Optional, admins only. The counter is assigned by the server when the entry is saved and is never reused. Existing numbers cannot be reassigned here.',
       URLInfo: 'The URL of the file described by the metadata in this entry.',
       sourceURLInfo: '(optional) The URL of the source components (Git repository, Power Point presentation etc.) used to compile / build the file described by the metadata in this entry.',
       gitLabInfo: 'This URL requires the ANT VPN to be activated.',
@@ -727,6 +737,15 @@ export default {
     DrawingCodeBuilder: DrawingCodeBuilder,
   },
   watch: {
+    filter(newVal) {
+      this.syncFiltersToUrl();
+    },
+    columnFilters: {
+      handler() {
+        this.syncFiltersToUrl();
+      },
+      deep: true,
+    },
     documents: function (newVal, oldVal) {
       if (this.documents.length > 0) {
         this.show_table = true;
@@ -804,6 +823,12 @@ export default {
               return value && value.includes(searchTerm);
             });
 
+            // Also check if searchTerm matches any assigned label name
+            const foundInLabels = doc.labels && doc.labels.some(label => {
+              const value = label.name ? label.name.toString().toLowerCase() : null;
+              return value && value.includes(searchTerm);
+            });
+
             return (title && title.includes(searchTerm)) ||
               (author && author.includes(searchTerm)) ||
               (doc_identifier && doc_identifier.includes(searchTerm)) ||
@@ -813,7 +838,8 @@ export default {
               (source_url && source_url.includes(searchTerm)) ||
               (abstract && abstract.includes(searchTerm)) ||
               (creator_email && creator_email.includes(searchTerm)) ||
-              foundInAliases;
+              foundInAliases ||
+              foundInLabels;
           });
         }
       }
@@ -836,6 +862,12 @@ export default {
             // String not found in any associated object
             }
             return false;
+          } else if (key === "label_ids") {
+            const selectedLabelIds = this.columnFilters.label_ids;
+            if (!selectedLabelIds || selectedLabelIds.length === 0) return true;
+            // AND logic: document must carry every selected label
+            const docLabelIds = doc.labels ? doc.labels.map(label => label.pk) : [];
+            return selectedLabelIds.every(pk => docLabelIds.includes(pk));
           } else if (typeof (this.columnFilters[key]) === 'number') {
             const searchTerm = this.columnFilters[key];
             const value = doc[key]
@@ -847,6 +879,10 @@ export default {
           }
         });
       });
+    },
+    labelFilterButtonText() {
+      const count = this.columnFilters.label_ids.length;
+      return count > 0 ? `Labels (${count})` : 'Filter by Labels';
     },
     isLoggedIn() {
       if (auth.currentUser) {
@@ -975,11 +1011,18 @@ export default {
           })
           .catch((error) => {
             console.log(error);
+            this.message = this.serverMessage(error) || 'Document not added, error occured';
+            this.showMessage = true;
             this.getDocuments();
           });
       }).catch(function (error) {
         console.log(error)
       });
+    },
+    serverMessage(error) {
+      // Number generation failures and permission errors carry a message meant
+      // for the user, rather than being reported as a generic failure.
+      return (error && error.response && error.response.data && error.response.data.message) || '';
     },
     getDocuments() {
       const path = `${API_URL}/documents`;
@@ -1026,6 +1069,25 @@ export default {
         console.log(error)
       });
     },
+    getLabels() {
+      const path = `${API_URL}/labels`;
+      auth.currentUser.getIdToken(true).then(idToken => {
+        const config = {
+          headers: { Authorization: `${idToken}` }
+        };
+
+        axios.get(path, config)
+          .then((res) => {
+            this.labels = res.data.labels || [];
+          })
+          .catch((error) => {
+            console.error(error);
+            this.labels = [];
+          });
+      }).catch(function (error) {
+        console.log(error)
+      });
+    },
     handleAddReset() {
       this.initForm();
     },
@@ -1048,7 +1110,10 @@ export default {
       const stub = this.addDocumentForm._stub ? this.addDocumentForm._stub.replace(/^-+|-+$/g,'') : '';
       const providedRaw = this.addDocumentForm.provided_number ? this.addDocumentForm.provided_number.replace(/\D/g,'') : '';
       const provided = providedRaw ? providedRaw.padStart(3,'0') : '';
-      const combinedNumber = stub ? (provided ? `${stub}${provided}` : stub) : (this.addDocumentForm.number || '');
+      // Documents carry the stub the admin picked, the server appends the counter
+      const combinedNumber = this.addDocumentForm.entry_type === 'document'
+        ? (this.addDocumentForm.document_stub || '')
+        : (stub ? (provided ? `${stub}${provided}` : stub) : (this.addDocumentForm.number || ''));
 
       const payload = {
         title: this.addDocumentForm.title,
@@ -1058,8 +1123,9 @@ export default {
         change_controlled: this.addDocumentForm.change_controlled,
         compiled_url: this.addDocumentForm.compiled_url,
         source_url: this.addDocumentForm.source_url,
-        creator_email: this.addDocumentForm.creator_email || this.email,        
+        creator_email: this.addDocumentForm.creator_email || this.email,
         abstract: this.addDocumentForm.abstract,
+        label_ids: this.addDocumentForm.label_ids,
       };
       this.toggleAddDocumentModal();
       this.addDocument(payload);
@@ -1101,7 +1167,10 @@ export default {
       const stub = this.editDocumentForm._stub ? this.editDocumentForm._stub.replace(/^-+|-+$/g,'') : '';
       const providedRaw = this.editDocumentForm.provided_number ? this.editDocumentForm.provided_number.replace(/\D/g,'') : '';
       const provided = providedRaw ? providedRaw.padStart(3,'0') : '';
-      const combinedNumber = stub ? (provided ? `${stub}${provided}` : stub) : (this.editDocumentForm.number || '');
+      // Documents carry the stub the admin picked, the server appends the counter
+      const combinedNumber = this.editDocumentForm.entry_type === 'document'
+        ? (this.editDocumentForm.document_stub || '')
+        : (stub ? (provided ? `${stub}${provided}` : stub) : (this.editDocumentForm.number || ''));
 
       const payload = {
         title: this.editDocumentForm.title,
@@ -1113,6 +1182,7 @@ export default {
         source_url: this.editDocumentForm.source_url,
         creator_email: this.editDocumentForm.creator_email || this.email,
         abstract: this.editDocumentForm.abstract,
+        label_ids: this.editDocumentForm.label_ids,
       };
       // Close modal only after successful client validation
       this.toggleEditDocumentModal(null);
@@ -1124,12 +1194,14 @@ export default {
       this.addDocumentForm.number = '';
       this.addDocumentForm._stub = '';
       this.addDocumentForm.provided_number = '';
+      this.addDocumentForm.document_stub = '';
       this.addDocumentForm.entry_type = this.entryTypeDefault;
       this.addDocumentForm.change_controlled = this.changeControlledDefault;
       this.addDocumentForm.compiled_url = '';
       this.addDocumentForm.source_url = '';
       this.addDocumentForm.creator_email = this.email;
       this.addDocumentForm.abstract = '';
+      this.addDocumentForm.label_ids = [];
       this.showAddFormError = false;
       this.addFormErrorList = [];
       this.editDocumentForm.pk = '';
@@ -1139,12 +1211,14 @@ export default {
       this.editDocumentForm.number = '';
       this.editDocumentForm._stub = '';
       this.editDocumentForm.provided_number = '';
+      this.editDocumentForm.document_stub = '';
       this.editDocumentForm.entry_type = '';
       this.editDocumentForm.change_controlled = '';
       this.editDocumentForm.compiled_url = '';
       this.editDocumentForm.source_url = '';
-      this.editDocumentForm.creator_email = '';      
+      this.editDocumentForm.creator_email = '';
       this.editDocumentForm.abstract = '';
+      this.editDocumentForm.label_ids = [];
       this.showEditFormError = false;
       this.editFormErrorList = [];
       this.docModal = null;
@@ -1254,6 +1328,8 @@ export default {
       this.activeAddDocumentModal = !this.activeAddDocumentModal;
       if (this.activeAddDocumentModal) {
         this.initForm();
+        // Pick up any labels added since the page was loaded
+        this.getLabels();
         body.classList.add('modal-open');
       } else {
         body.classList.remove('modal-open');
@@ -1265,11 +1341,14 @@ export default {
         this.editDocumentForm.entry_type = doc.entry_type;
         this.editDocumentForm.change_controlled = doc.change_controlled;
         this.editDocumentForm.number = doc.number && doc.number.value;
+        this.editDocumentForm.label_ids = doc.labels ? doc.labels.map(label => label.pk) : [];
         this.docModal = doc;
       }
       const body = document.querySelector('body');
       this.activeEditDocumentModal = !this.activeEditDocumentModal;
       if (this.activeEditDocumentModal) {
+        // Pick up any labels added since the page was loaded
+        this.getLabels();
         body.classList.add('modal-open');
       } else {
         body.classList.remove('modal-open');
@@ -1315,6 +1394,8 @@ export default {
           })
           .catch((error) => {
             console.error(error);
+            this.message = this.serverMessage(error) || 'Document not updated, error occured';
+            this.showMessage = true;
             this.getDocuments();
           });
       }).catch(function (error) {
@@ -1423,10 +1504,63 @@ export default {
       }
     },
     resetFilters() {
-      // Reset all filter inputs and checkboxes
       Object.keys(this.columnFilters).forEach(key => {
-        this.columnFilters[key] = '';
+        this.columnFilters[key] = Array.isArray(this.columnFilters[key]) ? [] : '';
       });
+    },
+    toggleLabelFilterDropdown() {
+      this.showLabelFilterDropdown = !this.showLabelFilterDropdown;
+      if (this.showLabelFilterDropdown) {
+        // Pick up any labels added since the page was loaded
+        this.getLabels();
+      }
+    },
+    handleLabelFilterClickOutside(event) {
+      // Bootstrap's JS bundle isn't loaded, so the dropdown is closed manually
+      // when the user clicks anywhere outside of it.
+      if (!this.showLabelFilterDropdown) return;
+      const dropdown = this.$refs.labelFilterDropdown;
+      if (dropdown && !dropdown.contains(event.target)) {
+        this.showLabelFilterDropdown = false;
+      }
+    },
+    syncFiltersToUrl() {
+      const query = {};
+      if (this.showFilters) {
+        Object.entries(this.columnFilters).forEach(([key, value]) => {
+          if (Array.isArray(value)) {
+            if (value.length > 0) query[key] = value.join(',');
+          } else if (value !== '') {
+            query[key] = value;
+          }
+        });
+      } else if (this.filter !== '') {
+        query.q = this.filter;
+      }
+      const currentQuery = this.$route.query;
+      if (JSON.stringify(query) !== JSON.stringify(currentQuery)) {
+        this.$router.replace({ query });
+      }
+    },
+    loadFiltersFromUrl() {
+      const query = this.$route.query;
+      if (!query || Object.keys(query).length === 0) return;
+      const columnFilterKeys = Object.keys(this.columnFilters);
+      const hasColumnFilter = Object.keys(query).some(k => columnFilterKeys.includes(k));
+      if (hasColumnFilter) {
+        this.showFilters = true;
+        this.filterButtonText = 'General Filter';
+        columnFilterKeys.forEach(key => {
+          if (query[key] === undefined) return;
+          if (Array.isArray(this.columnFilters[key])) {
+            this.columnFilters[key] = query[key].split(',').filter(v => v !== '').map(Number);
+          } else {
+            this.columnFilters[key] = query[key];
+          }
+        });
+      } else if (query.q) {
+        this.filter = query.q;
+      }
     },
     sendEmail(doc) {
       // alert(`Sending email to ${doc.creator_email}`);
@@ -1463,10 +1597,11 @@ Please update the entry at your earliest convenience.\n\nRegards,\nteledocs`);
         { number: 'Doc #', key: 'number'},
         { entry_type: 'Type', key: 'entry_type'},
         { change_controlled: 'Change Controlled', key: 'change_controlled'},
-        { compiled_url: 'URL', key: 'compiled_url'},        
-        { source_url: 'Source URL', key: 'source_url'},        
-        { abstract: 'Abstract', key: 'abstract'},        
-        { creator_email: 'Maintainer Email', key: 'creator_email'},        
+        { labels: 'Labels', key: 'labels'},
+        { compiled_url: 'URL', key: 'compiled_url'},
+        { source_url: 'Source URL', key: 'source_url'},
+        { abstract: 'Abstract', key: 'abstract'},
+        { creator_email: 'Maintainer Email', key: 'creator_email'},
       ];
 
       worksheet.addRow({
@@ -1476,7 +1611,8 @@ Please update the entry at your earliest convenience.\n\nRegards,\nteledocs`);
         number: 'Doc #',
         entry_type: 'Type',
         change_controlled: 'Change Controlled',
-        compiled_url: 'URL',        
+        labels: 'Labels',
+        compiled_url: 'URL',
         source_url: 'Source URL',
         abstract: 'Abstract',
         creator_email: 'Maintainer Email',
@@ -1490,6 +1626,7 @@ Please update the entry at your earliest convenience.\n\nRegards,\nteledocs`);
           number: doc.number.value,
           entry_type: doc.entry_type,
           change_controlled: doc.change_controlled,
+          labels: (doc.labels || []).map(label => label.name).join(', '),
           compiled_url: doc.compiled_url,
           source_url: doc.source_url,
           abstract: doc.abstract,
@@ -1565,17 +1702,40 @@ Please update the entry at your earliest convenience.\n\nRegards,\nteledocs`);
         this.superuser = false;
         this.isAuthorized = false;
       });
-    },    
+    },
+    getNumberSchemes() {
+      loadNumberSchemes()
+        .then((schemes) => {
+          this.codeStepsDrawing = schemes.drawingSteps;
+          this.documentStubOptions = schemes.documentStubs;
+          // Force a fresh builder: it sizes its internal selection array from
+          // the steps it was created with, so one created before the tree
+          // arrived would keep an array sized for an empty tree.
+          this.builderKey += 1;
+        })
+        .catch((error) => {
+          console.error(error);
+          this.message = 'Numbering schemes could not be loaded, so new numbers cannot be assigned.';
+          this.showMessage = true;
+        });
+    },
   },
   created() {
+    this.loadFiltersFromUrl();
     this.getDocuments();
     this.getAdmins();
+    this.getLabels();
     this.getEntryTypeOptions();
     this.getChangeControlledOptions();
+    this.getNumberSchemes();
   },
   mounted() {
     // Initialize steps for the current value of addDocumentEntryType
     this.resetDrawingCodeBuilder();
+    document.addEventListener('click', this.handleLabelFilterClickOutside);
+  },
+  beforeUnmount() {
+    document.removeEventListener('click', this.handleLabelFilterClickOutside);
   }
 };
 </script>
