@@ -622,8 +622,8 @@ import AlertMessage from './AlertMessage.vue';
 import DrawingCodeBuilder from './DrawingCodeBuilder.vue';
 import { loadNumberSchemes } from '../numberSchemes';
 
-// const API_URL = '/api';
-const API_URL = 'http://localhost:5001/api';
+const API_URL = '/api';
+// const API_URL = 'http://localhost:5001/api';
 
 export default {
   name: 'DocumentsAll',
@@ -1328,6 +1328,8 @@ export default {
       this.activeAddDocumentModal = !this.activeAddDocumentModal;
       if (this.activeAddDocumentModal) {
         this.initForm();
+        // Pick up any labels added since the page was loaded
+        this.getLabels();
         body.classList.add('modal-open');
       } else {
         body.classList.remove('modal-open');
@@ -1345,6 +1347,8 @@ export default {
       const body = document.querySelector('body');
       this.activeEditDocumentModal = !this.activeEditDocumentModal;
       if (this.activeEditDocumentModal) {
+        // Pick up any labels added since the page was loaded
+        this.getLabels();
         body.classList.add('modal-open');
       } else {
         body.classList.remove('modal-open');
@@ -1506,6 +1510,10 @@ export default {
     },
     toggleLabelFilterDropdown() {
       this.showLabelFilterDropdown = !this.showLabelFilterDropdown;
+      if (this.showLabelFilterDropdown) {
+        // Pick up any labels added since the page was loaded
+        this.getLabels();
+      }
     },
     handleLabelFilterClickOutside(event) {
       // Bootstrap's JS bundle isn't loaded, so the dropdown is closed manually

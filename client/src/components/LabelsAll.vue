@@ -19,12 +19,14 @@
           <thead>
             <tr>
               <th style="min-width: 10%;" scope="col">Name</th>
+              <th style="min-width: 10%;" scope="col">Assigned to</th>
               <th></th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="(lbl, index) in filteredLabels" :key="index">
               <td>{{ lbl.name }}</td>
+              <td>{{ lbl.usage_count }} {{ lbl.usage_count === 1 ? 'entry' : 'entries' }}</td>
               <td>
                 <div class="btn-group" role="group">
                   <button type="button" class="btn btn-warning btn-sm" @click="toggleEditLabelModal(lbl)">
@@ -109,6 +111,27 @@
       </div>
     </div>
     <div v-if="activeEditLabelModal" class="modal-backdrop fade show"></div>
+
+    <!-- delete label confirmation modal (only shown for labels still in use) -->
+    <div v-if="activeDeleteLabelModal" class="modal fade show d-block" tabindex="-1" role="dialog">
+      <div class="modal-dialog" role="dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Confirm Delete</h5>
+            <button type="button" class="btn-close" aria-label="Close" @click="cancelDeleteLabel"></button>
+          </div>
+          <div class="modal-body">
+            <p>{{ deleteMessage }}</p>
+            <p class="mb-0">The label will be removed from those entries. The entries themselves are not deleted.</p>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" @click="cancelDeleteLabel">Cancel</button>
+            <button type="button" class="btn btn-danger" @click="confirmDeleteLabel">Delete</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div v-if="activeDeleteLabelModal" class="modal-backdrop fade show"></div>
   </div>
 </template>
 
@@ -137,6 +160,9 @@ export default {
       label_filter: '',
       labels: [],
       show_label_table: false,
+      activeDeleteLabelModal: false,
+      deleteTarget: null,
+      deleteMessage: '',
       message: '',
       showMessage: false,
       superuser: false,
@@ -264,7 +290,33 @@ export default {
       this.initLabelForm();
     },
     handleDeleteLabel(lbl) {
-      this.removeLabel(lbl.pk);
+      // Labels that aren't assigned to anything are deleted straight away;
+      // ones still in use need confirming first.
+      const usageCount = lbl.usage_count || 0;
+      if (usageCount === 0) {
+        this.removeLabel(lbl.pk);
+        return;
+      }
+      this.deleteTarget = lbl.pk;
+      this.deleteMessage = `WARNING: the label "${lbl.name}" is currently assigned to `
+        + `${usageCount} ${usageCount === 1 ? 'entry' : 'entries'}.`;
+      const body = document.querySelector('body');
+      this.activeDeleteLabelModal = true;
+      body.classList.add('modal-open');
+    },
+    confirmDeleteLabel() {
+      this.removeLabel(this.deleteTarget);
+      this.closeDeleteLabelModal();
+    },
+    cancelDeleteLabel() {
+      this.closeDeleteLabelModal();
+    },
+    closeDeleteLabelModal() {
+      this.deleteTarget = null;
+      this.deleteMessage = '';
+      this.activeDeleteLabelModal = false;
+      const body = document.querySelector('body');
+      body.classList.remove('modal-open');
     },
     handleEditLabelCancel() {
       this.toggleEditLabelModal(null);

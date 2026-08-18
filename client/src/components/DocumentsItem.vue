@@ -477,6 +477,8 @@ export default {
             const body = document.querySelector('body');
             this.activeEditDocumentModal = !this.activeEditDocumentModal;
             if (this.activeEditDocumentModal) {
+                // Pick up any labels added since the page was loaded
+                this.getLabels();
                 body.classList.add('modal-open');
             } else {
                 body.classList.remove('modal-open');
