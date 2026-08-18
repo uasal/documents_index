@@ -3,7 +3,7 @@ import logging
 
 from flask import jsonify, request
 from flask.views import MethodView
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import joinedload
 import firebase_admin
 from firebase_admin import auth
@@ -15,6 +15,7 @@ from models import (
     Domain,
     Number,
     Label,
+    document_labels,
     TypeEnum,
     ChangeControlledEnum,
     NumberConfirmationRequired,
@@ -604,9 +605,24 @@ class AllLabels(MethodView):
         logger.info(f"AllLabels: User {email} is viewing all labels.")
         labels = db.session.scalars(select(Label).order_by(Label.name.asc()))
 
+        # How many entries each label is assigned to, so the frontend can warn
+        # before deleting a label that is still in use.
+        usage_counts = dict(
+            db.session.execute(
+                select(
+                    document_labels.c.label_pk,
+                    func.count(document_labels.c.document_pk),
+                ).group_by(document_labels.c.label_pk)
+            ).all()
+        )
+
+        serialized_labels = Label.serialize_list(labels)
+        for label in serialized_labels:
+            label["usage_count"] = usage_counts.get(label["pk"], 0)
+
         response_object = {
             "status": "success",
-            "labels": Label.serialize_list(labels),
+            "labels": serialized_labels,
             "superuser": is_superuser(entity),
         }
         return jsonify(response_object)
