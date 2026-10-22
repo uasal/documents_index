@@ -11,6 +11,7 @@
               <a role="button" class="btn btn-primary" href="/numbers" target="_blank">View Assigned Numbers</a>
               <a v-if="superuser" role="button" class="btn btn-primary ms-4" href="/collaborators" target="_blank">Edit collaborators</a>
               <a v-if="superuser" role="button" class="btn btn-primary ms-4" href="/labels" target="_blank">Manage Labels</a>
+              <a v-if="superuser" role="button" class="btn btn-primary ms-4" href="/hooks" target="_blank">Manage Slack Hooks</a>
             </div>
           </div>
         </div>

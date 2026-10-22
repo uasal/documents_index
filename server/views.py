@@ -8,6 +8,7 @@ from sqlalchemy.orm import joinedload
 import firebase_admin
 from firebase_admin import auth
 
+import slack
 from models import (
     db,
     Document,
@@ -15,6 +16,7 @@ from models import (
     Domain,
     Number,
     Label,
+    SlackHook,
     document_labels,
     TypeEnum,
     ChangeControlledEnum,
@@ -986,4 +988,169 @@ class SingleDomain(MethodView):
                 f"SingleDomain: User {email} tried to delete inexistent domain."
             )
             response_object["message"] = "Domain not found"
+        return jsonify(response_object)
+
+
+class AllHooks(MethodView):
+    """View class for the /hooks route."""
+
+    decorators = [superuser, token_required]
+
+    def post(self):
+        """
+        Method with logic for post requests.
+        Post requests are made here when a superuser adds a new Slack hook.
+
+        Returns
+        -------
+        json
+            Json response to post request. Contains 'status' and 'message'.
+        """
+        email = getattr(request, "email")
+        response_object = {"status": "success"}
+        post_data = request.get_json()
+        logger.info(f'AllHooks: User {email} is adding new hook {post_data.get("name")}.')
+        success = SlackHook.create(**post_data)
+        if success:
+            response_object["message"] = "Hook added!"
+        else:
+            response_object["status"] = "fail"
+            response_object["message"] = ("Hook not added. Check the name is unique and the URL "
+                                          f"starts with {slack.SLACK_HOOK_PREFIX}")
+        return jsonify(response_object)
+
+    def get(self):
+        """
+        Method with logic for get requests.
+        Get requests here return a list of all the Slack hooks in the db,
+        without their URLs.
+
+        Returns
+        -------
+        json
+            Json response to get request. Contains 'status' and a
+            list of each hook serialized.
+        """
+        email = getattr(request, "email")
+        logger.info(f"AllHooks: User {email} is viewing all hooks.")
+        hooks = db.session.scalars(select(SlackHook).order_by(SlackHook.name.asc()))
+
+        response_object = {
+            "status": "success",
+            "hooks": SlackHook.serialize_list(hooks),
+            "superuser": True,
+        }
+        return jsonify(response_object)
+
+
+class SingleHook(MethodView):
+    """View class for the /hooks/<pk> route."""
+
+    decorators = [superuser, token_required]
+
+    def put(self, pk):
+        """
+        Method with logic for put requests.
+        Put requests here update the hook with given primary key. The URL is
+        only replaced when a new one is submitted.
+
+        Parameters
+        ----------
+        pk : str
+            pk of hook entry to be updated.
+
+        Returns
+        -------
+        json
+            Json response to put request. Contains 'status' and 'message'.
+        """
+        email = getattr(request, "email")
+        response_object = {"status": "success"}
+        post_data = request.get_json()
+
+        hook = SlackHook.get_by_pk(pk)
+        if hook:
+            logger.info(f"SingleHook: User {email} is updating hook {hook}.")
+            success = hook.update(**post_data)
+            if success:
+                response_object["message"] = "Hook updated!"
+            else:
+                response_object["status"] = "fail"
+                response_object["message"] = ("Hook not updated. Check the name is unique and the URL "
+                                              f"starts with {slack.SLACK_HOOK_PREFIX}")
+        else:
+            logger.info(f"SingleHook: User {email} tried to update inexistent hook.")
+            response_object["status"] = "fail"
+            response_object["message"] = "Hook not found"
+        return jsonify(response_object)
+
+    def delete(self, pk):
+        """
+        Method with logic for delete requests.
+        Delete requests here delete hook with given primary key from the db.
+
+        Parameters
+        ----------
+        pk : str
+            pk of hook entry to be deleted.
+
+        Returns
+        -------
+        json
+            Json response to delete request. Contains 'status' and 'message'.
+        """
+        email = getattr(request, "email")
+        response_object = {"status": "success"}
+
+        hook = SlackHook.get_by_pk(pk)
+        if hook:
+            logger.info(f"SingleHook: User {email} is deleting hook {hook}.")
+            success = hook.delete_hook()
+            if not success:
+                response_object["status"] = "fail"
+            response_object["message"] = "Hook removed!"
+        else:
+            logger.info(f"SingleHook: User {email} tried to delete inexistent hook.")
+            response_object["status"] = "fail"
+            response_object["message"] = "Hook not found"
+        return jsonify(response_object)
+
+
+class TestHook(MethodView):
+    """View class for the /hooks/<pk>/test route."""
+
+    decorators = [superuser, token_required]
+
+    def post(self, pk):
+        """
+        Method with logic for post requests.
+        Post requests here send a test message to the hook with given primary
+        key straight away and report whether Slack accepted it.
+
+        Parameters
+        ----------
+        pk : str
+            pk of hook entry to be tested.
+
+        Returns
+        -------
+        json
+            Json response to post request. Contains 'status' and 'message'.
+        """
+        email = getattr(request, "email")
+        response_object = {"status": "success"}
+
+        hook = SlackHook.get_by_pk(pk)
+        if hook:
+            logger.info(f"TestHook: User {email} is testing hook {hook}.")
+            if slack.post_message(hook.url, slack.build_test_message(hook.name)):
+                response_object["message"] = f"Test message sent to {hook.name}!"
+            else:
+                response_object["status"] = "fail"
+                response_object["message"] = (f"Slack did not accept the test message for {hook.name}. "
+                                              "Check the hook URL is correct and still active.")
+        else:
+            logger.info(f"TestHook: User {email} tried to test inexistent hook.")
+            response_object["status"] = "fail"
+            response_object["message"] = "Hook not found"
         return jsonify(response_object)
