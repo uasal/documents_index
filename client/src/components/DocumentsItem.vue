@@ -15,7 +15,9 @@
                 @click="toggleEditDocumentModal(document)">
                 Update
             </button>
-            <button v-else type="button" class="btn btn-outline-primary mb-3" data-toggle="tooltip" 
+            <!-- Available to anyone who doesn't maintain the entry themselves, admins included -->
+            <button v-if="email != document.creator_email" type="button" class="btn btn-outline-primary mb-3"
+            :class="{ 'ms-2': superuser }" data-toggle="tooltip"
             data-placement="top" title="Notify maintainer that entry needs to be updated" @click="sendEmail(document)">
                 <font-awesome-icon icon="fa-solid fa-circle-exclamation" class="me-1" />Notify maintainer
             </button>
@@ -29,10 +31,13 @@
                     <p v-if="document.aliases"><b>Other handles: </b>
                         <a v-for="(alias, index) in document.aliases" :key="index" :href="'/docs/' + alias.value" target="_blank" class="d-block">{{ alias.value }}</a>
                     </p>
-                    <p><b>Type: </b><font-awesome-icon v-if="entryTypeIconMap[document.entry_type]" :icon="entryTypeIconMap[document.entry_type]" data-toggle="tooltip" data-placement="bottom" :title="document.entry_type" class="text-secondary" /></p>
+                    <p><b>Type: </b><span v-if="entryTypeIconMap[document.entry_type]" data-toggle="tooltip" data-placement="bottom" :title="document.entry_type"><font-awesome-icon :icon="entryTypeIconMap[document.entry_type]" class="text-secondary" /></span></p>
                     <p><b>Change controlled: </b> {{ changeControlledValueMap[document.change_controlled] }}</p>
-                    <p><b><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="URLInfo"/>URL: </b><font-awesome-icon v-if="document.compiled_url && document.compiled_url.toLowerCase().includes(gitLabANT)" icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="gitLabInfo"/><a :href=document.compiled_url target="_blank">{{ document.compiled_url }}</a></p>
-                    <p><b><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="sourceURLInfo"/>Source URL: </b><font-awesome-icon v-if="document.source_url && document.source_url.toLowerCase().includes(gitLabANT)" icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="gitLabInfo"/><a :href=document.source_url target="_blank">{{ document.source_url }}</a></p>
+                    <p><b>Labels: </b>
+                        <span v-for="label in document.labels" :key="label.pk" class="badge bg-secondary me-1">{{ label.name }}</span>
+                    </p>
+                    <p><b><span data-toggle="tooltip" data-placement="bottom" :title="URLInfo"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" /></span>URL: </b><span v-if="document.compiled_url && document.compiled_url.toLowerCase().includes(gitLabANT)" data-toggle="tooltip" data-placement="bottom" :title="gitLabInfo"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" /></span><a :href=document.compiled_url target="_blank">{{ document.compiled_url }}</a></p>
+                    <p><b><span data-toggle="tooltip" data-placement="bottom" :title="sourceURLInfo"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" /></span>Source URL: </b><span v-if="document.source_url && document.source_url.toLowerCase().includes(gitLabANT)" data-toggle="tooltip" data-placement="bottom" :title="gitLabInfo"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" /></span><a :href=document.source_url target="_blank">{{ document.source_url }}</a></p>
                     <p><b>Entry maintained by: </b>{{ document.creator_email }}</p>
                 </div>
             </div>
@@ -79,13 +84,13 @@
                         v-model="editDocumentForm.author" placeholder="Enter author">
                     </div>
                     <div class="mb-3">
-                        <label for="editDocumentEntryType" class="form-label"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="DisabledInfo"/>Type:</label>
+                        <label for="editDocumentEntryType" class="form-label"><span data-toggle="tooltip" data-placement="bottom" :title="DisabledInfo"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" /></span>Type:</label>
                         <select class="form-control" id="editDocumentEntryType" v-model="editDocumentForm.entry_type" :disabled="editDocumentForm.number!=''">
                             <option v-for="option in entryTypeOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label for="editDocumentChangeControlled" class="form-label"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="DisabledInfo"></font-awesome-icon>Change Controlled:</label>
+                        <label for="editDocumentChangeControlled" class="form-label"><span data-toggle="tooltip" data-placement="bottom" :title="DisabledInfo"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" /></span>Change Controlled:</label>
                         <select class="form-control" id="editDocumentChangeControlled" v-model="editDocumentForm.change_controlled" :disabled="editDocumentForm.number!=''">
                             <option v-for="option in changeControlledOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
                         </select>
@@ -128,14 +133,31 @@
                         </div>
                         <input type="text" class="form-control mt-2" id="editDocumentDocCode" v-model="editDocumentForm.number" readonly />
                     </div>
-                    
+
+                    <!-- Documents that don't already carry a number can have one assigned by an admin.
+                    Existing numbers are never reassigned here, they have to be released first. -->
+                    <div class="mb-3" v-if="superuser && (editDocumentForm.entry_type === 'document') && !(docModal && docModal.number)">
+                        <label for="editDocumentNumberStub" class="form-label"><span data-toggle="tooltip" data-placement="bottom" :title="DocNumberInfo"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" /></span>Document Number:</label>
+                        <select class="form-control" id="editDocumentNumberStub" v-model="editDocumentForm.document_stub">
+                            <option value="">No number</option>
+                            <option v-for="stub in documentStubOptions" :key="stub.value" :value="stub.value">{{ stub.label }} ({{ stub.example }})</option>
+                        </select>
+                    </div>
+
                     <div class="mb-3">
-                        <label for="editDocumentUrl" class="form-label"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="URLInfo"/>URL:</label>
+                        <label for="editDocumentLabels" class="form-label">Labels (Ctrl/Cmd+click to select multiple):</label>
+                        <select class="form-control" id="editDocumentLabels" v-model="editDocumentForm.label_ids" multiple>
+                            <option v-for="label in labels" :key="label.pk" :value="label.pk">{{ label.name }}</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="editDocumentUrl" class="form-label"><span data-toggle="tooltip" data-placement="bottom" :title="URLInfo"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" /></span>URL:</label>
                         <input type="text" class="form-control" maxlength="500" id="editUrl"
                         v-model="editDocumentForm.compiled_url" placeholder="Enter URL">
                     </div>
                     <div class="mb-3">
-                        <label for="editDocumentSourceUrl" class="form-label"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" data-toggle="tooltip" data-placement="bottom" :title="sourceURLInfo"/>Source URL:</label>
+                        <label for="editDocumentSourceUrl" class="form-label"><span data-toggle="tooltip" data-placement="bottom" :title="sourceURLInfo"><font-awesome-icon icon="fa-solid fa-circle-info" class="me-1 text-secondary" /></span>Source URL:</label>
                         <input type="text" class="form-control" maxlength="500" id="editSourceUrl"
                         v-model="editDocumentForm.source_url" placeholder="Enter source URL">
                     </div>
@@ -174,6 +196,7 @@ import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import { auth } from '../firebaseConfig';
 import AlertMessage from './AlertMessage.vue';
 import DrawingCodeBuilder from './DrawingCodeBuilder.vue';
+import { loadNumberSchemes } from '../numberSchemes';
 
 const API_URL = '/api';
 // const API_URL = 'http://localhost:5001/api';
@@ -185,68 +208,10 @@ export default {
             activeEditDocumentModal: false,
             document: {},
             admins: [],
-            codeStepsDrawing: [
-            {
-            label: 'Category:',
-            options: [
-                { label: 'Extra-Solar Coronograph', value: 'ESC' },
-                { label: 'Widefield Context Camera', value: 'WCC' },
-                ],
-            connectorAfter: '-'
-            },
-            {
-            label: 'Development Category:',
-            options: {
-                ESC: [
-                { label: 'Flight', value: 'F' },
-                { label: 'GSE', value: 'G' },
-                { label: 'Test Development Unit / Prototype', value: 'T' },
-                ], 
-                WCC: [
-                { label: 'Flight', value: 'F' },
-                { label: 'GSE', value: 'G' },
-                { label: 'Test Development Unit / Prototype', value: 'T' },
-                ], 
-            },
-            connectorAfter: ''
-            },
-            {
-            label: 'Engineering Subset:',
-            options: {
-                ESC_F: [
-                { label: 'Assembly', value: 'A' },
-                { label: 'Part', value: 'P' },
-                { label: 'Interface Control Drawing', value: 'X' },
-                ], 
-                ESC_G: [
-                { label: 'Assembly', value: 'A' },
-                { label: 'Part', value: 'P' },
-                { label: 'Interface Control Drawing', value: 'X' },
-                ], 
-                ESC_T: [
-                { label: 'Assembly', value: 'A' },
-                { label: 'Part', value: 'P' },
-                { label: 'Interface Control Drawing', value: 'X' },
-                ], 
-                WCC_F: [
-                { label: 'Assembly', value: 'A' },
-                { label: 'Part', value: 'P' },
-                { label: 'Interface Control Drawing', value: 'X' },
-                ], 
-                WCC_G: [
-                { label: 'Assembly', value: 'A' },
-                { label: 'Part', value: 'P' },
-                { label: 'Interface Control Drawing', value: 'X' },
-                ], 
-                WCC_T: [
-                { label: 'Assembly', value: 'A' },
-                { label: 'Part', value: 'P' },
-                { label: 'Interface Control Drawing', value: 'X' },
-                ], 
-            },
-            connectorAfter: '-'
-            },
-            ],
+            labels: [],
+            // Both numbering schemes are served by the API, see numberSchemes.js
+            codeStepsDrawing: [],
+            documentStubOptions: [],
             builderComplete: false,
             builderKey: 0,
             editDocumentForm: {
@@ -255,18 +220,21 @@ export default {
                 author: '',
                 doc_identifier: '',
                 number: '',
+                document_stub: '',
                 entry_type: '',
                 change_controlled: '',
                 compiled_url: '',
                 source_url: '',
-                creator_email: '',                
+                creator_email: '',
                 abstract: '',
+                label_ids: [],
             },
             // Edit-form error display
             editFormErrorList: [],
             showEditFormError: false,
             docModal: null,
             DisabledInfo: 'Field can only be edited from the main Documents & Drawings page',
+            DocNumberInfo: 'Optional, admins only. The counter is assigned by the server when the entry is saved and is never reused. Existing numbers cannot be reassigned here.',
             URLInfo: 'The URL of the file described by the metadata in this entry.',
             sourceURLInfo: '(optional) The URL of the source components (Git repository, Power Point presentation etc.) used to compile / build the file described by the metadata in this entry.',            
             gitLabInfo: 'This URL requires the ANT VPN to be activated.',
@@ -389,7 +357,26 @@ export default {
             }).catch(function (error) {
                 console.log(error)
             });
-        },        
+        },
+        getLabels() {
+            const path = `${API_URL}/labels`;
+            auth.currentUser.getIdToken(true).then(idToken => {
+                const config = {
+                headers: { Authorization: `${idToken}` }
+                };
+
+                axios.get(path, config)
+                .then((res) => {
+                    this.labels = res.data.labels || [];
+                })
+                .catch((error) => {
+                    console.error(error);
+                    this.labels = [];
+                });
+            }).catch(function (error) {
+                console.log(error)
+            });
+        },
         handleEditCancel() {
             this.toggleEditDocumentModal(null);
             this.initForm();
@@ -410,16 +397,22 @@ export default {
             this.showEditFormError = false;
             this.editFormErrorList = [];
 
+            // Documents carry the stub the admin picked, the server appends the counter
+            const combinedNumber = this.editDocumentForm.entry_type === 'document'
+                ? (this.editDocumentForm.document_stub || '')
+                : this.editDocumentForm.number;
+
             const payload = {
                 title: this.editDocumentForm.title,
                 author: this.editDocumentForm.author,
-                number: this.editDocumentForm.number,
+                number: combinedNumber,
                 entry_type: this.editDocumentForm.entry_type,
                 change_controlled: this.editDocumentForm.change_controlled,
                 compiled_url: this.editDocumentForm.compiled_url,
                 source_url: this.editDocumentForm.source_url,
                 creator_email: this.editDocumentForm.creator_email || this.email,
                 abstract: this.editDocumentForm.abstract,
+                label_ids: this.editDocumentForm.label_ids,
             };
             // Close modal after validation passes
             this.toggleEditDocumentModal(null);
@@ -431,12 +424,14 @@ export default {
             this.editDocumentForm.author = '';
             this.editDocumentForm.doc_identifier = '';
             this.editDocumentForm.number = '';
+            this.editDocumentForm.document_stub = '';
             this.editDocumentForm.entry_type = '';
             this.editDocumentForm.change_controlled = '';
             this.editDocumentForm.compiled_url = '';
             this.editDocumentForm.source_url = '';
-            this.editDocumentForm.creator_email = '';            
+            this.editDocumentForm.creator_email = '';
             this.editDocumentForm.abstract = '';
+            this.editDocumentForm.label_ids = [];
             this.docModal = null;
             this.showEditFormError = false;
             this.editFormErrorList = [];
@@ -476,11 +471,14 @@ export default {
                 this.editDocumentForm.entry_type = doc.entry_type;
                 this.editDocumentForm.change_controlled = doc.change_controlled;
                 this.editDocumentForm.number = (doc.number && doc.number.value);
+                this.editDocumentForm.label_ids = doc.labels ? doc.labels.map(label => label.pk) : [];
                 this.docModal = doc;
             }
             const body = document.querySelector('body');
             this.activeEditDocumentModal = !this.activeEditDocumentModal;
             if (this.activeEditDocumentModal) {
+                // Pick up any labels added since the page was loaded
+                this.getLabels();
                 body.classList.add('modal-open');
             } else {
                 body.classList.remove('modal-open');
@@ -586,13 +584,32 @@ Please update the entry at your earliest convenience.\n\nRegards,\nteledocs`);
                 this.superuser = false;
                 this.isAuthorized = false;
             });
-        },    
+        },
+        getNumberSchemes() {
+            loadNumberSchemes()
+                .then((schemes) => {
+                    this.codeStepsDrawing = schemes.drawingSteps;
+                    this.documentStubOptions = schemes.documentStubs;
+                    // Force a fresh builder: it sizes its internal selection
+                    // array from the steps it was created with, so one created
+                    // before the tree arrived would keep an array sized for an
+                    // empty tree.
+                    this.builderKey += 1;
+                })
+                .catch((error) => {
+                    console.error(error);
+                    this.message = 'Numbering schemes could not be loaded, so new numbers cannot be assigned.';
+                    this.showMessage = true;
+                });
+        },
     },
     created() {
         this.getDocument();
         this.getAdmins();
+        this.getLabels();
         this.getEntryTypeOptions();
         this.getChangeControlledOptions();
+        this.getNumberSchemes();
     },
 };
 </script>

@@ -20,16 +20,52 @@ def test_app():
     app = setup_test_app()
     with app.app_context():
         # Import models here so they bind to the test-configured db
-        from models import Number, NumberConfirmationRequired, OutOfOrderNumber
+        from models import (
+            Number,
+            NumberConfirmationRequired,
+            NumberGenerationError,
+            OutOfOrderNumber,
+        )
         # Create tables
         db.create_all()
         yield {
             "Number": Number,
             "NumberConfirmationRequired": NumberConfirmationRequired,
+            "NumberGenerationError": NumberGenerationError,
             "OutOfOrderNumber": OutOfOrderNumber,
         }
         # Teardown: drop tables
         db.drop_all()
+
+
+@pytest.fixture()
+def with_tn_series():
+    """Registers a 'TN' series for the duration of a test and rebuilds the
+    document patterns from it, mimicking the one line change that extending the
+    scheme would require."""
+    import models
+
+    original_series = dict(models.DOC_SERIES)
+    original_patterns = (models.DOC_STUB_PATTERN, models.DOC_VALUE_PATTERN)
+
+    models.DOC_SERIES["TN"] = {"label": "Technical Note", "width": 3}
+    models.DOC_STUB_PATTERN, models.DOC_VALUE_PATTERN = models._build_doc_patterns()
+
+    yield
+
+    models.DOC_SERIES.clear()
+    models.DOC_SERIES.update(original_series)
+    models.DOC_STUB_PATTERN, models.DOC_VALUE_PATTERN = original_patterns
+
+
+def _add_numbers(*values):
+    """Seeds the db with document-type numbers."""
+    from models import Number, TypeEnum
+
+    db.session.add_all(
+        [Number(value=value, entry_type=TypeEnum.document) for value in values]
+    )
+    db.session.commit()
 
 
 def test_confirmation_required_when_prefix_exists(test_app):
@@ -137,3 +173,134 @@ def test_rejects_provided_number_too_long(test_app):
     # Numeric suffix of length 4 should be rejected by backend validation
     with pytest.raises(ValueError):
         Number._generate_drawing_value("ABC-DE0001")
+
+
+def test_drawing_reports_unparseable_existing_entry(test_app):
+    """An existing entry sharing the stub but not following the pattern used to
+    blow up with an AttributeError while building its own error message."""
+    Number = test_app["Number"]
+    NumberGenerationError = test_app["NumberGenerationError"]
+    from models import TypeEnum
+
+    db.session.add(Number(value="ABC-DEXX-00", entry_type=TypeEnum.drawing))
+    db.session.commit()
+
+    with pytest.raises(NumberGenerationError) as excinfo:
+        Number._generate_drawing_value("ABC-DE")
+
+    assert "ABC-DEXX-00" in str(excinfo.value)
+
+
+# --- document numbers ---------------------------------------------------------
+
+def test_doc_value_starts_at_001(test_app):
+    Number = test_app["Number"]
+    assert Number._generate_doc_value("STP-LAZ-ESC") == "STP-LAZ-ESC-001"
+
+
+def test_doc_value_increments(test_app):
+    Number = test_app["Number"]
+    _add_numbers("STP-LAZ-ESC-001", "STP-LAZ-ESC-002")
+    assert Number._generate_doc_value("STP-LAZ-ESC") == "STP-LAZ-ESC-003"
+
+
+def test_doc_departments_have_independent_counters(test_app):
+    Number = test_app["Number"]
+    _add_numbers("STP-LAZ-ESC-001", "STP-LAZ-ESC-002", "STP-LAZ-ESC-003")
+    assert Number._generate_doc_value("STP-LAZ-PM") == "STP-LAZ-PM-001"
+    assert Number._generate_doc_value("STP-LAZ-SE") == "STP-LAZ-SE-001"
+
+
+def test_doc_value_ignores_drawing_numbers_sharing_the_prefix(test_app):
+    Number = test_app["Number"]
+    from models import TypeEnum
+
+    db.session.add(Number(value="STP-LAZ-ESC-FA001-00", entry_type=TypeEnum.drawing))
+    db.session.commit()
+    _add_numbers("STP-LAZ-ESC-001")
+
+    assert Number._generate_doc_value("STP-LAZ-ESC") == "STP-LAZ-ESC-002"
+
+
+def test_doc_value_not_derived_from_string_ordering(test_app):
+    """The next number is the highest parsed counter, not the highest entry by
+    string order, so a value that sorts above the sequence cannot hijack it."""
+    Number = test_app["Number"]
+    _add_numbers("STP-LAZ-ESC-001", "STP-LAZ-ESC-002")
+    # 'TN005' sorts above '002' (letters sort above digits) but is not part of
+    # the base series, so it must be ignored entirely.
+    _add_numbers("STP-LAZ-ESC-TN005")
+
+    assert Number._generate_doc_value("STP-LAZ-ESC") == "STP-LAZ-ESC-003"
+
+
+def test_unregistered_stub_is_rejected(test_app):
+    Number = test_app["Number"]
+    NumberGenerationError = test_app["NumberGenerationError"]
+
+    for stub in ["STP-LAZ-XX", "STP-LAZ-ESC-TN", "ESC", "", None]:
+        with pytest.raises(NumberGenerationError):
+            Number._generate_doc_value(stub)
+
+
+def test_sequence_exhaustion_is_reported(test_app):
+    Number = test_app["Number"]
+    NumberGenerationError = test_app["NumberGenerationError"]
+    _add_numbers("STP-LAZ-SW-999")
+
+    with pytest.raises(NumberGenerationError) as excinfo:
+        Number._generate_doc_value("STP-LAZ-SW")
+
+    assert "exhausted" in str(excinfo.value)
+
+
+def test_generate_number_for_document_ignores_change_control(test_app):
+    Number = test_app["Number"]
+    from models import TypeEnum, ChangeControlledEnum
+
+    for change_controlled in [ChangeControlledEnum.no.value, ChangeControlledEnum.yes.value]:
+        number = Number._generate_number(
+            change_controlled, TypeEnum.document.value, "STP-LAZ-PM"
+        )
+        assert number is not None
+        assert number.entry_type == TypeEnum.document
+        db.session.add(number)
+        db.session.commit()
+
+    assert Number._generate_doc_value("STP-LAZ-PM") == "STP-LAZ-PM-003"
+
+
+def test_generate_number_for_document_without_stub_returns_none(test_app):
+    Number = test_app["Number"]
+    from models import TypeEnum, ChangeControlledEnum
+
+    assert Number._generate_number(
+        ChangeControlledEnum.no.value, TypeEnum.document.value, ""
+    ) is None
+
+
+# --- extending the scheme with a TN series ------------------------------------
+
+def test_tn_series_has_its_own_counter(test_app, with_tn_series):
+    Number = test_app["Number"]
+    _add_numbers("STP-LAZ-ESC-001", "STP-LAZ-ESC-002")
+
+    assert Number._generate_doc_value("STP-LAZ-ESC-TN") == "STP-LAZ-ESC-TN001"
+
+
+def test_tn_and_base_series_do_not_collide(test_app, with_tn_series):
+    """The regression this scheme is designed around: the two series share a
+    prefix but must never see each other's counters, in either direction."""
+    Number = test_app["Number"]
+    _add_numbers("STP-LAZ-ESC-001", "STP-LAZ-ESC-TN001", "STP-LAZ-ESC-TN002")
+
+    assert Number._generate_doc_value("STP-LAZ-ESC") == "STP-LAZ-ESC-002"
+    assert Number._generate_doc_value("STP-LAZ-ESC-TN") == "STP-LAZ-ESC-TN003"
+
+
+def test_tn_stub_is_offered_once_registered(test_app, with_tn_series):
+    Number = test_app["Number"]
+    values = [entry["value"] for entry in Number.document_stubs()]
+
+    assert "STP-LAZ-ESC" in values
+    assert "STP-LAZ-ESC-TN" in values

@@ -1,0 +1,38 @@
+# Deploy/operate privileges for the docsops group.
+#
+# Install with:
+#   sudo install -o root -g root -m 440 scripts/docsops.sudoers /etc/sudoers.d/docsops
+#   sudo visudo -c
+#
+# Verify the systemctl path (command -v systemctl) and the real unit names
+# (systemctl list-units --type=service) before installing -- a path or name
+# that does not match exactly will simply be denied.
+#
+# Every command is an absolute path with fixed arguments and no wildcards.
+# A wildcard here (e.g. "systemctl restart *") would let a member restart any
+# unit on the box, and "systemctl status" is deliberately absent because it
+# needs no privilege at all -- see the note at the bottom.
+
+Cmnd_Alias DEPLOY_DOCS = /usr/local/bin/deploy_sphinx
+
+# Both the bare and the .service form of each unit are listed. systemd treats
+# "nginx" and "nginx.service" as the same unit, but sudo does not -- it matches
+# the command line as a literal string, so whichever form is missing here is
+# denied when a deployer happens to type it.
+Cmnd_Alias WEB_SERVICE = /usr/bin/systemctl restart nginx, \
+                         /usr/bin/systemctl restart nginx.service, \
+                         /usr/bin/systemctl reload nginx, \
+                         /usr/bin/systemctl reload nginx.service, \
+                         /usr/bin/systemctl restart gunicorn, \
+                         /usr/bin/systemctl restart gunicorn.service, \
+                         /usr/bin/systemctl reload gunicorn, \
+                         /usr/bin/systemctl reload gunicorn.service
+
+%docsops ALL=(root) NOPASSWD: DEPLOY_DOCS, WEB_SERVICE
+
+# Read-only inspection needs no sudo entry: unprivileged users can already run
+#   systemctl status nginx
+#   journalctl -u gunicorn
+# on a systemd host. Granting "systemctl status" through sudo would actually be
+# a privilege escalation, because status pipes through a pager and less(1) can
+# spawn a shell with !sh.

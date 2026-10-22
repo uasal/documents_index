@@ -55,6 +55,7 @@ def create_app():
         AllDocuments,
         EntryTypes,
         ChangeControlledTypes,
+        NumberSchemes,
         UploadFile,
         SingleDocument,
         AllUsers,
@@ -63,6 +64,11 @@ def create_app():
         AllDomains,
         SingleDomain,
         AllNumbers,
+        AllLabels,
+        SingleLabel,
+        AllHooks,
+        SingleHook,
+        TestHook,
     )
 
     logger.info("Registering views.")
@@ -77,6 +83,7 @@ def create_app():
     )
     app.add_url_rule("/api/entry_types", view_func=EntryTypes.as_view("entry_types"))
     app.add_url_rule("/api/change_controlled_types", view_func=ChangeControlledTypes.as_view("change_controlled_types"))
+    app.add_url_rule("/api/number_schemes", view_func=NumberSchemes.as_view("number_schemes"))
     app.add_url_rule("/api/users", view_func=AllUsers.as_view("user_list"))
     app.add_url_rule("/api/users/<pk>", view_func=SingleUser.as_view("single_user"))
     app.add_url_rule("/api/admins", view_func=AllAdmins.as_view("admin_list"))
@@ -85,6 +92,11 @@ def create_app():
         "/api/domains/<pk>", view_func=SingleDomain.as_view("single_domain")
     )
     app.add_url_rule("/api/numbers", view_func=AllNumbers.as_view("number_list"))
+    app.add_url_rule("/api/labels", view_func=AllLabels.as_view("label_list"))
+    app.add_url_rule("/api/labels/<pk>", view_func=SingleLabel.as_view("single_label"))
+    app.add_url_rule("/api/hooks", view_func=AllHooks.as_view("hook_list"))
+    app.add_url_rule("/api/hooks/<pk>", view_func=SingleHook.as_view("single_hook"))
+    app.add_url_rule("/api/hooks/<pk>/test", view_func=TestHook.as_view("test_hook"))
 
     return app
 
