@@ -8,6 +8,7 @@ from sqlalchemy.exc import NoResultFound, MultipleResultsFound
 from sqlalchemy.orm import validates
 from sqlalchemy.types import TypeDecorator
 from app import db
+import slack
 
 import logging
 
@@ -439,6 +440,192 @@ class Label(db.Model, Serializer):
             return False
 
 
+slack_hook_labels = db.Table(
+    "slack_hook_labels",
+    db.Column("hook_pk", db.Integer, db.ForeignKey("slack_hook.pk", ondelete="CASCADE"), primary_key=True),
+    db.Column("label_pk", db.Integer, db.ForeignKey("label.pk", ondelete="CASCADE"), primary_key=True),
+)
+
+
+class SlackHook(db.Model, Serializer):
+    """
+    SlackHook model class to act as interface between the Flask logic and the
+    sql table. Each hook is a Slack incoming webhook URL (one per channel)
+    that is posted to whenever an entry is given one of the hook's labels.
+    """
+
+    pk = db.Column("pk", db.Integer, primary_key=True)
+    time_created = db.Column(db.DateTime(timezone=True), server_default=func.now())
+    name = db.Column("name", db.String(100), nullable=False, unique=True)
+    url = db.Column("url", db.String(500), nullable=False)
+
+    # Only defined on this side: a backref on Label would get serialized with
+    # the labels every user can list, and leak the hook URLs.
+    labels = db.relationship("Label", secondary=slack_hook_labels)
+
+    @validates("name")
+    def validate_name(self, key, name):
+        if not name or not name.strip():
+            raise AssertionError("No hook name provided")
+        return name.strip()
+
+    @validates("url")
+    def validate_url(self, key, url):
+        url = (url or "").strip()
+        if not url.startswith(slack.SLACK_HOOK_PREFIX):
+            raise AssertionError(f"Hook URL must start with {slack.SLACK_HOOK_PREFIX}")
+        return url
+
+    def __repr__(self):
+        """
+        Returns the string representation of the SlackHook model.
+
+        Returns
+        -------
+        str
+            String representation of the SlackHook model.
+        """
+        return "<SlackHook %r>" % self.name
+
+    def serialize(self, depth=0, max_depth=2):
+        """
+        Serializes the hook without its URL, which is a secret: anyone holding
+        it can post to the channel. Only its last characters are returned, so
+        admins can tell hooks apart.
+
+        Returns
+        -------
+        dict
+            A dictionary with the hook's public fields.
+        """
+        return {
+            "pk": self.pk,
+            "time_created": self.time_created,
+            "name": self.name,
+            "url_hint": f"…{self.url[-4:]}" if self.url else "",
+            "labels": [{"pk": label.pk, "name": label.name} for label in self.labels],
+        }
+
+    def update(self, **kwargs):
+        """
+        Update an existing object's column values with those in the
+        kwargs. The URL is only replaced when a new one is provided.
+
+        Returns
+        -------
+        bool
+            Returns True is update was successful and False if an error was
+            encountered.
+        """
+        try:
+            for column in ["name", "url"]:
+                new_val = kwargs.get(column, None)
+                if new_val:
+                    setattr(self, column, new_val)
+
+            label_ids = kwargs.get("label_ids")
+            if label_ids is not None:
+                self.labels = Label.get_by_pks(label_ids)
+
+            db.session.add(self)
+            db.session.commit()
+            logger.info("SlackHooks: Updating SlackHook object.")
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"SlackHooks: Updating SlackHook object. Error: {e}")
+            return False
+        return True
+
+    @classmethod
+    def create(cls, **kwargs):
+        """
+        Create a new object and add a new entry in the
+        slack_hook table.
+
+        Returns
+        -------
+        bool or SlackHook object
+            If table successfully updated and object succesfully created,
+            object is returned, otherwise returns False.
+        """
+        try:
+            obj = SlackHook(name=kwargs.get("name"), url=kwargs.get("url"))
+            obj.labels = Label.get_by_pks(kwargs.get("label_ids"))
+            db.session.add(obj)
+            db.session.commit()
+            logger.info("SlackHooks: Creating SlackHook object.")
+            return obj
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"SlackHooks: Creating SlackHook object. Error: {e}")
+            return False
+
+    @classmethod
+    def get_by_pk(cls, pk):
+        """
+        Retrieves hook for a given primary key and logs errors.
+
+        Parameters
+        ----------
+        pk : int / str
+            pk of hook to be found
+
+        Returns
+        -------
+        SlackHook object or None
+            SlackHook object with given pk is returned if query is succesful,
+            otherwise None is returned if no results found.
+        """
+        try:
+            return db.session.scalars(select(SlackHook).where(SlackHook.pk == int(pk))).one()
+        except NoResultFound as e:
+            logger.error(f"SlackHook: Error: {e}:\n SlackHook with pk {pk} not found.")
+            return None
+
+    @classmethod
+    def for_labels(cls, label_pks):
+        """
+        Retrieves the hooks linked to any of the given labels.
+
+        Parameters
+        ----------
+        label_pks : iterable
+            pks of the labels.
+
+        Returns
+        -------
+        list
+            List of SlackHook objects.
+        """
+        if not label_pks:
+            return []
+        return db.session.scalars(
+            select(SlackHook)
+            .join(slack_hook_labels)
+            .where(slack_hook_labels.c.label_pk.in_(list(label_pks)))
+            .distinct()
+        ).all()
+
+    def delete_hook(self):
+        """
+        Deletes table entry.
+
+        Returns
+        -------
+        bool
+            If delete was successful, returns True, otherwise returns False
+        """
+        try:
+            db.session.delete(self)
+            db.session.commit()
+            logger.info("SlackHook: Deleting SlackHook object.")
+            return True
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"SlackHook: Deleting SlackHook object. Error: {e}")
+            return False
+
+
 class Document(db.Model, Serializer):
     """
     Document model class to act as interface between the Flask logic and the
@@ -545,6 +732,7 @@ class Document(db.Model, Serializer):
                                 kwargs.get("number"),
                                 kwargs.get("confirmed_number"))
 
+            old_label_pks = {label.pk for label in self.labels}
             label_ids = kwargs.get("label_ids")
             if label_ids is not None:
                 self.labels = Label.get_by_pks(label_ids)
@@ -552,6 +740,7 @@ class Document(db.Model, Serializer):
             db.session.add(self)
             db.session.commit()
             logger.info("Documents: Updating Document object.")
+            self._notify_added_labels(old_label_pks)
         except (NumberConfirmationRequired, OutOfOrderNumber, NumberGenerationError):
             # Let caller (views) handle confirmation / out-of-order flows and
             # report generation failures with their own message
@@ -560,6 +749,35 @@ class Document(db.Model, Serializer):
             logger.error(f"Documents: Updating Document object. Error: {e}")
             return False
         return True
+
+    def _notify_added_labels(self, old_label_pks):
+        """
+        Method to post to the Slack hooks linked to the labels this entry has
+        gained compared to old_label_pks. Each hook gets a single message,
+        however many of its labels were added. Called after the entry is
+        committed; errors are logged and never affect saving the entry.
+
+        Parameters
+        ----------
+        old_label_pks : set
+            pks of the labels the entry had before the change.
+        """
+        if not slack.base_url():
+            return
+
+        try:
+            added = {label.pk: label.name for label in self.labels
+                     if label.pk not in old_label_pks}
+            messages = []
+            for hook in SlackHook.for_labels(added.keys()):
+                label_names = [added[label.pk] for label in hook.labels if label.pk in added]
+                payload = slack.build_entry_message(self.title, self.doc_identifier,
+                                                    self.author, self.compiled_url,
+                                                    self.source_url, label_names)
+                messages.append((hook.name, hook.url, payload))
+            slack.dispatch(messages)
+        except Exception as e:
+            logger.error(f"Documents: Notifying Slack hooks. Error: {e}")
 
     def _update_number(self, change_controlled, entry_type, user_value, confirmed_number=None):
         """
@@ -805,6 +1023,7 @@ class Document(db.Model, Serializer):
             db.session.add(obj)
             db.session.commit()
             logger.info("Documents: Creating Document object.")
+            obj._notify_added_labels(set())
             return obj
         except (NumberConfirmationRequired, OutOfOrderNumber, NumberGenerationError):
             # Let caller (views) handle confirmation / out-of-order flows and

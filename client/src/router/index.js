@@ -3,6 +3,7 @@ import DocumentsAll from '../components/DocumentsAll.vue'
 import NumbersAll from '../components/NumbersAll.vue'
 import CollaboratorsAll from '../components/CollaboratorsAll.vue'
 import LabelsAll from '../components/LabelsAll.vue'
+import HooksAll from '../components/HooksAll.vue'
 import DocumentsItem from '../components/DocumentsItem.vue'
 import Ping from '../components/Ping.vue'
 
@@ -34,6 +35,11 @@ const router = createRouter({
       path: '/labels',
       name: 'LabelsAll',
       component: LabelsAll,
+    },
+    {
+      path: '/hooks',
+      name: 'HooksAll',
+      component: HooksAll,
     },
     {
       path: '/ping',

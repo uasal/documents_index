@@ -66,6 +66,9 @@ def create_app():
         AllNumbers,
         AllLabels,
         SingleLabel,
+        AllHooks,
+        SingleHook,
+        TestHook,
     )
 
     logger.info("Registering views.")
@@ -91,6 +94,9 @@ def create_app():
     app.add_url_rule("/api/numbers", view_func=AllNumbers.as_view("number_list"))
     app.add_url_rule("/api/labels", view_func=AllLabels.as_view("label_list"))
     app.add_url_rule("/api/labels/<pk>", view_func=SingleLabel.as_view("single_label"))
+    app.add_url_rule("/api/hooks", view_func=AllHooks.as_view("hook_list"))
+    app.add_url_rule("/api/hooks/<pk>", view_func=SingleHook.as_view("single_hook"))
+    app.add_url_rule("/api/hooks/<pk>/test", view_func=TestHook.as_view("test_hook"))
 
     return app
 
