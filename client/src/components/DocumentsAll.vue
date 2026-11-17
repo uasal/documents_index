@@ -31,6 +31,7 @@
         </div>
         <br>
         <alert :message=message v-if="showMessage"></alert>
+        <alert :message=exportError type="danger" v-if="exportError"></alert>
 
         <div class="row row-cols-auto mb-4" style="margin-left: initial;margin-right: initial;">
           <button type="button" class="btn btn-primary btn-sm" @click="toggleAddDocumentModal">
@@ -708,6 +709,7 @@ export default {
       gitLabANT: 'gitlab.sc.ascendingnode.tech',
       message: '',
       showMessage: false,
+      exportError: '',
       isAuthorized: false,
       hideContent: false,
       superuser: false,
@@ -738,6 +740,10 @@ export default {
     DrawingCodeBuilder: DrawingCodeBuilder,
   },
   watch: {
+    // A newer message replaces any earlier export failure
+    message() {
+      this.exportError = '';
+    },
     filter(newVal) {
       this.syncFiltersToUrl();
     },
@@ -1588,6 +1594,18 @@ Please update the entry at your earliest convenience.\n\nRegards,\nteledocs`);
       document.body.removeChild(hiddenLink);
     },
     exportToExcel() {
+      this.exportError = '';
+      try {
+        this.buildExcelExport();
+      } catch (error) {
+        this.handleExportError(error);
+      }
+    },
+    handleExportError(error) {
+      console.error(error);
+      this.exportError = 'Export to Excel failed. Please try again, or contact one of the admins if it keeps failing.';
+    },
+    buildExcelExport() {
       const workbook = new ExcelJS.Workbook();
       const worksheet = workbook.addWorksheet('Documents');
 
@@ -1624,7 +1642,7 @@ Please update the entry at your earliest convenience.\n\nRegards,\nteledocs`);
           title: doc.title,
           author: doc.author,
           doc_identifier: doc.doc_identifier,
-          number: doc.number.value,
+          number: doc.number ? doc.number.value : '',  // entries without an assigned number
           entry_type: doc.entry_type,
           change_controlled: doc.change_controlled,
           labels: (doc.labels || []).map(label => label.name).join(', '),
@@ -1648,7 +1666,7 @@ Please update the entry at your earliest convenience.\n\nRegards,\nteledocs`);
 
         // Clean up
         window.URL.revokeObjectURL(link.href);
-      });
+      }).catch(error => this.handleExportError(error));
     },
     getEntryTypeOptions() {
       const path = `${API_URL}/entry_types`;
